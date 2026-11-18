@@ -209,6 +209,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String commonRelativeDaysFromNow(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return 'In $_temp0';
+  }
+
+  @override
   String commonGoogleAccountLabel(String name, String email) {
     return '$name · $email';
   }
@@ -223,6 +234,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonCopiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get commonClipboardWriteFailed => 'Unable to copy. Please try again.';
 
   @override
   String get commonActionRetry => 'Retry';
@@ -872,6 +886,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tagNameRequiredMessage => 'Please enter a tag name';
+
+  @override
+  String get tagCatalogUnavailable =>
+      'Tag settings are unavailable. Original data has been preserved. Please retry.';
+
+  @override
+  String get tagCatalogRetry => 'Reload tag settings';
 
   @override
   String get tagUnnamedPreview => 'Untitled Tag';
@@ -2852,10 +2873,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get driveErrorInvalidDownloadPath =>
-      'The Google Drive backup download path is invalid.';
-
-  @override
   String get driveErrorPrepareUploadFailed =>
       'Could not prepare the Google Drive upload staging path.';
 
@@ -3143,16 +3160,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsActionConfirm => 'Confirm Restore';
 
   @override
-  String get settingsActionUpdate => 'Update';
-
-  @override
   String get settingsActionVerifyAndRestore => 'Verify and Restore';
 
   @override
   String get settingsRecoveryKeyFieldLabel => 'Recovery Key';
 
   @override
-  String get settingsRecoveryKeyFieldHint => 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
+  String get settingsRecoveryKeyFieldHint => '0123-4567-89AB-CDEF-GHJK-MNPQ';
+
+  @override
+  String get recoveryKeyInvalidInput =>
+      'Check that your recovery key has 24 characters and no extra characters.';
+
+  @override
+  String get recoveryKeyRotationNeedsUnlock =>
+      'The previous key update has not been recovered. Unlock the vault again before updating the key.';
 
   @override
   String get settingsRecoveryKeyShowTooltip => 'Show recovery key';
@@ -3220,6 +3242,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Recovery key created. Make sure you have saved it securely.';
 
   @override
+  String get settingsRecoveryKeyBackupRequired =>
+      'Your recovery key was updated. Create a new backup.';
+
+  @override
   String get settingsRecoveryKeyCreateButton => 'Create Recovery Key';
 
   @override
@@ -3246,11 +3272,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'Save it now. You won\'t be able to view it again after closing.';
 
   @override
-  String get settingsRecoveryKeyRotateDialogTitle => 'Update Recovery Key?';
+  String get settingsRecoveryKeySaveBeforeUpdateHint =>
+      'Save the new key in a password manager or write it down and store it somewhere safe. The update starts after you confirm.';
 
   @override
-  String get settingsRecoveryKeyRotateDialogBody =>
-      'A new recovery key will be generated—save it immediately.\n\nExisting local or Google Drive backups still require the old key to restore; create a new backup after updating.';
+  String get settingsRecoveryKeyKeepOldBackupKey =>
+      'Existing backups still need the old key.';
+
+  @override
+  String get settingsRecoveryKeySavedCheckbox => 'I’ve saved the new key';
+
+  @override
+  String get settingsRecoveryKeyStartUpdate => 'Start update';
+
+  @override
+  String get settingsRecoveryKeyUpdateInProgress => 'Updating recovery key…';
+
+  @override
+  String get recoveryKeyRotationDraftExpired =>
+      'The recovery key changed. Open the update dialog again to continue.';
 
   @override
   String get settingsSecurityOverviewSectionTitle => 'Security Overview';
@@ -3261,6 +3301,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewRecoveryKeyTitle => 'Recovery Key';
+
+  @override
+  String get settingsBackupStatusReadFailed =>
+      'Unable to read the backup reminder status. Please retry.';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyReady =>
@@ -3299,12 +3343,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSecurityOverviewIndexTitle => 'Vault';
 
   @override
-  String get settingsSecurityOverviewCreateRecoveryKeyButton =>
-      'Create Recovery Key';
-
-  @override
-  String get settingsSecurityOverviewRotateRecoveryKeyButton =>
-      'Update Recovery Key';
+  String get indexCipherUnavailable =>
+      'The encrypted index is unavailable. Your entries and attachments have been preserved.';
 
   @override
   String get settingsSecurityOverviewInspectVaultButton => 'Check Vault';
@@ -3534,7 +3574,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLocalBackupNoBackups => 'No local backups yet.';
 
   @override
-  String get settingsLocalBackupDeleteBackupTooltip => 'Delete Backup';
+  String get settingsBackupDeleteTooltip => 'Delete Backup';
 
   @override
   String get settingsLocalBackupDeleteConfirmTitle => 'Delete Local Backup?';
@@ -3564,7 +3604,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String settingsLocalBackupDeleteConfirmBody(String fileName) {
+  String settingsBackupDeleteConfirmBody(String fileName) {
     return 'Delete $fileName? This will not affect your current diary vault.';
   }
 
@@ -3660,20 +3700,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDriveBackupUnknownCreatedTime => 'Unknown creation time';
 
   @override
-  String get settingsDriveBackupDeleteBackupTooltip => 'Delete Backup';
-
-  @override
   String get settingsDriveBackupDeleteConfirmTitle =>
       'Delete Google Drive Backup?';
 
   @override
   String settingsDriveBackupDeleteBackupSuccess(String fileName) {
     return 'Deleted from Google Drive: $fileName';
-  }
-
-  @override
-  String settingsDriveBackupDeleteConfirmBody(String fileName) {
-    return 'Delete $fileName? This will not affect your current diary vault.';
   }
 
   @override
@@ -3961,8 +3993,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String settingsInspectVaultResultCheckedEntries(int entryCount) {
-    return 'Checked $entryCount entries.';
+  String settingsVaultMaintenanceCheckedEntries(int entryCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      entryCount,
+      locale: localeName,
+      other: 'Checked $entryCount entries.',
+      one: 'Checked 1 entry.',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -4032,11 +4070,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String settingsRepairVaultResultWarning(int count) {
     return 'Repair finished, but $count entries remain unresolved. You can manually salvage readable content, or permanently delete files that cannot be recovered.';
-  }
-
-  @override
-  String settingsRepairVaultResultCheckedEntries(int entryCount) {
-    return 'Checked $entryCount entries.';
   }
 
   @override
@@ -4464,7 +4497,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      'Entries, attachments, people, drafts, and the search index stay encrypted on your device by default. Recovery settings, the tag catalog, pinned-item IDs, and other supporting data are not separately encrypted, but remain in private app storage.';
+      'Entries, attachments, people, drafts, and the search index stay encrypted on your device by default. Recovery settings, pinned-item IDs, and other supporting data are not separately encrypted, but remain in private app storage.';
 
   @override
   String get aboutTabIntroSection0Item1Title => 'Start without Signing Up';
@@ -4787,7 +4820,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Subtitle =>
-      'Content is encrypted, but headers, recovery settings, and some supporting data remain readable, including the tag catalog and pinned-item IDs. Plaintext exports and unlocked use also need care.';
+      'Content is encrypted, but headers, recovery settings, and some supporting data remain readable, including pinned-item IDs. Plaintext exports and unlocked use also need care.';
 
   @override
   String get aboutTabEncryptionSection2Item0Title =>
@@ -5238,7 +5271,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Item0Body =>
-      'A full backup includes saved entries, attachments, people, retained conversations from completed chats, recovery settings, and the encrypted AI service, URL, and prompts. Content files stay encrypted, but the ZIP container, recovery settings, and any tag catalog or pinned-item IDs are not separately encrypted.';
+      'A full backup includes saved entries, attachments, people, retained conversations from completed chats, recovery settings, and the encrypted AI service, URL, and prompts. New backups also encrypt the tag catalog. The ZIP container, recovery settings, and pinned-item IDs remain readable. Historical ZIPs may still contain an unencrypted tag catalog.';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Title =>

@@ -12,30 +12,29 @@ class PinnedEntriesStore {
 
   final VaultPathStrategy _pathStrategy;
 
-  Future<String> _filePath() => _pathStrategy.pinnedEntriesPath();
-
   Future<Set<EntryId>> readIds() async {
-    final File file = File(await _filePath());
+    final File file = File(await _pathStrategy.pinnedEntriesPath());
     if (!file.existsSync()) {
       return <EntryId>{};
     }
+    Object? decoded;
     try {
-      final Object? decoded = jsonDecode(await file.readAsString());
-      return _parseEntryIds(decoded);
+      decoded = jsonDecode(await file.readAsString());
     } on Object {
       // 保留損毀檔案供手動復原；讀取失敗時降級為空集合。
       return <EntryId>{};
     }
+    return _parseEntryIds(decoded);
   }
 
-  Future<void> writeIds(Set<EntryId> ids) async {
+  Future<void> _writeIds(Set<EntryId> ids) async {
     final Set<EntryId> normalized = ids
         .map((EntryId id) => id.trim())
         .where((String id) => id.isNotEmpty)
         .toSet();
-    final File file = File(await _filePath());
+    final File file = File(await _pathStrategy.pinnedEntriesPath());
     if (normalized.isEmpty) {
-      await _deleteFile(file);
+      if (file.existsSync()) await file.delete();
       return;
     }
     final List<String> ordered = normalized.toList()..sort();
@@ -49,15 +48,8 @@ class PinnedEntriesStore {
     );
   }
 
-  Future<void> setPinned(EntryId entryId, {required bool pinned}) async {
-    final Set<EntryId> next = await readIds();
-    if (pinned) {
-      next.add(entryId);
-    } else {
-      next.remove(entryId);
-    }
-    await writeIds(next);
-  }
+  Future<void> setPinned(EntryId entryId, {required bool pinned}) =>
+      setPinnedMany([entryId], pinned: pinned);
 
   Future<void> setPinnedMany(
     Iterable<EntryId> entryIds, {
@@ -71,7 +63,7 @@ class PinnedEntriesStore {
         next.remove(id);
       }
     }
-    await writeIds(next);
+    await _writeIds(next);
   }
 
   Future<void> pruneTo(Iterable<EntryId> existingEntryIds) async {
@@ -81,7 +73,7 @@ class PinnedEntriesStore {
     if (pruned.length == current.length) {
       return;
     }
-    await writeIds(pruned);
+    await _writeIds(pruned);
   }
 
   Future<void> remove(EntryId entryId) {
@@ -91,6 +83,10 @@ class PinnedEntriesStore {
   static Set<EntryId> _parseEntryIds(Object? decoded) {
     if (decoded is! Map<Object?, Object?>) {
       return <EntryId>{};
+    }
+    if (decoded.containsKey('version') &&
+        decoded['version'] != DataVersions.pinnedEntries) {
+      throw const FormatException('不支援的釘選資料格式版本');
     }
     final Object? rawIds = decoded['entry_ids'];
     if (rawIds is! List<Object?>) {
@@ -104,11 +100,5 @@ class PinnedEntriesStore {
       }
     }
     return ids;
-  }
-
-  Future<void> _deleteFile(File file) async {
-    if (file.existsSync()) {
-      await file.delete();
-    }
   }
 }

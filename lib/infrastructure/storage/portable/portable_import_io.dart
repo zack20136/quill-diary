@@ -218,7 +218,7 @@ class PortableImportIo {
     );
 
     if (totals.importedEntries > 0) {
-      await _repository.syncTagStylesBetweenVaultAndIndex();
+      await _repository.applyTagCatalogToIndex();
     }
 
     return PortableImportResult(

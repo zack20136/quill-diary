@@ -1,5 +1,7 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:quill_diary/application/session/session_state.dart';
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
+import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
@@ -12,6 +14,10 @@ String friendlySessionErrorMessage(
   Object error, {
   bool afterRestoreTrustedUnlock = false,
 }) {
+  if (error is RecoveryKeyFormatException) return l10n.recoveryKeyInvalidInput;
+  if (error is IndexCipherUnavailableException) {
+    return l10n.indexCipherUnavailable;
+  }
   if (error is SecretBoxAuthenticationError) {
     return afterRestoreTrustedUnlock
         ? l10n.sessionTrustedUnlockFailedAfterRestoreMessage

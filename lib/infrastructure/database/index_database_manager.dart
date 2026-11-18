@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
@@ -16,6 +17,7 @@ class IndexDatabaseManager {
 
   IndexDatabase? _database;
   String? _openVaultId;
+  List<int>? _openKey;
   Future<void> _operationTail = Future<void>.value();
 
   bool get isOpen => _database != null;
@@ -28,30 +30,70 @@ class IndexDatabaseManager {
     return database;
   }
 
-  Future<IndexDatabase> openForSession(UnlockedVaultSession session) {
-    return _serialize(() => _openForSessionNow(session));
-  }
+  Future<IndexDatabase> openForSession(
+    UnlockedVaultSession session, {
+    List<int>? interruptedRotationWrapKey,
+  }) => _serialize(
+    () => _openForSessionNow(
+      session,
+      interruptedRotationWrapKey: interruptedRotationWrapKey,
+    ),
+  );
 
-  Future<IndexDatabase> _openForSessionNow(UnlockedVaultSession session) async {
-    if (_database != null && _openVaultId == session.vaultId) {
+  Future<IndexDatabase> _openForSessionNow(
+    UnlockedVaultSession session, {
+    List<int>? interruptedRotationWrapKey,
+  }) async {
+    final List<int> key = await _deriveKey(session);
+    if (_database != null &&
+        _openVaultId == session.vaultId &&
+        listEquals(_openKey, key)) {
       return _database!;
     }
 
     await _closeNow();
-
-    final List<int> keyBytes = await deriveIndexDatabaseKey(
-      recoveryWrapKey: requireRecoveryWrapKey(session),
-      vaultId: session.vaultId,
-    );
+    final String path = await _pathStrategy.indexDatabasePath();
+    if (!File(path).existsSync()) await _deleteSidecars(path);
     try {
-      return await _connectAndInitialize(session: session, keyBytes: keyBytes);
+      return await _connectAndInitialize(session: session, keyBytes: key);
     } on Object catch (error) {
       if (!isUnreadableEncryptedIndexError(error)) {
         rethrow;
       }
+      if (interruptedRotationWrapKey != null) {
+        final IndexDatabase? recovered = await _recoverRotatedIndex(
+          session,
+          key,
+          interruptedRotationWrapKey,
+        );
+        if (recovered != null) return recovered;
+      }
       await _deleteDatabaseFilesNow();
-      return await _connectAndInitialize(session: session, keyBytes: keyBytes);
+      return await _connectAndInitialize(session: session, keyBytes: key);
     }
+  }
+
+  Future<IndexDatabase?> _recoverRotatedIndex(
+    UnlockedVaultSession session,
+    List<int> restoredIndexKey,
+    List<int> interruptedRotationWrapKey,
+  ) async {
+    final List<int> rotatedIndexKey = await deriveIndexDatabaseKey(
+      recoveryWrapKey: interruptedRotationWrapKey,
+      vaultId: session.vaultId,
+    );
+    final IndexDatabase database;
+    try {
+      database = await _connectAndInitialize(
+        session: session,
+        keyBytes: rotatedIndexKey,
+      );
+    } on Object catch (error) {
+      if (!isUnreadableEncryptedIndexError(error)) rethrow;
+      return null;
+    }
+    await _rekeyOpenDatabase(database, restoredIndexKey);
+    return database;
   }
 
   Future<IndexDatabase> _connectAndInitialize({
@@ -67,11 +109,40 @@ class IndexDatabaseManager {
       await database.initialize();
       _database = database;
       _openVaultId = session.vaultId;
+      _openKey = keyBytes;
       return database;
     } on Object {
       await database.close();
       rethrow;
     }
+  }
+
+  Future<List<int>> _deriveKey(UnlockedVaultSession session) =>
+      deriveIndexDatabaseKey(
+        recoveryWrapKey: requireRecoveryWrapKey(session),
+        vaultId: session.vaultId,
+      );
+
+  Future<void> rekeyForSession(UnlockedVaultSession session) =>
+      _serialize(() async {
+        final IndexDatabase database = requireOpen();
+        if (_openVaultId != session.vaultId) {
+          throw StateError('索引與日記庫身分不符。');
+        }
+        await _rekeyOpenDatabase(database, await _deriveKey(session));
+      });
+
+  Future<void> _rekeyOpenDatabase(IndexDatabase database, List<int> key) async {
+    if (listEquals(_openKey, key)) return;
+    try {
+      await database.customStatement(
+        "PRAGMA hexrekey = '${encodeIndexKey(key)}';",
+      );
+    } on Object {
+      // SQL 錯誤可能含有金鑰參數，不能交給上層記錄。
+      throw StateError('索引加密金鑰變更失敗。');
+    }
+    _openKey = key;
   }
 
   Future<void> close() => _serialize(_closeNow);
@@ -80,6 +151,7 @@ class IndexDatabaseManager {
     final IndexDatabase? database = _database;
     _database = null;
     _openVaultId = null;
+    _openKey = null;
     if (database != null) {
       await database.close();
     }
@@ -91,9 +163,13 @@ class IndexDatabaseManager {
     await _closeNow();
     final String path = await _pathStrategy.indexDatabasePath();
     await _deleteIfExists(File(path));
-    await _deleteIfExists(File('$path-wal'));
-    await _deleteIfExists(File('$path-shm'));
-    await _deleteIfExists(File('$path-journal'));
+    await _deleteSidecars(path);
+  }
+
+  Future<void> _deleteSidecars(String path) async {
+    for (final suffix in ['-wal', '-shm', '-journal']) {
+      await _deleteIfExists(File('$path$suffix'));
+    }
   }
 
   Future<void> _deleteIfExists(File file) async {

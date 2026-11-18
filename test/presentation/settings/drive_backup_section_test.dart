@@ -200,7 +200,7 @@ void main() {
     expect(
       readAppActionButton(
         tester,
-        testL10n.settingsSecurityOverviewRotateRecoveryKeyButton,
+        testL10n.settingsRecoveryKeyRotateButton,
       ).onPressed,
       isNull,
     );

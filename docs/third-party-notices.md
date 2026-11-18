@@ -10,7 +10,7 @@ Quill Diary 原始碼依 **GNU Affero General Public License v3.0 or later（AGP
 
 ## 字體
 
-本 App 不隨附任何字體，文字皆使用各平台的系統字。
+文字使用各平台的系統字。App 隨附 Flutter 的 Material Icons 字型，依其 Apache License 2.0 授權。
 
 ## 索引加密與 SQLite
 
@@ -18,7 +18,7 @@ Quill Diary 原始碼依 **GNU Affero General Public License v3.0 or later（AGP
 
 ## Flutter 與第三方套件
 
-本 App 使用 Flutter、Drift、Riverpod、Google Sign-In、Google APIs、In-App Purchase 等第三方套件，各套件仍受其原始授權規範。完整授權內容以實際發行版本隨附的授權資訊及各套件原始條款為準，本頁只提供摘要。
+本 App 使用 Flutter、Drift、Riverpod、Google Sign-In、Google APIs、In-App Purchase、cryptography、flutter_secure_storage、archive 等第三方套件；Android 端另使用 AndroidX Biometric。各套件仍受其原始授權規範。完整授權內容以實際發行版本隨附的授權資訊及各套件原始條款為準，本頁只提供摘要。
 
 ## 品牌與商店素材
 

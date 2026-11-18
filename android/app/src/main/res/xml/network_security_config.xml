@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- 自訂 AI 服務與 Ollama 區網 IP 無法靜態列舉；AI transport 另限制為區網／loopback IP。 -->
+    <!-- 自訂 AI 的 HTTP 網址由 App 限制為區網或本機 IP。 -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />

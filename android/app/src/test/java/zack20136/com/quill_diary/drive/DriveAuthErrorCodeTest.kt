@@ -5,7 +5,7 @@ import org.junit.Test
 
 class DriveAuthErrorCodeTest {
     @Test
-    fun 偽裝成取消的_12501_會回傳設定錯誤碼() {
+    fun 偽裝成取消的12501會回傳設定錯誤碼() {
         assertEquals(
             DriveAuthErrorCode.CONFIGURATION,
             DriveAuthErrorCode.fromApiStatus(
@@ -16,7 +16,7 @@ class DriveAuthErrorCodeTest {
     }
 
     @Test
-    fun 真正取消的_12501_會回傳取消錯誤碼() {
+    fun 真正取消的12501會回傳取消錯誤碼() {
         assertEquals(
             DriveAuthErrorCode.CANCELLED,
             DriveAuthErrorCode.fromApiStatus(12501, "User canceled"),

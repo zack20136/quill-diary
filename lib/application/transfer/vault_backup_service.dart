@@ -1,14 +1,16 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
-import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
 import 'package:quill_diary/infrastructure/storage/shared/external_file_delivery.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -45,8 +47,10 @@ class VaultBackupService {
   Future<BackupPersistResult> saveBackupToAppLocal({
     BackupTaskProgressListener? onProgress,
     String? fileName,
+    VaultBackupPurpose purpose = VaultBackupPurpose.normal,
   }) {
     return _runInspectedBackupPipeline(
+      purpose: purpose,
       fileName: fileName,
       onProgress: onProgress,
       deliver:
@@ -58,18 +62,34 @@ class VaultBackupService {
             final Directory backupsDirectory = await _pathStrategy
                 .localBackupsDirectory();
             await backupsDirectory.create(recursive: true);
-            final String destinationPath = p.join(
-              backupsDirectory.path,
-              deliveredFileName,
+            var destination = File(
+              p.join(backupsDirectory.path, deliveredFileName),
             );
-            await copyFileToPath(
-              stagingZip,
-              destinationPath,
-              onProgress: deliverProgress,
-            );
+            await _ensureFileInsideLocalBackupsDirectory(destination);
+            final partial = File('${stagingZip.path}.partial');
+            await partial.create(exclusive: true);
+            try {
+              await copyFileToPath(
+                stagingZip,
+                partial.path,
+                onProgress: deliverProgress,
+              );
+              if (destination.existsSync()) {
+                final stem = p.basenameWithoutExtension(deliveredFileName);
+                destination = File(
+                  p.join(
+                    backupsDirectory.path,
+                    '${stem}_${generateBackupId()}.${VaultBackupPolicy.fileExtension}',
+                  ),
+                );
+              }
+              partial.renameSync(destination.path);
+            } finally {
+              await deleteFileIfExists(partial.path);
+            }
             final List<LocalBackupFile> backups = await _loadAppLocalBackups();
             await _pruneExcessAppLocalBackupsFromSorted(backups);
-            return destinationPath;
+            return destination.path;
           },
     );
   }
@@ -78,6 +98,7 @@ class VaultBackupService {
     BackupTaskProgressListener? onProgress,
   }) {
     return saveBackupToAppLocal(
+      purpose: VaultBackupPurpose.preservation,
       onProgress: onProgress,
       fileName: VaultBackupPolicy.backupBeforeRepairFileName(DateTime.now()),
     );
@@ -117,11 +138,8 @@ class VaultBackupService {
     final String stagingPath = await resolveStagingPath(fileName);
     final File staging = File(stagingPath);
     final File partial = File('$stagingPath.partial');
+    await partial.create(recursive: true, exclusive: true);
     try {
-      await partial.parent.create(recursive: true);
-      if (partial.existsSync()) {
-        await partial.delete();
-      }
       await _backupIo.writeBackupZip(
         partial,
         onProgress: remapBackupTaskProgress(
@@ -132,24 +150,28 @@ class VaultBackupService {
       );
       final BackupInspectResult inspect = await inspectBackup(partial);
       if (!inspect.ok) {
-        await _deleteIfExists(partial);
         return BackupPersistResult(
           status: BackupPersistStatus.inspectFailed,
           message: inspect.issue.name,
         );
       }
+      final RecoveryMetadata? metadata = inspect.metadata;
+      final identity = metadata == null
+          ? null
+          : await RecoveryKeyIdentity.fromMetadata(metadata);
       if (staging.existsSync()) {
-        await staging.delete();
+        throw FileSystemException('Drive 上傳暫存路徑已被使用。', staging.path);
       }
-      await partial.rename(staging.path);
+      partial.renameSync(staging.path);
       return BackupPersistResult(
         status: BackupPersistStatus.success,
         savedPath: staging.path,
+        identity: identity,
+        purpose: VaultBackupPurpose.normal,
         message: fileName,
       );
-    } on Object {
-      await _deleteIfExists(partial);
-      rethrow;
+    } finally {
+      await deleteFileIfExists(partial.path);
     }
   }
 
@@ -187,13 +209,12 @@ class VaultBackupService {
 
   Future<File> downloadDriveBackupToTempFile(
     DriveBackupFile backup, {
-    required Directory destinationDirectory,
     BackupTaskProgressListener? onProgress,
-  }) {
+  }) async {
     return _driveBackupService.downloadBackupById(
       fileId: backup.id,
       fileName: backup.name,
-      destinationDirectory: destinationDirectory,
+      destinationDirectory: await _pathStrategy.transferWorkDirectory(),
       totalBytes: backup.sizeBytes,
       onProgress: onProgress,
     );
@@ -277,13 +298,15 @@ class VaultBackupService {
     deliver,
     BackupTaskProgressListener? onProgress,
     String? fileName,
+    VaultBackupPurpose purpose = VaultBackupPurpose.normal,
   }) async {
     final String resolvedFileName =
         fileName ?? VaultBackupPolicy.backupFileName(DateTime.now());
-    final File staging = await _createTempFile(resolvedFileName);
+    final File staging = await _createBackupStagingFile();
     try {
       await _backupIo.writeBackupZip(
         staging,
+        purpose: purpose,
         onProgress: remapBackupTaskProgress(
           onProgress,
           start: 0,
@@ -312,21 +335,25 @@ class VaultBackupService {
       return BackupPersistResult(
         status: BackupPersistStatus.success,
         savedPath: saved,
+        identity: inspect.metadata == null
+            ? null
+            : await RecoveryKeyIdentity.fromMetadata(inspect.metadata!),
+        purpose: purpose,
         message: '',
       );
     } finally {
-      await _deleteIfExists(staging);
+      await deleteFileIfExists(staging.path);
     }
   }
 
-  Future<File> _createTempFile(String fileName) async {
-    final Directory tempDirectory = await getTemporaryDirectory();
+  Future<File> _createBackupStagingFile() async {
+    final Directory tempDirectory = await _pathStrategy.transferWorkDirectory();
     return File(
       p.join(
         tempDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_$fileName',
+        '${generateBackupId()}.${VaultBackupPolicy.fileExtension}',
       ),
-    );
+    ).create(recursive: true, exclusive: true);
   }
 
   Future<void> _deleteIfExists(File file) async {

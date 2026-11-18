@@ -732,7 +732,7 @@ void main() {
 
     expect(find.text(testL10n.settingsRepairVaultResultClean), findsOneWidget);
     expect(
-      find.text(testL10n.settingsRepairVaultResultCheckedEntries(1)),
+      find.text(testL10n.settingsVaultMaintenanceCheckedEntries(1)),
       findsOneWidget,
     );
     expect(

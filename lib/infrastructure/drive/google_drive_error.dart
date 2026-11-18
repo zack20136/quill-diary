@@ -15,7 +15,6 @@ enum GoogleDriveErrorCode {
   oauthUnexpected,
   invalidFileId,
   pruneFailed,
-  invalidDownloadPath,
   prepareUploadFailed,
   startUploadFailed,
   backgroundStartNotAllowed,

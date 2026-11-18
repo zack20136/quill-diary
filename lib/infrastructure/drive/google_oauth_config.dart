@@ -10,7 +10,7 @@ import 'package:quill_diary/shared/app_identifiers.dart';
 ///
 /// 優先順序：
 /// 1. 建置參數 `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`
-/// 2. Android：`android/.../res/values/oauth_config.xml` 的 `oauth_request_id_token`
+/// 2. Android：`android/.../res/values/oauth_config.xml` 的 `google_drive_web_client_id`
 class OAuthConfig {
   OAuthConfig._();
 

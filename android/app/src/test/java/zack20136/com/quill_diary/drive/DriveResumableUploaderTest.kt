@@ -6,8 +6,12 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import java.io.File
 
+@RunWith(RobolectricTestRunner::class)
 class DriveResumableUploaderTest {
     private fun sampleJob(
         jobId: String = "11111111-1111-1111-1111-111111111111",
@@ -28,13 +32,13 @@ class DriveResumableUploaderTest {
         )
 
     @Test
-    fun 沒有_Range_時從零開始() {
+    fun 沒有Range時從零開始() {
         assertEquals(0L, DriveResumableUploader.parseNextOffset(null, 1000L))
         assertEquals(0L, DriveResumableUploader.parseNextOffset("", 1000L))
     }
 
     @Test
-    fun 有效_Range_回傳下一個位元組() {
+    fun 有效Range回傳下一個位元組() {
         assertEquals(
             8L * 1024L * 1024L,
             DriveResumableUploader.parseNextOffset("bytes=0-8388607", 20L * 1024L * 1024L),
@@ -42,18 +46,33 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun 超出範圍的_Range_會拒絕() {
+    fun 超出範圍的Range會拒絕() {
         assertNull(DriveResumableUploader.parseNextOffset("bytes=0-999", 500L))
         assertNull(DriveResumableUploader.parseNextOffset("bytes=abc-def", 500L))
     }
 
     @Test
-    fun 非零起點的_Range_會拒絕() {
+    fun 非零起點的Range會拒絕() {
         assertNull(DriveResumableUploader.parseNextOffset("bytes=100-199", 1000L))
     }
 
     @Test
-    fun 上傳_Location_必須是_HTTPS_Google_API() {
+    fun 不同Drive帳戶無法接手備份上傳() {
+        val provider = DriveAccessTokenProvider(RuntimeEnvironment.getApplication())
+        val job = sampleJob()
+        val otherAccount = DriveAccessTokenProvider.TokenResult("token", "other-id", job.accountEmail)
+
+        assertEquals(DriveAccessTokenProvider.TokenError.Permanent, provider.matchTokenToJob(job, otherAccount))
+        val historicalJob = job.copy(accountId = "")
+        assertNull(provider.matchTokenToJob(historicalJob, otherAccount.copy(accountEmail = "A@B.C")))
+        assertEquals(
+            DriveAccessTokenProvider.TokenError.Permanent,
+            provider.matchTokenToJob(historicalJob, otherAccount.copy(accountEmail = "other@example.com")),
+        )
+    }
+
+    @Test
+    fun 上傳Location必須是HTTPSGoogleAPI() {
         assertTrue(
             DriveResumableUploader.isAllowedUploadLocation(
                 "https://www.googleapis.com/upload/drive/v3/files?upload_id=abc",
@@ -77,7 +96,7 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun 可辨識常見_rate_limit_回應() {
+    fun 可辨識常見限流回應() {
         assertTrue(
             DriveResumableUploader.isRateLimit(
                 """{"error":{"errors":[{"reason":"rateLimitExceeded"}]}}""",
@@ -87,7 +106,7 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun verifyCompletion_驗證_id_大小_jobId_與_md5() {
+    fun 遠端識別碼大小與校驗皆符合才視為完成() {
         val md5 = "098f6bcd4621d373cade4e832627b4f6"
         val job =
             sampleJob(
@@ -134,7 +153,7 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun verifyCompletion_缺_md5Checksum_回傳_null_供查_metadata() {
+    fun 缺少遠端校驗值時不能視為完成() {
         val md5 = "098f6bcd4621d373cade4e832627b4f6"
         val job = sampleJob(md5 = md5, sizeBytes = 42)
         val body =
@@ -145,9 +164,9 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun backoff_尊重_Retry_After_並有上限() {
+    fun 重試遵循伺服器等待時間且有上限() {
         val withRetry =
-            DriveResumableUploader.HttpResponse(
+            DriveHttpResponse(
                 code = 429,
                 headers = mapOf("retry-after" to "7"),
                 body = "",
@@ -158,17 +177,17 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun DriveUploadJob_isRemoteCommittedPhase() {
+    fun 只有成功收尾階段視為遠端已提交() {
         val job = sampleJob().copy(phase = DriveUploadPhase.STATUS_PENDING)
         assertTrue(job.isRemoteCommittedPhase())
-        assertTrue(job.blocksConflictingActions())
+        assertTrue(job.copy(phase = DriveUploadPhase.PRUNE_PENDING).isRemoteCommittedPhase())
         assertFalse(
             sampleJob().copy(phase = DriveUploadPhase.UPLOADING).isRemoteCommittedPhase(),
         )
     }
 
     @Test
-    fun 進度百分比無條件捨去且只有完整上傳顯示_100() {
+    fun 進度百分比無條件捨去且只有完整上傳顯示100() {
         assertEquals(0, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 0).progressPercent())
         assertEquals(29, sampleJob(sizeBytes = 100).copy(confirmedOffset = 29).progressPercent())
         assertEquals(12, sampleJob(sizeBytes = 1000).copy(confirmedOffset = 129).progressPercent())
@@ -180,7 +199,7 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun fromMap_把_JSONObject_NULL_當成_null() {
+    fun 工作欄位的JSON空值會解析為空值() {
         val job =
             DriveUploadJob.fromMap(
                 mapOf(
@@ -194,24 +213,25 @@ class DriveResumableUploaderTest {
                     "md5" to "abc",
                     "remoteFileId" to "f",
                     "lastErrorCode" to org.json.JSONObject.NULL,
-                    "lastErrorMessage" to org.json.JSONObject.NULL,
                     "nextRetryAtEpochMs" to org.json.JSONObject.NULL,
                 ),
             )
         assertNull(job!!.lastErrorCode)
-        assertNull(job.lastErrorMessage)
         assertNull(job.nextRetryAtEpochMs)
     }
 
     @Test
-    fun toMap_不輸出舊版原始錯誤訊息() {
-        val job = sampleJob().copy(lastErrorMessage = "HTTP 503: /private/backup.zip")
+    fun 舊工作原始錯誤文字不會出現在輸出() {
+        val oldMap = sampleJob().toMap() + ("lastErrorMessage" to "HTTP 503: /private/backup.zip")
+        val job = requireNotNull(DriveUploadJob.fromMap(oldMap))
 
+        assertEquals(oldMap["jobId"], job.jobId)
+        assertTrue(job.toMap().containsKey("lastErrorMessage"))
         assertNull(job.toMap()["lastErrorMessage"])
     }
 
     @Test
-    fun fromMap_相容舊_sha256_與_attemptCount() {
+    fun 舊工作可讀取原校驗值與重試次數() {
         val job =
             DriveUploadJob.fromMap(
                 mapOf(
@@ -231,12 +251,7 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun SCHEMA_VERSION_維持為_1() {
-        assertEquals(1, DriveUploadJob.SCHEMA_VERSION)
-    }
-
-    @Test
-    fun jobId_與檔名安全檢查() {
+    fun 工作識別碼與檔名安全檢查() {
         assertTrue(
             DriveUploadJobStore.isValidJobId("11111111-1111-1111-1111-111111111111"),
         )
@@ -246,12 +261,12 @@ class DriveResumableUploaderTest {
     }
 
     @Test
-    fun md5Hex_對實際檔案可驗證() {
+    fun 實際備份的MD5可核對遠端檔案() {
         val file = File.createTempFile("drive_md5", ".bin")
         try {
             file.writeBytes(byteArrayOf(1, 2, 3, 4, 5))
             val md5 = DriveUploadJobStore.md5Hex(file)
-            assertEquals(32, md5.length)
+            assertEquals("7cfdd07889b3295d6a550914ab35e068", md5)
             val job = sampleJob(md5 = md5, sizeBytes = 5).copy(stagingPath = file.absolutePath)
             val body =
                 """

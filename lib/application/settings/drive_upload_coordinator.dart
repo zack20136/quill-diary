@@ -16,6 +16,7 @@ import 'package:quill_diary/infrastructure/drive/drive_upload_platform.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
@@ -32,7 +33,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
 
   DriveUploadFailureNotice? get failure => state.failure;
 
-  bool get hasActiveJob => state.job?.blocksConflictingDriveActions ?? false;
+  bool get hasActiveJob => state.job != null;
 
   bool get isSupported => _platform.isSupported;
 
@@ -70,6 +71,9 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
     return _enqueue(_refreshUnlocked);
   }
 
+  Future<void> cleanupAbandonedUploadFiles() =>
+      _enqueue(_platform.cleanupAbandonedUploadFiles);
+
   /// 同步 App 是否可互動；背景事件只更新 persisted job，不啟動 Google 收尾。
   void setAppForeground(bool isForeground) {
     _appIsForeground = isForeground;
@@ -103,13 +107,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
         GoogleDriveErrorCode.backgroundUploadUnsupported,
       );
     }
-    final AppLanguage language = ref
-        .read(personalizationPreferencesProvider)
-        .maybeWhen(
-          data: (PersonalizationPreferences value) => value.locale,
-          orElse: () => AppLanguage.zh,
-        );
-    await _platform.setLocale(language.storageValue);
+    await _platform.setLocale(_currentLanguage.storageValue);
     await _refreshUnlocked();
     if (hasActiveJob) {
       throw const GoogleDriveException(
@@ -149,6 +147,8 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       final int sizeBytes = await staging.length();
 
       final DriveUploadJobSnapshot started = await _platform.startUpload(
+        backupIdentity: prepared.identity,
+        backupPurpose: prepared.purpose,
         stagingPath: staging.path,
         fileName: fileName,
         sizeBytes: sizeBytes,
@@ -162,12 +162,12 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       );
     } on PlatformException catch (error) {
       if (error.code == 'fgs_start_not_allowed') {
-        // 原生已 failAndCleanup（staging 已清）；failure 只經 getState → _applyState 寫入一次。
+        // 原生已記錄啟動失敗並清理暫存，由 getState 取得提示。
         nativeAccepted = true;
         await _applyState(await _platform.getState());
         final String message = const GoogleDriveException(
           GoogleDriveErrorCode.backgroundStartNotAllowed,
-        ).localizedMessage(_currentL10n());
+        ).localizedMessage(localizationsFor(_currentLanguage));
         return BackupPersistResult(
           status: BackupPersistStatus.cancelled,
           message: message,
@@ -184,11 +184,9 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
         );
       }
       rethrow;
-    } catch (_) {
-      rethrow;
     } finally {
       if (!nativeAccepted) {
-        await _deleteIfExists(staging);
+        await deleteFileIfExists(staging.path);
       }
     }
   }
@@ -270,7 +268,7 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
   Future<void> _recordFailureStatus(DriveUploadFailureNotice failure) async {
     final String message = failure.message.trim().isNotEmpty
         ? failure.message.trim()
-        : _currentL10n().driveUploadAbandonedFailureBody;
+        : localizationsFor(_currentLanguage).driveUploadAbandonedFailureBody;
     await ref
         .read(backupStatusStoreProvider)
         .recordFailure(
@@ -280,15 +278,12 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
     ref.invalidate(backupStatusProvider);
   }
 
-  AppLocalizations _currentL10n() {
-    final AppLanguage language = ref
-        .read(personalizationPreferencesProvider)
-        .maybeWhen(
-          data: (PersonalizationPreferences value) => value.locale,
-          orElse: () => AppLanguage.zh,
-        );
-    return lookupAppLocalizations(language.materialLocale);
-  }
+  AppLanguage get _currentLanguage => ref
+      .read(personalizationPreferencesProvider)
+      .maybeWhen(
+        data: (PersonalizationPreferences value) => value.locale,
+        orElse: () => AppLanguage.zh,
+      );
 
   Future<void> _completeCommittedJob(DriveUploadJobSnapshot job) async {
     final String key = _completionKeyFor(job);
@@ -322,6 +317,8 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       await ref
           .read(backupStatusStoreProvider)
           .recordDriveUploadSuccess(
+            identity: current.backupIdentity,
+            purpose: current.backupPurpose,
             accountLabel: accountLabel,
             jobId: current.jobId,
           );
@@ -395,16 +392,6 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       return DriveUploadState.fromMap(map).job;
     }
     return DriveUploadJobSnapshot.fromMap(map);
-  }
-
-  Future<void> _deleteIfExists(File file) async {
-    try {
-      if (await file.exists()) {
-        await file.delete();
-      }
-    } on Object {
-      // 最佳努力清理。
-    }
   }
 }
 

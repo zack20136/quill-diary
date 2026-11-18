@@ -6,6 +6,7 @@ import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
+import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
 import 'package:url_launcher_platform_interface/link.dart';
@@ -191,6 +192,42 @@ void main() {
       find.text(testL10n.settingsDriveBackupDisconnectSuccess),
       findsOneWidget,
     );
+  });
+
+  testWidgets('取消外部備份還原會清理暫存並保留選取來源', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('settings_cancel_restore_');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final source = File('${dir.path}/source.zip')..writeAsStringSync('backup');
+    final temp = source.copySync('${dir.path}/copied.zip');
+    final restore = FakeVaultRestoreService(
+      pickedBackupFile: PickedBackupFile(
+        file: temp,
+        shouldDeleteAfterUse: true,
+      ),
+    );
+    await pumpSettingsActionsPage(
+      tester,
+      backupService: FakeVaultBackupService(connectionState: connectedState),
+      restoreService: restore,
+    );
+
+    final button = appActionButton(
+      testL10n.settingsLocalBackupImportFromExternalButton,
+    );
+    await scrollSettingsPageUntilVisible(tester, button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(restore.precheckRestoreCalls, 1);
+    expect(temp.existsSync(), isTrue);
+    await tester.tap(find.text(testL10n.commonActionCancel).last);
+    await tester.runAsync(() async {
+      for (var attempt = 0; attempt < 40 && temp.existsSync(); attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    await tester.pumpAndSettle();
+    expect(temp.existsSync(), isFalse);
+    expect(source.readAsStringSync(), 'backup');
   });
 
   testWidgets('雲端還原失敗時會刪除暫存備份檔', (WidgetTester tester) async {

@@ -6,6 +6,34 @@ import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
+  test('易混淆字元依 Crockford 對應且非法或過長輸入不被截斷', () {
+    const formatter = RecoveryKeyInputFormatter();
+    expect(_replaceAll(formatter, 'oill').text, '0111');
+    for (final input in ['ABCU-EFGH', '0123-4567-89AB-CDEF-GHJK-MNPQ-R']) {
+      final edited = _replaceAll(formatter, input);
+      expect(edited.text, input);
+      expect(edited.selection.extentOffset, input.length);
+    }
+  });
+  testWidgets('非法輸入顯示錯誤且不將內容送交解鎖', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    String? submitted;
+    await tester.pumpWidget(
+      widgetTestApp(
+        child: RecoveryKeyTextField(
+          controller: controller,
+          onSubmitted: (value) => submitted = value,
+        ),
+      ),
+    );
+    await tester.enterText(find.byType(TextField), 'ABCU-EFGH');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(controller.text, 'ABCU-EFGH');
+    expect(submitted, isNull);
+    expect(find.text(testL10n.recoveryKeyInvalidInput), findsOneWidget);
+  });
   testWidgets('復原金鑰欄位預設顯示且關閉建議與自動填入', (WidgetTester tester) async {
     final TextEditingController controller = TextEditingController();
 
@@ -67,15 +95,15 @@ void main() {
 
   test('貼上含橫線、小寫與空白會整理成同一組大寫分組', () {
     const RecoveryKeyInputFormatter formatter = RecoveryKeyInputFormatter();
-    const String formatted = 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
+    const String formatted = '0123-4567-89AB-CDEF-GHJK-MNPQ';
 
     expect(_replaceAll(formatter, formatted).text, formatted);
     expect(
-      _replaceAll(formatter, 'abcd efgh\nijkl mnop qrst uvwx').text,
+      _replaceAll(formatter, '0123 4567\n89ab cdef ghjk mnpq').text,
       formatted,
     );
     expect(
-      _replaceAll(formatter, 'ABCD－EFGH－IJKL－MNOP－QRST－UVWX').text,
+      _replaceAll(formatter, '0123－4567－89AB－CDEF－GHJK－MNPQ').text,
       formatted,
     );
     expect(_replaceAll(formatter, formatted).selection.extentOffset, 29);

@@ -3,6 +3,8 @@
 /// 變更這些值可能產生新的本機儲存、Android 套件、
 /// OAuth 或 MethodChannel 身份；更新應視為影響遷移。
 abstract final class AppIdentifiers {
+  static const String sensitiveClipboardChannel =
+      'quill_diary/sensitive_clipboard';
   static const String displayName = 'Quill Diary';
   static const String dartPackageName = 'quill_diary';
   static const String androidPackageName = 'zack20136.com.quill_diary';

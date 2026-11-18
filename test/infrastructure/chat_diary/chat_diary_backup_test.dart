@@ -834,7 +834,7 @@ void main() {
       ),
       setup.session,
     );
-    final rotated = await harness.repository.rotateRecoveryKey(setup.session);
+    final rotated = await harness.rotateRecoveryKey(setup.session);
     expect(
       ((await store.load(chat.id, rotated.session))!).composerText,
       '輪替後仍能續寫',
@@ -946,7 +946,7 @@ void main() {
       entryId: entryId,
     );
     await File(completedChatPath).rename('$completedChatPath.previous');
-    final rotated = await harness.repository.rotateRecoveryKey(setup.session);
+    final rotated = await harness.rotateRecoveryKey(setup.session);
     expect(await store.loadForEntry(entryId, rotated.session), isNotNull);
     expect(await store.readImage(restored, image.id, rotated.session), isNull);
     await expectLater(store.save(chat, setup.session), throwsA(anything));

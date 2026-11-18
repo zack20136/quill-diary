@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:quill_diary/application/restore/vault_restore_service.dart';
 import 'package:quill_diary/application/transfer/vault_backup_service.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -64,6 +65,7 @@ class FakeVaultBackupService extends VaultBackupService {
       listDriveBackupsCalls = 0;
   @override
   Future<BackupPersistResult> saveBackupToAppLocal({
+    VaultBackupPurpose purpose = VaultBackupPurpose.normal,
     String? fileName,
     BackupTaskProgressListener? onProgress,
   }) {
@@ -178,8 +180,7 @@ class FakeVaultRestoreService extends VaultRestoreService {
     return precheckRestoreResult ??
         RestorePrecheck(
           preview: BackupRecoveryPreview(metadata: _defaultPrecheckMetadata),
-          localVaultId: _defaultPrecheckMetadata.vaultId,
-          localRecoverySaltBase64: _defaultPrecheckMetadata.kdf.saltBase64,
+          localMetadata: _defaultPrecheckMetadata,
           localHasTrustedDevice: true,
           willOverwriteLocalVault: true,
         );

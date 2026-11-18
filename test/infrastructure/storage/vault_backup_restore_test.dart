@@ -154,6 +154,80 @@ void main() {
   });
 
   group('restoreBackupZip', () {
+    test('預檢與還原都拒絕無效的根目錄復原資料，並保留目前日記庫', () async {
+      final setup = await harness.repository.setupRecoveryKey();
+      final entryId = await harness.saveSimpleEntry(setup, title: '現有日記');
+      final metadata = (await harness.repository.readRecoveryMetadata())!;
+      final backupFile = File(p.join(harness.tempDir.path, 'bad_root.zip'));
+      final archive = Archive()
+        ..addFile(
+          ArchiveFile.string(
+            'entries/recovery.json',
+            jsonEncode(metadata.toJson()),
+          ),
+        )
+        ..addFile(ArchiveFile.string('recovery.json', '損壞的復原資訊'))
+        ..addFile(ArchiveFile.string('manifest.json.enc', '測試項目'));
+      await backupFile.writeAsBytes(ZipEncoder().encode(archive));
+
+      final invalidMetadata = isA<VaultBackupException>().having(
+        (error) => error.issue,
+        'issue',
+        VaultBackupIssue.invalidRecoveryJson,
+      );
+      final originalFiles = harness.tempDir
+          .listSync()
+          .map((entry) => entry.path)
+          .toSet();
+      await expectLater(
+        archiveIo.backup.prepareRestorePreview(backupFile),
+        throwsA(invalidMetadata),
+      );
+      await expectLater(
+        archiveIo.backup.restoreBackupZip(backupFile),
+        throwsA(invalidMetadata),
+      );
+
+      expect(
+        harness.tempDir.listSync().map((entry) => entry.path).toSet(),
+        originalFiles,
+      );
+      expect(
+        (await harness.repository.listEntries()).map((entry) => entry.id),
+        [entryId],
+      );
+    });
+
+    test('預檢後日記庫金鑰世代改變時不沿用舊裝置信任換入備份', () async {
+      final setup = await harness.repository.setupRecoveryKey();
+      await harness.saveSimpleEntry(setup, title: '備份內容');
+      final backupFile = File(
+        p.join(harness.tempDir.path, 'before_rotation.zip'),
+      );
+      await archiveIo.backup.writeBackupZip(backupFile);
+      final rotated = await harness.rotateRecoveryKey(setup.session);
+      final entryId = await harness.saveSimpleEntry(rotated, title: '輪替後新增');
+
+      await expectLater(
+        archiveIo.backup.restoreBackupZip(
+          backupFile,
+          preserveTrustedDeviceAccess: true,
+        ),
+        throwsA(
+          isA<VaultBackupException>().having(
+            (error) => error.issue,
+            'issue',
+            VaultBackupIssue.recoveryKeyMismatch,
+          ),
+        ),
+      );
+
+      expect(
+        (await harness.repository.listEntries()).map((entry) => entry.id),
+        contains(entryId),
+      );
+    });
+
     test('覆寫前會拒絕缺少加密資料的備份', () async {
       final setup = await harness.repository.setupRecoveryKey();
       final RecoveryMetadata metadata =

@@ -4,7 +4,6 @@ import 'package:flutter_localizations/flutter_localizations.dart'
     show GlobalWidgetsLocalizations;
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
-import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 
 export 'package:flutter/widgets.dart' show BuildContext;
@@ -17,8 +16,7 @@ const Locale appEnLocale = Locale('en');
 
 const List<Locale> appSupportedLocales = <Locale>[appZhLocale, appEnLocale];
 
-/// gen-l10n 仍把 Material／Cupertino delegate 指到 `flutter_localizations`。
-/// App 改用獨立套件的 delegate，避免和 `material_ui` 的本地化型別對不上。
+/// Material 和 Cupertino delegate 必須與目前 UI 套件的型別一致。
 const List<LocalizationsDelegate<dynamic>> appLocalizationsDelegates =
     <LocalizationsDelegate<dynamic>>[
       AppLocalizations.delegate,
@@ -33,61 +31,19 @@ extension AppLocalizationsBuildContext on BuildContext {
 
 bool isEnglishL10n(AppLocalizations l10n) => l10n.localeName == 'en';
 
-List<String> localizedDefaultTagLabels(AppLocalizations l10n) {
-  return <String>[
-    l10n.defaultTagDaily,
-    l10n.defaultTagMood,
-    l10n.defaultTagTakeaways,
-    l10n.defaultTagNotes,
-    l10n.defaultTagReflection,
-    l10n.defaultTagIdeas,
-    l10n.defaultTagPlans,
-    l10n.defaultTagGoals,
-    l10n.defaultTagWork,
-    l10n.defaultTagLearning,
-    l10n.defaultTagRelationships,
-    l10n.defaultTagFamily,
-    l10n.defaultTagHealth,
-    l10n.defaultTagGratitude,
-  ];
-}
-
-extension AppLanguageVisual on AppLanguage {
-  Locale get materialLocale => switch (this) {
+extension AppLanguageLocalization on AppLanguage {
+  Locale get flutterLocale => switch (this) {
     AppLanguage.zh => appZhLocale,
     AppLanguage.en => appEnLocale,
   };
 }
+
+AppLocalizations localizationsFor(AppLanguage language) =>
+    lookupAppLocalizations(language.flutterLocale);
 
 AppLanguage appLanguageFromDeviceLocale(Locale locale) {
   if (locale.languageCode == 'zh') {
     return AppLanguage.zh;
   }
   return AppLanguage.en;
-}
-
-extension AppLocalizationsPrivacy on AppLocalizations {
-  String get chatDiaryConversationRules => chatDiaryConversationRulesPrompt(
-    privacyTokenExample(PrivacyTokenKind.person),
-    privacyTokenExample(PrivacyTokenKind.private),
-  );
-  String get chatDiaryGenerationRules => chatDiaryGenerationRulesPrompt(
-    privacyTokenExample(PrivacyTokenKind.person),
-    privacyTokenExample(PrivacyTokenKind.private),
-  );
-  String get organizationRules => organizationRulesPrompt(
-    privacyTokenExample(PrivacyTokenKind.person),
-    privacyTokenExample(PrivacyTokenKind.private),
-  );
-  String personaOutputRules(int memoryLimit, int toneLimit) =>
-      personaOutputPrompt(
-        memoryLimit,
-        toneLimit,
-        privacyTokenExample(PrivacyTokenKind.person),
-        privacyTokenExample(PrivacyTokenKind.private),
-      );
-  String get personaExtractionRules => personaExtractionPrompt(
-    privacyTokenExample(PrivacyTokenKind.person),
-    privacyTokenExample(PrivacyTokenKind.private),
-  );
 }

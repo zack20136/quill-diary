@@ -63,7 +63,15 @@
   "commonRelativeToday": "today",
   "commonRelativeYesterday": "yesterday",
   "commonRelativeDaysAgo": "{count, plural, =1 {1 day ago} other {{count} days ago}}",
+  "commonRelativeDaysFromNow": "In {count, plural, =1{1 day} other{{count} days}}",
   "@commonRelativeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@commonRelativeDaysFromNow": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -91,6 +99,7 @@
   },
   "commonActionCopy": "Copy",
   "commonCopiedToClipboard": "Copied to clipboard",
+  "commonClipboardWriteFailed": "Unable to copy. Please try again.",
   "commonActionRetry": "Retry",
   "datePickerChooseDate": "Choose date",
   "datePickerChooseYearMonth": "Choose year and month",
@@ -552,6 +561,8 @@
   "tagSaveButton": "Save",
   "tagNameHint": "Tag Name",
   "tagNameRequiredMessage": "Please enter a tag name",
+  "tagCatalogUnavailable": "Tag settings are unavailable. Original data has been preserved. Please retry.",
+  "tagCatalogRetry": "Reload tag settings",
   "tagUnnamedPreview": "Untitled Tag",
   "tagDefaultColorLabel": "Default Color",
   "tagCustomColorLabel": "Custom color",
@@ -1388,7 +1399,6 @@
       "totalCount": {"type": "int"}
     }
   },
-  "driveErrorInvalidDownloadPath": "The Google Drive backup download path is invalid.",
   "driveErrorPrepareUploadFailed": "Could not prepare the Google Drive upload staging path.",
   "driveErrorStartUploadFailed": "Could not create the Google Drive background upload.",
   "driveErrorBackgroundStartNotAllowed": "Could not start uploading in the background. Keep the app on screen and try again.",
@@ -1522,10 +1532,11 @@
     }
   },
   "settingsActionConfirm": "Confirm Restore",
-  "settingsActionUpdate": "Update",
   "settingsActionVerifyAndRestore": "Verify and Restore",
   "settingsRecoveryKeyFieldLabel": "Recovery Key",
-  "settingsRecoveryKeyFieldHint": "ABCD-EFGH-IJKL-MNOP-QRST-UVWX",
+  "settingsRecoveryKeyFieldHint": "0123-4567-89AB-CDEF-GHJK-MNPQ",
+  "recoveryKeyInvalidInput": "Check that your recovery key has 24 characters and no extra characters.",
+  "recoveryKeyRotationNeedsUnlock": "The previous key update has not been recovered. Unlock the vault again before updating the key.",
   "settingsRecoveryKeyShowTooltip": "Show recovery key",
   "settingsRecoveryKeyHideTooltip": "Hide recovery key",
   "settingsRecoveryKeyHintPrefix": "Last 4: ",
@@ -1544,6 +1555,7 @@
   "settingsSecurityLockRetryVerificationButton": "Verify Again",
   "settingsRecoveryKeyNotSetupBanner": "No recovery key yet. The recovery key is an important part of protecting the entire vault, so create and save one before you change devices, restore, or lose access to this device.",
   "settingsRecoveryKeySetupBanner": "Recovery key created. Make sure you have saved it securely.",
+  "settingsRecoveryKeyBackupRequired": "Your recovery key was updated. Create a new backup.",
   "settingsRecoveryKeyCreateButton": "Create Recovery Key",
   "settingsRecoveryKeyRotateButton": "Update Recovery Key",
   "settingsRecoveryKeyFactVaultLabel": "Diary Vault",
@@ -1552,11 +1564,16 @@
   "settingsRecoveryKeySaveDialogTitle": "Save Your Recovery Key",
   "settingsRecoveryKeySaveNewDialogTitle": "Save Your New Recovery Key",
   "settingsRecoveryKeySaveDialogHint": "Save it now. You won't be able to view it again after closing.",
-  "settingsRecoveryKeyRotateDialogTitle": "Update Recovery Key?",
-  "settingsRecoveryKeyRotateDialogBody": "A new recovery key will be generated—save it immediately.\n\nExisting local or Google Drive backups still require the old key to restore; create a new backup after updating.",
+  "settingsRecoveryKeySaveBeforeUpdateHint": "Save the new key in a password manager or write it down and store it somewhere safe. The update starts after you confirm.",
+  "settingsRecoveryKeyKeepOldBackupKey": "Existing backups still need the old key.",
+  "settingsRecoveryKeySavedCheckbox": "I’ve saved the new key",
+  "settingsRecoveryKeyStartUpdate": "Start update",
+  "settingsRecoveryKeyUpdateInProgress": "Updating recovery key…",
+  "recoveryKeyRotationDraftExpired": "The recovery key changed. Open the update dialog again to continue.",
   "settingsSecurityOverviewSectionTitle": "Security Overview",
   "settingsSecurityOverviewSectionDescription": "Review recovery key status, unlock method, search index, and backup status.",
   "settingsSecurityOverviewRecoveryKeyTitle": "Recovery Key",
+  "settingsBackupStatusReadFailed": "Unable to read the backup reminder status. Please retry.",
   "settingsSecurityOverviewRecoveryKeyReady": "Created and ready for device migration and restore.",
   "settingsSecurityOverviewRecoveryKeyMissing": "Not created yet. Create one before backing up or exporting.",
   "settingsSecurityOverviewUnlockModeTitle": "Unlock Method",
@@ -1573,8 +1590,7 @@
     }
   },
   "settingsSecurityOverviewIndexTitle": "Vault",
-  "settingsSecurityOverviewCreateRecoveryKeyButton": "Create Recovery Key",
-  "settingsSecurityOverviewRotateRecoveryKeyButton": "Update Recovery Key",
+  "indexCipherUnavailable": "The encrypted index is unavailable. Your entries and attachments have been preserved.",
   "settingsSecurityOverviewInspectVaultButton": "Check Vault",
   "settingsSecurityOverviewHealthLevelOk": "OK",
   "settingsSecurityOverviewHealthLevelWarning": "Needs Attention",
@@ -1721,7 +1737,7 @@
   "settingsLocalBackupImportFromExternalButton": "Import External Backup",
   "settingsLocalBackupPickDialogTitle": "Choose Local Backup",
   "settingsLocalBackupNoBackups": "No local backups yet.",
-  "settingsLocalBackupDeleteBackupTooltip": "Delete Backup",
+  "settingsBackupDeleteTooltip": "Delete Backup",
   "settingsLocalBackupDeleteConfirmTitle": "Delete Local Backup?",
   "settingsLocalBackupBackupSuccessInApp": "Local backup created: {fileName}",
   "@settingsLocalBackupBackupSuccessInApp": {
@@ -1756,8 +1772,8 @@
       }
     }
   },
-  "settingsLocalBackupDeleteConfirmBody": "Delete {fileName}? This will not affect your current diary vault.",
-  "@settingsLocalBackupDeleteConfirmBody": {
+  "settingsBackupDeleteConfirmBody": "Delete {fileName}? This will not affect your current diary vault.",
+  "@settingsBackupDeleteConfirmBody": {
     "placeholders": {
       "fileName": {
         "type": "String"
@@ -1823,18 +1839,9 @@
   "settingsDriveBackupNoBackups": "No backups on Google Drive yet. Create one first.",
   "settingsDriveBackupPickDialogTitle": "Choose Google Drive Backup",
   "settingsDriveBackupUnknownCreatedTime": "Unknown creation time",
-  "settingsDriveBackupDeleteBackupTooltip": "Delete Backup",
   "settingsDriveBackupDeleteConfirmTitle": "Delete Google Drive Backup?",
   "settingsDriveBackupDeleteBackupSuccess": "Deleted from Google Drive: {fileName}",
   "@settingsDriveBackupDeleteBackupSuccess": {
-    "placeholders": {
-      "fileName": {
-        "type": "String"
-      }
-    }
-  },
-  "settingsDriveBackupDeleteConfirmBody": "Delete {fileName}? This will not affect your current diary vault.",
-  "@settingsDriveBackupDeleteConfirmBody": {
     "placeholders": {
       "fileName": {
         "type": "String"
@@ -1941,8 +1948,8 @@
   "settingsInspectVaultResultClean": "Everything looks good.",
   "settingsInspectVaultResultWarning": "Found {count} entries that need attention. Repair will create and verify a local backup first, then tidy what can be fixed automatically.",
   "@settingsInspectVaultResultWarning": {"placeholders": {"count": {"type": "int"}}},
-  "settingsInspectVaultResultCheckedEntries": "Checked {entryCount} entries.",
-  "@settingsInspectVaultResultCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
+  "settingsVaultMaintenanceCheckedEntries": "{entryCount, plural, =1{Checked 1 entry.} other{Checked {entryCount} entries.}}",
+  "@settingsVaultMaintenanceCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
   "settingsInspectVaultResultMore": "{count} more not listed",
   "@settingsInspectVaultResultMore": {"placeholders": {"count": {"type": "int"}}},
   "settingsInspectVaultHandleLaterButton": "Later",
@@ -1963,8 +1970,6 @@
   "settingsRepairVaultResultClean": "Your diary has been repaired and is in good shape.",
   "settingsRepairVaultResultWarning": "Repair finished, but {count} entries remain unresolved. You can manually salvage readable content, or permanently delete files that cannot be recovered.",
   "@settingsRepairVaultResultWarning": {"placeholders": {"count": {"type": "int"}}},
-  "settingsRepairVaultResultCheckedEntries": "Checked {entryCount} entries.",
-  "@settingsRepairVaultResultCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
   "settingsRepairVaultResultMissingAttachment": "Attachment is missing",
   "settingsRepairVaultResultSalvageButton": "Manual repair",
   "settingsRepairVaultResultSalvageFailed": "No readable content could be recovered. Permanently delete the files or restore from a backup.",
@@ -2120,7 +2125,7 @@
   "aboutTabIntroSection0Title": "Why It Works Well for Journaling",
   "aboutTabIntroSection0Subtitle": "Data storage and everyday features are both designed around private personal journaling.",
   "aboutTabIntroSection0Item0Title": "Encrypted Local Storage",
-  "aboutTabIntroSection0Item0Body": "Entries, attachments, people, drafts, and the search index stay encrypted on your device by default. Recovery settings, the tag catalog, pinned-item IDs, and other supporting data are not separately encrypted, but remain in private app storage.",
+  "aboutTabIntroSection0Item0Body": "Entries, attachments, people, drafts, and the search index stay encrypted on your device by default. Recovery settings, pinned-item IDs, and other supporting data are not separately encrypted, but remain in private app storage.",
   "aboutTabIntroSection0Item1Title": "Start without Signing Up",
   "aboutTabIntroSection0Item1Body": "You do not need a Quill Diary account. Set up a recovery key on first use to start reading and writing entries. You only link a Google account within the app when using Google Drive backup and restore.",
   "aboutTabIntroSection0Item2Title": "Less Collection, Less Distraction",
@@ -2208,7 +2213,7 @@
   "aboutTabEncryptionSection1Item2Title": "Verify the Vault First, Then Open Each File",
   "aboutTabEncryptionSection1Item2Body": "The app confirms that you can enter the vault before opening its files, avoiding a wrong key being mistaken for damaged data.",
   "aboutTabEncryptionSection2Title": "Boundaries to Understand",
-  "aboutTabEncryptionSection2Subtitle": "Content is encrypted, but headers, recovery settings, and some supporting data remain readable, including the tag catalog and pinned-item IDs. Plaintext exports and unlocked use also need care.",
+  "aboutTabEncryptionSection2Subtitle": "Content is encrypted, but headers, recovery settings, and some supporting data remain readable, including pinned-item IDs. Plaintext exports and unlocked use also need care.",
   "aboutTabEncryptionSection2Item0Title": "Exports Use a Different Protection Layer",
   "aboutTabEncryptionSection2Item0Body": "Once you export to Markdown or HTML, storage and sharing risks for readable documents are no longer handled by in-app encryption.",
   "aboutTabEncryptionSection2Item1Title": "Keep Your Recovery Key Safe",
@@ -2333,7 +2338,7 @@
   "aboutTabBackupRestoreSection1Title": "When to Use Full Backup",
   "aboutTabBackupRestoreSection1Subtitle": "If you want to preserve the entire main vault and restore it later as-is, use full backup.",
   "aboutTabBackupRestoreSection1Item0Title": "Preserve the Complete Vault",
-  "aboutTabBackupRestoreSection1Item0Body": "A full backup includes saved entries, attachments, people, retained conversations from completed chats, recovery settings, and the encrypted AI service, URL, and prompts. Content files stay encrypted, but the ZIP container, recovery settings, and any tag catalog or pinned-item IDs are not separately encrypted.",
+  "aboutTabBackupRestoreSection1Item0Body": "A full backup includes saved entries, attachments, people, retained conversations from completed chats, recovery settings, and the encrypted AI service, URL, and prompts. New backups also encrypt the tag catalog. The ZIP container, recovery settings, and pinned-item IDs remain readable. Historical ZIPs may still contain an unencrypted tag catalog.",
   "aboutTabBackupRestoreSection1Item1Title": "Verified After Creation",
   "aboutTabBackupRestoreSection1Item1Body": "Full backups are structurally verified before delivery to local storage, external folders, or Google Drive.",
   "aboutTabBackupRestoreSection1Item2Title": "Retention Count",

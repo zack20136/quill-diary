@@ -50,6 +50,12 @@ flutter test test/application/editor/
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test test/application/editor/
 ```
 
+### Android 原生測試
+
+原生測試使用 JDK 21 與 Robolectric 4.18，測試 SDK 跟隨合併 Manifest 的 target SDK（目前為 36），不另設 `robolectric.properties` 或在測試指定 SDK。必要的 JVM `--add-opens`、Android resources 與 Flutter assets 相依集中於 [`android/app/build.gradle.kts`](../android/app/build.gradle.kts)，依據 [Robolectric 官方設定](https://robolectric.org/getting-started/)。
+
+執行前先將 `JAVA_HOME` 指向 JDK 21，切換至 `android/` 後使用 `./gradlew.bat :app:testDebugUnitTest`。驗收須確認測試確實重新執行，不能只採用 up-to-date 或快取結果。若測試 SDK 下載受環境限制，只能使用核對官方雜湊的官方依賴，不停用 TLS 驗證；離線依賴路徑屬本機驗收設定，不寫入專案設定。
+
 ## 寫測試前先檢查
 
 1. 這個測試是否已被其他更底層測試覆蓋。

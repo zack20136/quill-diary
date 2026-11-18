@@ -22,7 +22,8 @@ App 啟動透過 `sponsorBillingLifecycleProvider` 初始化 [`GoogleBillingServ
 | 狀態 | 處理 |
 |------|------|
 | `pending` | 顯示等待 |
-| `error`、`canceled` | 顯示對應結果並解除等待 |
+| `error` | 顯示錯誤訊息並解除等待 |
+| `canceled` | 回到閒置狀態，不顯示錯誤 |
 | `purchased`、`restored` | 最終處理；成功後顯示感謝 |
 
 購買使用 `buyConsumable(autoConsume: false)`；Android 先 `consumePurchase()`，再依 `pendingCompletePurchase` 呼叫 `completePurchase()`。時限及退款規則見[套件文件](https://pub.dev/packages/in_app_purchase)與[Play 商品生命週期](https://developer.android.com/google/play/billing/lifecycle/one-time)。

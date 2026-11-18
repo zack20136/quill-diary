@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:quill_diary/application/transfer/vault_backup_service.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
@@ -59,8 +58,7 @@ class VaultRestoreService {
         await _vaultRepository.hasTrustedDeviceAccess();
     return RestorePrecheck(
       preview: preview,
-      localVaultId: localMetadata?.vaultId,
-      localRecoverySaltBase64: localMetadata?.kdf.saltBase64,
+      localMetadata: localMetadata,
       localHasTrustedDevice: localHasTrusted,
       willOverwriteLocalVault: await _vaultRepository.hasVault(),
     );
@@ -88,10 +86,9 @@ class VaultRestoreService {
   Future<File> downloadDriveBackupToTempFile(
     DriveBackupFile backup, {
     BackupTaskProgressListener? onProgress,
-  }) async {
+  }) {
     return _backupService.downloadDriveBackupToTempFile(
       backup,
-      destinationDirectory: await getTemporaryDirectory(),
       onProgress: onProgress,
     );
   }

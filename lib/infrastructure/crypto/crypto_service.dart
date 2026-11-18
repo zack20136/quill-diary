@@ -1,14 +1,42 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
 const String kEncryptedDocumentMagic = 'LDJ2';
 const int _gcmNonceLength = 12;
 const int _gcmTagLength = 16;
+
+Future<List<int>> _deriveRecoveryKey(
+  String key,
+  KdfDescriptor kdf,
+  List<int> salt,
+) async {
+  kdf.validate();
+  final algorithm = Argon2id(
+    parallelism: kdf.parallelism,
+    memory: kdf.memory,
+    iterations: kdf.iterations,
+    hashLength: kdf.hashLength,
+  );
+  final derived = await algorithm.deriveKey(
+    secretKey: SecretKey(utf8.encode(key)),
+    nonce: salt,
+  );
+  return derived.extractBytes();
+}
+
+Future<List<int>> _deriveInBackground(
+  String key,
+  KdfDescriptor kdf,
+  List<int> salt,
+) => Isolate.run(() => _deriveRecoveryKey(key, kdf, salt));
 
 /// 每個檔案內容金鑰的包裝副本。
 ///
@@ -238,6 +266,7 @@ abstract class CryptoService {
 
 /// 以 AES-GCM 與 Android 裝置金鑰橋接層為後端的本機 LDJ2 實作。
 class LocalCryptoService implements CryptoService {
+  static Future<void> _kdfTail = Future<void>.value();
   LocalCryptoService({Cipher? contentCipher, Random? random})
     : _contentCipher = contentCipher ?? AesGcm.with256bits(),
       _recoveryWrapCipher = AesGcm.with256bits(),
@@ -298,18 +327,17 @@ class LocalCryptoService implements CryptoService {
     required String recoveryKey,
     required KdfDescriptor kdf,
   }) async {
-    final Argon2id algo = Argon2id(
-      parallelism: kdf.parallelism,
-      memory: kdf.memory,
-      iterations: kdf.iterations,
-      hashLength: kdf.hashLength,
-    );
-    final List<int> saltBytes = base64Decode(kdf.saltBase64);
-    final SecretKey derived = await algo.deriveKey(
-      secretKey: SecretKey(utf8.encode(recoveryKey)),
-      nonce: saltBytes,
-    );
-    return derived.extractBytes();
+    final normalized = RecoveryKey.normalize(recoveryKey);
+    final saltBytes = kdf.validate();
+    final result = Completer<List<int>>();
+    _kdfTail = _kdfTail.then((_) async {
+      try {
+        result.complete(await _deriveInBackground(normalized, kdf, saltBytes));
+      } catch (error, stack) {
+        result.completeError(error, stack);
+      }
+    });
+    return result.future;
   }
 
   @override
@@ -398,7 +426,9 @@ class LocalCryptoService implements CryptoService {
     final ByteData data = ByteData.sublistView(bytes, 4, 8);
     final int headerLength = data.getUint32(0, Endian.big);
     final int headerEnd = 8 + headerLength;
-    if (headerLength <= 0 || headerEnd >= bytes.lengthInBytes) {
+    if (headerLength <= 0 ||
+        headerLength > 64 * 1024 ||
+        headerEnd >= bytes.lengthInBytes) {
       throw const FormatException('加密檔案標頭長度不正確。');
     }
 

@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:quill_diary/infrastructure/storage/media_store_export.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
 
@@ -70,8 +69,6 @@ class ExternalDirectoryStore {
   }
 
   Future<String?> _defaultDownloadsSubdirectoryPath() async {
-    await MediaStoreExport.ensureDownloadsSubfolder();
-
     final Directory? downloads = await getDownloadsDirectory();
     if (downloads == null) {
       return null;

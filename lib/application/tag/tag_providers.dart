@@ -4,7 +4,7 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/tag/tag.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/infrastructure/storage/tag_catalog_store.dart';
 
 final tagCatalogProvider = FutureProvider<List<TagCatalogItem>>((
   Ref ref,
@@ -30,5 +30,5 @@ final tagAccentArgbMapProvider = FutureProvider<Map<String, int>>((
   final List<TagCatalogItem> catalog = await ref.watch(
     tagCatalogProvider.future,
   );
-  return TagStylesStore.toAccentMap(catalog);
+  return TagCatalogStore.toAccentMap(catalog);
 });

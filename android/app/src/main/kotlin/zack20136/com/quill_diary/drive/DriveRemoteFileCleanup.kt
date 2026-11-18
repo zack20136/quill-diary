@@ -3,15 +3,10 @@ package zack20136.com.quill_diary.drive
 import android.util.Log
 import org.json.JSONObject
 import java.io.IOException
-import java.net.URLEncoder
 
-/**
- * 取消上傳後盡力刪除可能殘留的 Drive 檔，失敗不拋出。
- * 亦負責 CANCEL_CLEANUP_PENDING 的查詢／刪除收尾。
- */
-object DriveRemoteFileCleanup {
+/** 停止上傳時，先辨認已完成的備份，再處理遠端殘檔。 */
+internal object DriveRemoteFileCleanup {
     private const val TAG = "DriveRemoteFileCleanup"
-    private const val FILES_API = "https://www.googleapis.com/drive/v3/files/"
     private val SAFE_FILE_ID = Regex("^[A-Za-z0-9_-]+$")
 
     const val ERROR_CLEANUP_NEEDS_REAUTH = "cleanup_needs_reauth"
@@ -43,26 +38,9 @@ object DriveRemoteFileCleanup {
     }
 
     fun bestEffortDelete(
-        tokenProvider: DriveAccessTokenProvider,
-        remoteFileId: String,
-        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
-    ): DeleteOutcome {
-        val token =
-            tokenProvider.getAccessToken().getOrElse { error ->
-                Log.w(TAG, "skip delete: token unavailable", error)
-                return DeleteOutcome.RetryLater
-            }
-        return bestEffortDelete(
-            remoteFileId = remoteFileId,
-            accessToken = token.accessToken,
-            httpClient = httpClient,
-        )
-    }
-
-    fun bestEffortDelete(
         remoteFileId: String,
         accessToken: String,
-        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+        httpClient: DriveHttpClient = UrlConnectionDriveHttpClient(),
     ): DeleteOutcome {
         val fileId = remoteFileId.trim()
         if (!isSafeFileId(fileId) || accessToken.isBlank()) {
@@ -71,9 +49,9 @@ object DriveRemoteFileCleanup {
         return runCatching {
             val response =
                 httpClient.execute(
-                    DriveResumableUploader.HttpRequest(
+                    DriveHttpRequest(
                         method = "DELETE",
-                        url = FILES_API + fileId,
+                        url = "$DRIVE_FILES_URL/$fileId",
                         headers = mapOf("Authorization" to "Bearer $accessToken"),
                     ),
                 )
@@ -96,14 +74,14 @@ object DriveRemoteFileCleanup {
 
     /**
      * CANCEL_CLEANUP_PENDING 收尾：查詢遠端後升 STATUS_PENDING，或刪殘檔再清本機。
-     * [workerAlive] 為 true 時，查無檔不得刪本機。
+     * worker 仍執行時，等待完成再查核及清理。
      */
     fun completeCancelCleanup(
         jobStore: DriveUploadJobStore,
         tokenProvider: DriveAccessTokenProvider,
         job: DriveUploadJob,
         workerAlive: Boolean,
-        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+        httpClient: DriveHttpClient = UrlConnectionDriveHttpClient(),
     ): CancelCleanupOutcome {
         val token =
             tokenProvider.getAccessToken().getOrElse { error ->
@@ -132,12 +110,13 @@ object DriveRemoteFileCleanup {
         accessToken: String,
         job: DriveUploadJob,
         workerAlive: Boolean,
-        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+        httpClient: DriveHttpClient = UrlConnectionDriveHttpClient(),
     ): CancelCleanupOutcome {
         val current = jobStore.readJob(job.jobId) ?: return CancelCleanupOutcome.ClearedLocal
         if (current.isRemoteCommittedPhase()) {
             return CancelCleanupOutcome.RetainedCommitted(current)
         }
+        if (workerAlive) return CancelCleanupOutcome.RetryLater
         if (!current.isCancelCleanupPhase()) {
             jobStore.markCancelCleanupPending(current.jobId)
         }
@@ -162,7 +141,7 @@ object DriveRemoteFileCleanup {
                             phase = DriveUploadPhase.STATUS_PENDING,
                             confirmedOffset = lookup.job.sizeBytes,
                             lastErrorCode = null,
-                            lastErrorMessage = null,
+
                         ),
                         expectedGeneration = working.generation,
                     )
@@ -174,6 +153,7 @@ object DriveRemoteFileCleanup {
                     return CancelCleanupOutcome.RetryLater
                 }
                 jobStore.clearSessionUri(committed.jobId)
+                jobStore.ackFailure(committed.jobId)
                 return CancelCleanupOutcome.RetainedCommitted(committed)
             }
             is RemoteLookup.PresentUnverified -> {
@@ -202,9 +182,6 @@ object DriveRemoteFileCleanup {
                 return CancelCleanupOutcome.ClearedLocal
             }
             RemoteLookup.Absent -> {
-                if (workerAlive) {
-                    return CancelCleanupOutcome.RetryLater
-                }
                 jobStore.cancelAndCleanup(working.jobId)
                 return CancelCleanupOutcome.ClearedLocal
             }
@@ -233,7 +210,7 @@ object DriveRemoteFileCleanup {
         jobStore: DriveUploadJobStore,
         tokenProvider: DriveAccessTokenProvider,
         job: DriveUploadJob,
-        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+        httpClient: DriveHttpClient = UrlConnectionDriveHttpClient(),
     ) {
         val current = jobStore.readJob(job.jobId) ?: return
         if (current.isRemoteCommittedPhase()) {
@@ -265,7 +242,7 @@ object DriveRemoteFileCleanup {
         jobStore: DriveUploadJobStore,
         job: DriveUploadJob,
         accessToken: String?,
-        httpClient: DriveResumableUploader.HttpClient = DriveResumableUploader.DefaultHttpClient(),
+        httpClient: DriveHttpClient = UrlConnectionDriveHttpClient(),
     ) {
         val current = jobStore.readJob(job.jobId) ?: return
         if (current.isRemoteCommittedPhase()) {
@@ -278,34 +255,13 @@ object DriveRemoteFileCleanup {
         if (working.isRemoteCommittedPhase()) {
             return
         }
-        if (!accessToken.isNullOrBlank()) {
-            bestEffortDeleteKnownRemotes(working, accessToken, httpClient)
+        if (!accessToken.isNullOrBlank() &&
+            completeCancelCleanup(jobStore, accessToken, working, workerAlive = false, httpClient = httpClient)
+                is CancelCleanupOutcome.RetainedCommitted
+        ) {
+            return
         }
         jobStore.cancelAndCleanup(working.jobId)
-    }
-
-    private fun bestEffortDeleteKnownRemotes(
-        job: DriveUploadJob,
-        accessToken: String,
-        httpClient: DriveResumableUploader.HttpClient,
-    ) {
-        val ids = linkedSetOf<String>()
-        if (job.remoteFileId.isNotBlank()) {
-            ids.add(job.remoteFileId.trim())
-        }
-        when (val listed = listByUploadJobId(job, accessToken, httpClient)) {
-            is RemoteLookup.PresentUnverified -> ids.addAll(listed.remoteFileIds)
-            is RemoteLookup.Verified -> {
-                val id = listed.job.remoteFileId.trim()
-                if (id.isNotEmpty()) {
-                    ids.add(id)
-                }
-            }
-            else -> Unit
-        }
-        for (id in ids) {
-            bestEffortDelete(remoteFileId = id, accessToken = accessToken, httpClient = httpClient)
-        }
     }
 
     private fun classifyTokenFailure(
@@ -338,13 +294,13 @@ object DriveRemoteFileCleanup {
         errorCode: String,
     ) {
         val current = jobStore.readJob(job.jobId) ?: return
-        if (current.lastErrorCode == errorCode && current.lastErrorMessage == null) {
+        if (current.lastErrorCode == errorCode) {
             return
         }
         jobStore.updateJobCas(
             current.copy(
                 lastErrorCode = errorCode,
-                lastErrorMessage = null,
+
             ),
             expectedGeneration = current.generation,
             durability = DriveUploadJobStore.Durability.Critical,
@@ -366,7 +322,7 @@ object DriveRemoteFileCleanup {
     private fun lookupRemote(
         job: DriveUploadJob,
         accessToken: String,
-        httpClient: DriveResumableUploader.HttpClient,
+        httpClient: DriveHttpClient,
     ): RemoteLookup {
         if (job.remoteFileId.isNotBlank()) {
             when (val byId = getById(job, job.remoteFileId, accessToken, httpClient)) {
@@ -381,7 +337,7 @@ object DriveRemoteFileCleanup {
         job: DriveUploadJob,
         remoteFileId: String,
         accessToken: String,
-        httpClient: DriveResumableUploader.HttpClient,
+        httpClient: DriveHttpClient,
     ): RemoteLookup {
         val fileId = remoteFileId.trim()
         if (!isSafeFileId(fileId)) {
@@ -389,15 +345,7 @@ object DriveRemoteFileCleanup {
         }
         val response =
             try {
-                httpClient.execute(
-                    DriveResumableUploader.HttpRequest(
-                        method = "GET",
-                        url =
-                            FILES_API + fileId +
-                                "?fields=id,name,size,md5Checksum,appProperties",
-                        headers = mapOf("Authorization" to "Bearer $accessToken"),
-                    ),
-                )
+                httpClient.execute(driveFileMetadataRequest(fileId, accessToken))
             } catch (_: IOException) {
                 return RemoteLookup.RetryLater
             }
@@ -420,23 +368,11 @@ object DriveRemoteFileCleanup {
     private fun listByUploadJobId(
         job: DriveUploadJob,
         accessToken: String,
-        httpClient: DriveResumableUploader.HttpClient,
+        httpClient: DriveHttpClient,
     ): RemoteLookup {
-        val query =
-            "appProperties has { key='uploadJobId' and value='${job.jobId}' } and trashed = false"
         val response =
             try {
-                httpClient.execute(
-                    DriveResumableUploader.HttpRequest(
-                        method = "GET",
-                        url =
-                            "https://www.googleapis.com/drive/v3/files" +
-                                "?spaces=appDataFolder" +
-                                "&q=${URLEncoder.encode(query, "UTF-8")}" +
-                                "&fields=files(id,name,size,md5Checksum,appProperties)",
-                        headers = mapOf("Authorization" to "Bearer $accessToken"),
-                    ),
-                )
+                httpClient.execute(driveFilesByUploadJobRequest(job.jobId, accessToken))
             } catch (_: IOException) {
                 return RemoteLookup.RetryLater
             }
@@ -452,19 +388,21 @@ object DriveRemoteFileCleanup {
             return RemoteLookup.RetryLater
         }
         val files = runCatching { JSONObject(response.body).optJSONArray("files") }.getOrNull()
-        if (files == null || files.length() == 0) {
+            ?: return RemoteLookup.RetryLater
+        if (files.length() == 0) {
             return RemoteLookup.Absent
         }
         val verified = mutableListOf<DriveUploadJob>()
         val unverifiedIds = mutableListOf<String>()
         for (index in 0 until files.length()) {
-            val item = files.optJSONObject(index) ?: continue
+            val item = files.optJSONObject(index) ?: return RemoteLookup.RetryLater
             val body = item.toString()
             val id = item.optString("id").trim()
-            when (val interpreted = interpretMetadata(job, body, remoteFileIdHint = id)) {
+            // 舊識別碼查無檔時，用工作識別碼認定清單中的檔案。
+            when (val interpreted = interpretMetadata(job.copy(remoteFileId = ""), body, remoteFileIdHint = id)) {
                 is RemoteLookup.Verified -> verified.add(interpreted.job)
                 is RemoteLookup.PresentUnverified -> unverifiedIds.addAll(interpreted.remoteFileIds)
-                else -> if (id.isNotEmpty()) unverifiedIds.add(id)
+                else -> return RemoteLookup.RetryLater
             }
         }
         return when {
@@ -499,19 +437,21 @@ object DriveRemoteFileCleanup {
         body: String,
         remoteFileIdHint: String,
     ): RemoteLookup {
-        val verified = DriveResumableUploader.verifyCompletion(job, body)
-        if (verified != null) {
-            return RemoteLookup.Verified(verified)
+        val json = runCatching { JSONObject(body) }.getOrNull() ?: return RemoteLookup.RetryLater
+        val id = json.optString("id").trim()
+        val owner = json.optJSONObject("appProperties")?.optString("uploadJobId")?.trim()
+        if (!isSafeFileId(id) || id != remoteFileIdHint || owner != job.jobId) return RemoteLookup.RetryLater
+        DriveResumableUploader.verifyCompletion(job, body)?.let { return RemoteLookup.Verified(it) }
+
+        val size = json.optString("size").toLongOrNull()
+        val md5 = json.optString("md5Checksum").trim()
+        val sizeMismatch = size != null && size != job.sizeBytes
+        val checksumMismatch = md5.isNotBlank() && job.md5.isNotBlank() && !md5.equals(job.md5, ignoreCase = true)
+        return if (sizeMismatch || checksumMismatch) {
+            RemoteLookup.PresentUnverified(listOf(id))
+        } else {
+            RemoteLookup.RetryLater
         }
-        if (body.isBlank()) {
-            return RemoteLookup.PresentUnverified(listOf(remoteFileIdHint))
-        }
-        val json = runCatching { JSONObject(body) }.getOrNull()
-        val id = json?.optString("id")?.trim().orEmpty().ifEmpty { remoteFileIdHint }
-        if (id.isEmpty()) {
-            return RemoteLookup.Absent
-        }
-        return RemoteLookup.PresentUnverified(listOf(id))
     }
 
     private fun isSafeFileId(fileId: String): Boolean =

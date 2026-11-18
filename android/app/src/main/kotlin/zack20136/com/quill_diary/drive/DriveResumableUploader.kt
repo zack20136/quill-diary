@@ -4,159 +4,20 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
-import java.io.InputStream
-import java.io.RandomAccessFile
-import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 import kotlin.random.Random
 
-/**
- * Google Drive resumable upload（raw HTTP）。
- * chunk 固定 8 MiB，非最後一塊必須為 256 KiB 倍數。
- */
-class DriveResumableUploader(
+/** 除最後一塊外，Drive 上傳區塊須為 256 KiB 的倍數。 */
+internal class DriveResumableUploader(
     private val jobStore: DriveUploadJobStore,
     private val tokenProvider: DriveAccessTokenProvider,
-    private val httpClient: HttpClient = DefaultHttpClient(),
+    private val httpClient: DriveHttpClient = UrlConnectionDriveHttpClient(),
 ) {
-    interface HttpClient {
-        fun execute(request: HttpRequest): HttpResponse
-
-        fun disconnectActive() {}
-    }
-
-    sealed class HttpBody {
-        data class Bytes(val data: ByteArray) : HttpBody()
-
-        data class FileRange(
-            val file: File,
-            val offset: Long,
-            val length: Int,
-        ) : HttpBody()
-    }
-
-    data class HttpRequest(
-        val method: String,
-        val url: String,
-        val headers: Map<String, String>,
-        val body: HttpBody? = null,
-    )
-
-    data class HttpResponse(
-        val code: Int,
-        val headers: Map<String, String>,
-        val body: String,
-    )
-
-    class DefaultHttpClient : HttpClient {
-        private val activeConnection = AtomicReference<HttpURLConnection?>(null)
-
-        override fun execute(request: HttpRequest): HttpResponse {
-            val connection = (URL(request.url).openConnection() as HttpURLConnection)
-            activeConnection.set(connection)
-            try {
-                connection.requestMethod = request.method
-                connection.connectTimeout = 30_000
-                connection.readTimeout = 120_000
-                connection.instanceFollowRedirects = false
-                connection.doInput = true
-                request.headers.forEach { (key, value) ->
-                    connection.setRequestProperty(key, value)
-                }
-                when (val body = request.body) {
-                    is HttpBody.Bytes -> {
-                        connection.doOutput = true
-                        connection.setFixedLengthStreamingMode(body.data.size)
-                        connection.outputStream.use { output ->
-                            output.write(body.data)
-                            output.flush()
-                        }
-                    }
-                    is HttpBody.FileRange -> {
-                        connection.doOutput = true
-                        connection.setFixedLengthStreamingMode(body.length)
-                        RandomAccessFile(body.file, "r").use { raf ->
-                            raf.seek(body.offset)
-                            val buffer = ByteArray(STREAM_BUFFER_SIZE)
-                            var remaining = body.length
-                            connection.outputStream.use { output ->
-                                while (remaining > 0) {
-                                    val toRead = min(buffer.size, remaining)
-                                    val n = raf.read(buffer, 0, toRead)
-                                    if (n < 0) {
-                                        throw IOException("無法讀取備份檔區塊。")
-                                    }
-                                    output.write(buffer, 0, n)
-                                    remaining -= n
-                                }
-                                output.flush()
-                            }
-                        }
-                    }
-                    null -> Unit
-                }
-                val code = connection.responseCode
-                val stream =
-                    if (code in 200..299 || code == 308) {
-                        connection.inputStream
-                    } else {
-                        connection.errorStream ?: connection.inputStream
-                    }
-                val responseBody = readLimitedBody(stream)
-                val headers = mutableMapOf<String, String>()
-                connection.headerFields?.forEach { (key, values) ->
-                    if (key != null && !values.isNullOrEmpty()) {
-                        headers[key.lowercase()] = values.last()
-                    }
-                }
-                return HttpResponse(code = code, headers = headers, body = responseBody)
-            } finally {
-                connection.disconnect()
-                activeConnection.compareAndSet(connection, null)
-            }
-        }
-
-        override fun disconnectActive() {
-            activeConnection.getAndSet(null)?.disconnect()
-        }
-
-        private fun readLimitedBody(stream: InputStream?): String {
-            if (stream == null) {
-                return ""
-            }
-            return stream.bufferedReader(StandardCharsets.UTF_8).use { reader ->
-                val builder = StringBuilder()
-                val buffer = CharArray(8 * 1024)
-                var total = 0
-                while (true) {
-                    val n = reader.read(buffer)
-                    if (n < 0) {
-                        break
-                    }
-                    val room = MAX_RESPONSE_BODY_BYTES - total
-                    if (room <= 0) {
-                        break
-                    }
-                    val write = min(n, room)
-                    builder.append(buffer, 0, write)
-                    total += write
-                    if (write < n) {
-                        break
-                    }
-                }
-                builder.toString()
-            }
-        }
-    }
-
     private val userCancel = AtomicBoolean(false)
 
-    /** 使用者取消：標記後斷線；run() 回傳 Cancelled，由 Service 清理。 */
     fun cancelUser() {
         userCancel.set(true)
         abortTransport()
@@ -166,8 +27,6 @@ class DriveResumableUploader(
     fun abortTransport() {
         httpClient.disconnectActive()
     }
-
-    fun isCancelled(): Boolean = userCancel.get()
 
     fun run(
         initialJob: DriveUploadJob,
@@ -193,7 +52,7 @@ class DriveResumableUploader(
             is StagingResult.Ready -> job = verified.job
         }
 
-        val accountError = tokenProvider.ensureAccountMatches(job)
+        val accountError = tokenProvider.checkSignedInAccount(job)
         if (accountError != null) {
             return handleTokenError(job, accountError, onUpdate)
         }
@@ -205,10 +64,7 @@ class DriveResumableUploader(
             }
         }
 
-        when (val existing = lookupCommittedFile(job, onUpdate)) {
-            is DriveUploadOutcome -> return existing
-            else -> Unit
-        }
+        lookupCommittedFile(job, onUpdate)?.let { return it }
 
         val initialTokenResult = tokenProvider.getAccessToken()
         if (initialTokenResult.isFailure) {
@@ -232,7 +88,7 @@ class DriveResumableUploader(
                 job.copy(
                     phase = DriveUploadPhase.UPLOADING,
                     lastErrorCode = null,
-                    lastErrorMessage = null,
+
                 ),
                 onUpdate,
             ) ?: return DriveUploadOutcome.Cancelled
@@ -291,7 +147,7 @@ class DriveResumableUploader(
             val response =
                 try {
                     httpClient.execute(
-                        HttpRequest(
+                        DriveHttpRequest(
                             method = "PUT",
                             url = sessionUri!!,
                             headers =
@@ -302,7 +158,7 @@ class DriveResumableUploader(
                                     "Content-Type" to "application/zip",
                                 ),
                             body =
-                                HttpBody.FileRange(
+                                DriveHttpBody.FileRange(
                                     file = file,
                                     offset = start,
                                     length = length,
@@ -317,7 +173,7 @@ class DriveResumableUploader(
                         job.copy(
                             retryCount = job.retryCount + 1,
                             lastErrorCode = "network",
-                            lastErrorMessage = null,
+
                             nextRetryAtEpochMs =
                                 System.currentTimeMillis() +
                                     backoffMs(job.retryCount + 1, null),
@@ -350,8 +206,7 @@ class DriveResumableUploader(
                             confirmedOffset = nextOffset,
                             phase = DriveUploadPhase.UPLOADING,
                         )
-                    // 通知與 EventChannel 都從 persisted job 取值；每個伺服器已確認
-                    // chunk 立即落盤，避免設定頁長時間落後記憶體中的通知進度。
+                    // 立即保存伺服器確認進度，讓設定頁和通知一致。
                     job =
                         persistOrAbort(
                             progressed,
@@ -425,7 +280,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "http_${response.code}",
-                                lastErrorMessage = null,
+
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, response),
@@ -440,7 +295,7 @@ class DriveResumableUploader(
                                 job.copy(
                                     retryCount = job.retryCount + 1,
                                     lastErrorCode = "rate_limited",
-                                    lastErrorMessage = null,
+
                                     nextRetryAtEpochMs =
                                         System.currentTimeMillis() +
                                             backoffMs(job.retryCount + 1, response),
@@ -565,7 +420,7 @@ class DriveResumableUploader(
             val response =
                 try {
                     httpClient.execute(
-                        HttpRequest(
+                        DriveHttpRequest(
                             method = "GET",
                             url =
                                 "https://www.googleapis.com/drive/v3/files/generateIds" +
@@ -582,7 +437,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "generate_id",
-                                lastErrorMessage = null,
+
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, null),
@@ -626,7 +481,7 @@ class DriveResumableUploader(
                                 job.copy(
                                     retryCount = job.retryCount + 1,
                                     lastErrorCode = "rate_limited",
-                                    lastErrorMessage = null,
+
                                     nextRetryAtEpochMs =
                                         System.currentTimeMillis() +
                                             backoffMs(job.retryCount + 1, response),
@@ -649,7 +504,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "http_${response.code}",
-                                lastErrorMessage = null,
+
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, response),
@@ -671,7 +526,7 @@ class DriveResumableUploader(
                             job.copy(
                                 retryCount = job.retryCount + 1,
                                 lastErrorCode = "http_${response.code}",
-                                lastErrorMessage = null,
+
                                 nextRetryAtEpochMs =
                                     System.currentTimeMillis() +
                                         backoffMs(job.retryCount + 1, response),
@@ -688,8 +543,7 @@ class DriveResumableUploader(
         verified: DriveUploadJob,
         onUpdate: (DriveUploadJob) -> Unit,
     ): DriveUploadOutcome {
-        // 遠端內容已驗證通過：即使使用者剛按停止，仍必須寫入 STATUS_PENDING，
-        // 否則 finishUserStop 會把已完成的 Drive 檔當殘檔刪掉。
+        // 取消與完成相撞時仍須保存成功，避免對帳誤刪成品。
         val committed =
             persistOrAbort(
                 verified.copy(
@@ -729,7 +583,7 @@ class DriveResumableUploader(
         val response =
             try {
                 httpClient.execute(
-                    HttpRequest(
+                    DriveHttpRequest(
                         method = "POST",
                         url =
                             "https://www.googleapis.com/upload/drive/v3/files" +
@@ -742,7 +596,7 @@ class DriveResumableUploader(
                                 "X-Upload-Content-Type" to "application/zip",
                                 "X-Upload-Content-Length" to job.sizeBytes.toString(),
                             ),
-                        body = HttpBody.Bytes(metadata),
+                        body = DriveHttpBody.Bytes(metadata),
                     ),
                 )
             } catch (_: IOException) {
@@ -754,7 +608,7 @@ class DriveResumableUploader(
                         job.copy(
                             retryCount = job.retryCount + 1,
                             lastErrorCode = "network",
-                            lastErrorMessage = null,
+
                             nextRetryAtEpochMs =
                                 System.currentTimeMillis() +
                                     backoffMs(job.retryCount + 1, null),
@@ -850,7 +704,7 @@ class DriveResumableUploader(
         val response =
             try {
                 httpClient.execute(
-                    HttpRequest(
+                    DriveHttpRequest(
                         method = "PUT",
                         url = sessionUri,
                         headers =
@@ -870,7 +724,7 @@ class DriveResumableUploader(
                         job.copy(
                             retryCount = job.retryCount + 1,
                             lastErrorCode = "network",
-                            lastErrorMessage = null,
+
                             nextRetryAtEpochMs =
                                 System.currentTimeMillis() +
                                     backoffMs(job.retryCount + 1, null),
@@ -1004,15 +858,7 @@ class DriveResumableUploader(
         val accessToken = token.accessToken
         val byId =
             try {
-                httpClient.execute(
-                    HttpRequest(
-                        method = "GET",
-                        url =
-                            "https://www.googleapis.com/drive/v3/files/${job.remoteFileId}" +
-                                "?fields=id,name,size,md5Checksum,appProperties",
-                        headers = mapOf("Authorization" to "Bearer $accessToken"),
-                    ),
-                )
+                httpClient.execute(driveFileMetadataRequest(job.remoteFileId, accessToken))
             } catch (_: IOException) {
                 return null
             }
@@ -1023,21 +869,9 @@ class DriveResumableUploader(
             }
         }
 
-        val query =
-            "appProperties has { key='uploadJobId' and value='${job.jobId}' } and trashed = false"
         val listed =
             try {
-                httpClient.execute(
-                    HttpRequest(
-                        method = "GET",
-                        url =
-                            "https://www.googleapis.com/drive/v3/files" +
-                                "?spaces=appDataFolder" +
-                                "&q=${java.net.URLEncoder.encode(query, "UTF-8")}" +
-                                "&fields=files(id,name,size,md5Checksum,appProperties)",
-                        headers = mapOf("Authorization" to "Bearer $accessToken"),
-                    ),
-                )
+                httpClient.execute(driveFilesByUploadJobRequest(job.jobId, accessToken))
             } catch (_: IOException) {
                 return null
             }
@@ -1086,7 +920,7 @@ class DriveResumableUploader(
         val metadata =
             try {
                 httpClient.execute(
-                    HttpRequest(
+                    DriveHttpRequest(
                         method = "GET",
                         url =
                             "https://www.googleapis.com/drive/v3/files/$id" +
@@ -1112,7 +946,7 @@ class DriveResumableUploader(
                 job.copy(
                     phase = DriveUploadPhase.WAITING_FOR_NETWORK,
                     lastErrorCode = job.lastErrorCode ?: "network",
-                    lastErrorMessage = null,
+
                 ),
                 onUpdate,
             ) ?: return DriveUploadOutcome.Cancelled
@@ -1141,7 +975,7 @@ class DriveResumableUploader(
                 waitingForNetwork(
                     job.copy(
                         lastErrorCode = "token_transient",
-                        lastErrorMessage = null,
+
                         retryCount = job.retryCount + 1,
                         nextRetryAtEpochMs =
                             System.currentTimeMillis() + backoffMs(job.retryCount + 1, null),
@@ -1195,8 +1029,6 @@ class DriveResumableUploader(
         const val CHUNK_SIZE: Long = 8L * 1024L * 1024L
         const val MAX_ATTEMPTS: Int = 12
 
-        private const val MAX_RESPONSE_BODY_BYTES = 512 * 1024
-        private const val STREAM_BUFFER_SIZE = 64 * 1024
         private val ALLOWED_UPLOAD_HOSTS =
             setOf(
                 "www.googleapis.com",
@@ -1289,7 +1121,7 @@ class DriveResumableUploader(
 
         fun backoffMs(
             attempt: Int,
-            response: HttpResponse?,
+            response: DriveHttpResponse?,
             random: Random = Random.Default,
         ): Long {
             val retryAfter = response?.headers?.get("retry-after")?.toLongOrNull()

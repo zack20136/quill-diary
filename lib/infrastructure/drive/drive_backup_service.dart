@@ -5,11 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_oauth_errors.dart';
 import 'package:quill_diary/infrastructure/drive/google_oauth_config.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
 
 /// 設定與備份流程顯示的目前 Google Drive 連線快照。
@@ -677,32 +679,35 @@ class GoogleDriveBackupService implements DriveBackupService {
     int? totalBytes,
     BackupTaskProgressListener? onProgress,
   }) async {
+    sanitizeDriveBackupFileName(fileName);
     final drive.DriveApi api = await _createAuthorizedDriveApi();
-    await destinationDirectory.create(recursive: true);
-    final String safeFileName = sanitizeDriveBackupFileName(fileName);
-    final File output = File(p.join(destinationDirectory.path, safeFileName));
-    _ensurePathInsideDirectory(directory: destinationDirectory, file: output);
-    onProgress?.call(
-      const BackupTaskProgress(phase: BackupTaskPhase.downloadingDrive),
+    final File output = File(
+      p.join(
+        destinationDirectory.path,
+        '${generateBackupId()}.${VaultBackupPolicy.fileExtension}',
+      ),
     );
-    final drive.Media media = await api.files.get(
-      fileId,
-      downloadOptions: drive.DownloadOptions.fullMedia,
-    ) as drive.Media;
-    IOSink? sink;
+    await output.create(recursive: true, exclusive: true);
     try {
-      sink = output.openWrite();
-      await for (final List<int> chunk in reportByteStreamProgress(
-        media.stream,
-        totalBytes: totalBytes ?? 0,
-        phase: BackupTaskPhase.downloadingDrive,
-        onProgress: onProgress,
-      )) {
-        sink.add(chunk);
-      }
-      await sink.flush();
-    } finally {
-      await sink?.close();
+      onProgress?.call(
+        const BackupTaskProgress(phase: BackupTaskPhase.downloadingDrive),
+      );
+      final drive.Media media = await api.files.get(
+        fileId,
+        downloadOptions: drive.DownloadOptions.fullMedia,
+      ) as drive.Media;
+      await writeByteStreamToFile(
+        reportByteStreamProgress(
+          media.stream,
+          totalBytes: totalBytes ?? media.length ?? 0,
+          phase: BackupTaskPhase.downloadingDrive,
+          onProgress: onProgress,
+        ),
+        output,
+      );
+    } on Object {
+      await deleteFileIfExists(output.path);
+      rethrow;
     }
     return output;
   }
@@ -715,19 +720,6 @@ class GoogleDriveBackupService implements DriveBackupService {
       email: account.email,
       displayName: account.displayName,
     );
-  }
-
-  void _ensurePathInsideDirectory({
-    required Directory directory,
-    required File file,
-  }) {
-    final String root = p.normalize(directory.absolute.path);
-    final String target = p.normalize(file.absolute.path);
-    if (target != root && !p.isWithin(root, target)) {
-      throw const GoogleDriveException(
-        GoogleDriveErrorCode.invalidDownloadPath,
-      );
-    }
   }
 }
 

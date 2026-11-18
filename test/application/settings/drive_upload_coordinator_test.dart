@@ -12,6 +12,7 @@ import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
 import 'package:quill_diary/application/transfer/vault_backup_service.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
@@ -35,11 +36,15 @@ DriveUploadJobSnapshot _job({
   int generation = 1,
   String remoteFileId = 'remote-1',
   String stagingPath = '/tmp/a.zip',
+  RecoveryKeyIdentity? backupIdentity,
+  VaultBackupPurpose? backupPurpose,
 }) {
   final bool committed =
       phase == DriveUploadPhase.statusPending ||
       phase == DriveUploadPhase.prunePending;
   return DriveUploadJobSnapshot(
+    backupIdentity: backupIdentity,
+    backupPurpose: backupPurpose,
     jobId: jobId,
     phase: phase,
     accountId: 'acc',
@@ -117,6 +122,8 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
 
   @override
   Future<DriveUploadJobSnapshot> startUpload({
+    RecoveryKeyIdentity? backupIdentity,
+    VaultBackupPurpose? backupPurpose,
     required String stagingPath,
     required String fileName,
     required int sizeBytes,
@@ -139,6 +146,8 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
       throw error;
     }
     final DriveUploadJobSnapshot job = _job(
+      backupIdentity: backupIdentity,
+      backupPurpose: backupPurpose,
       jobId: 'job-started',
       phase: DriveUploadPhase.uploading,
       stagingPath: stagingPath,
@@ -180,6 +189,8 @@ class _FakeDriveUploadPlatform extends DriveUploadPlatform {
       return null;
     }
     active = _job(
+      backupIdentity: current.backupIdentity,
+      backupPurpose: current.backupPurpose,
       jobId: current.jobId,
       phase: DriveUploadPhase.prunePending,
       generation: current.generation + 1,
@@ -235,6 +246,7 @@ class _FakeVaultBackupService extends VaultBackupService {
   Object? pruneError;
   int pruneCalls = 0;
   File? lastStaging;
+  RecoveryKeyIdentity? backupIdentity;
   Future<void>? pruneFuture;
 
   @override
@@ -248,6 +260,8 @@ class _FakeVaultBackupService extends VaultBackupService {
     await staging.writeAsString('zip-bytes');
     lastStaging = staging;
     return BackupPersistResult(
+      identity: backupIdentity,
+      purpose: VaultBackupPurpose.normal,
       status: BackupPersistStatus.success,
       savedPath: staging.path,
       message: 'backup_test.zip',
@@ -401,7 +415,7 @@ void main() {
     );
     await coordinator.refresh();
 
-    // 模擬原生 failAndCleanup 後留下的 failure notice（唯一寫入 BackupStatusStore 的來源）。
+    // 失敗提示由原生持久狀態送回，避免通道錯誤重複寫入。
     platform.active = null;
     platform.failure = const DriveUploadFailureNotice(
       jobId: 'job-fgs',
@@ -526,8 +540,17 @@ void main() {
     );
     await coordinator.refresh();
 
+    final identity = RecoveryKeyIdentity(
+      vaultId: 'vault',
+      kdfFingerprint: 'b' * 64,
+    );
+    final store = container.read(backupStatusStoreProvider);
+    await store.setBackupRequirement(identity);
+
     platform.active = _job(
       jobId: 'job-done',
+      backupIdentity: identity,
+      backupPurpose: VaultBackupPurpose.normal,
       phase: DriveUploadPhase.statusPending,
       generation: 3,
     );
@@ -541,6 +564,7 @@ void main() {
     expect(platform.finalizeCalls, 1);
     expect(platform.active, isNull);
     expect(coordinator.job, isNull);
+    expect((await store.read()).requiredBackupIdentity, isNull);
   });
 
   test('STATUS_PENDING 會記錄成功、prune 並 finalize', () async {
@@ -659,6 +683,11 @@ void main() {
   });
 
   test('新背景上傳開始前會 best-effort silent prune', () async {
+    final identity = RecoveryKeyIdentity(
+      vaultId: 'zip-vault',
+      kdfFingerprint: 'c' * 64,
+    );
+    backupService.backupIdentity = identity;
     final ProviderContainer container = buildContainer();
     addTearDown(container.dispose);
     final DriveUploadCoordinator coordinator = container.read(
@@ -669,6 +698,8 @@ void main() {
 
     final BackupPersistResult result = await coordinator
         .startBackgroundUpload();
+    expect(platform.active?.backupIdentity, identity);
+    expect(platform.active?.backupPurpose, VaultBackupPurpose.normal);
     expect(result.status, BackupPersistStatus.success);
     expect(backupService.pruneCalls, 1);
     expect(coordinator.job?.phase, DriveUploadPhase.uploading);

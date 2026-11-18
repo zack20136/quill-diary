@@ -5,12 +5,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
+import 'package:ulid/ulid.dart';
 
 /// 計算日記庫、索引與本機備份儲存使用的所有本機路徑。
 ///
 /// 路徑建構集中於此，便於稽核命名空間變更。
 class VaultPathStrategy {
   const VaultPathStrategy();
+  static final String _processTempFolder = 'run_${Ulid().toBase32()}';
 
   Future<Directory> appRootDirectory() async {
     final Directory supportDirectory = await getApplicationSupportDirectory();
@@ -35,6 +37,10 @@ class VaultPathStrategy {
     return Directory(p.join(root.path, 'backups'));
   }
 
+  Future<Directory> transferWorkDirectory() async => Directory(
+    p.join((await appRootDirectory()).path, '_tmp', _processTempFolder),
+  );
+
   Future<Directory> editorDraftsRootDirectory() async {
     final Directory root = await appRootDirectory();
     return Directory(p.join(root.path, 'drafts'));
@@ -56,10 +62,13 @@ class VaultPathStrategy {
     return p.join(vaultRoot.path, 'recovery_rotation.pending');
   }
 
-  Future<String> tagStylesPath() async {
+  Future<String> tagCatalogPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
-    return p.join(vaultRoot.path, 'tag_styles.json');
+    return p.join(vaultRoot.path, 'tag_styles.json.enc');
   }
+
+  Future<String> legacyTagCatalogPath() async =>
+      p.join((await vaultRootDirectory()).path, 'tag_styles.json');
 
   Future<String> pinnedEntriesPath() async {
     final Directory vaultRoot = await vaultRootDirectory();
@@ -99,6 +108,12 @@ class VaultPathStrategy {
 
   Future<Directory> editorDraftPreviewRootDirectory() async =>
       Directory(p.join(Directory.systemTemp.path, 'quill_diary_draft_preview'));
+
+  Future<Directory> editorDraftPreviewWorkDirectory() async =>
+      _currentProcessDirectory(await editorDraftPreviewRootDirectory());
+
+  Directory _currentProcessDirectory(Directory parent) =>
+      Directory(p.join(parent.path, _processTempFolder));
 
   Future<Directory> organizationDraftDirectory(String entryId) async {
     if (!RegExp(r'^jrn_[0-9A-HJKMNP-TV-Z]{26}$').hasMatch(entryId)) {

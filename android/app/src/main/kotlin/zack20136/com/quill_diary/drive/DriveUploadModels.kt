@@ -8,7 +8,7 @@ import org.json.JSONObject
  *
  * 失敗、取消與完成都以刪除 job 表達；不持久化終態 phase。
  */
-enum class DriveUploadPhase {
+internal enum class DriveUploadPhase {
     STAGED,
     UPLOADING,
     WAITING_FOR_NETWORK,
@@ -17,7 +17,23 @@ enum class DriveUploadPhase {
     CANCEL_CLEANUP_PENDING,
 }
 
-data class DriveUploadJob(
+internal enum class DriveUploadStopAction {
+    KeepCommitted,
+    ReconcileRemote,
+    WaitForWorker,
+}
+
+internal fun resolveUploadStopAction(
+    currentJob: DriveUploadJob?,
+    workerExited: Boolean = true,
+): DriveUploadStopAction =
+    when {
+        currentJob?.isRemoteCommittedPhase() == true -> DriveUploadStopAction.KeepCommitted
+        !workerExited -> DriveUploadStopAction.WaitForWorker
+        else -> DriveUploadStopAction.ReconcileRemote
+    }
+
+internal data class DriveUploadJob(
     val schemaVersion: Int = SCHEMA_VERSION,
     val jobId: String,
     val phase: DriveUploadPhase,
@@ -27,12 +43,13 @@ data class DriveUploadJob(
     val fileName: String,
     val sizeBytes: Long,
     val md5: String = "",
+    val backupIdentity: Map<String, String>? = null,
+    val backupPurpose: String? = null,
     val remoteFileId: String = "",
     val confirmedOffset: Long = 0L,
     val retryCount: Int = 0,
     val nextRetryAtEpochMs: Long? = null,
     val lastErrorCode: String? = null,
-    val lastErrorMessage: String? = null,
     val generation: Long = 0L,
     val updatedAtEpochMs: Long = System.currentTimeMillis(),
     val createdAtEpochMs: Long = System.currentTimeMillis(),
@@ -48,6 +65,8 @@ data class DriveUploadJob(
             "fileName" to fileName,
             "sizeBytes" to sizeBytes,
             "md5" to md5,
+            "backupIdentity" to backupIdentity,
+            "backupPurpose" to backupPurpose,
             "remoteFileId" to remoteFileId,
             "confirmedOffset" to confirmedOffset,
             "retryCount" to retryCount,
@@ -77,10 +96,6 @@ data class DriveUploadJob(
         return ((boundedOffset * 100L) / sizeBytes).toInt()
     }
 
-    fun isActive(): Boolean = true
-
-    fun blocksConflictingActions(): Boolean = isActive()
-
     fun isRemoteCommittedPhase(): Boolean =
         phase == DriveUploadPhase.STATUS_PENDING ||
             phase == DriveUploadPhase.PRUNE_PENDING
@@ -92,35 +107,13 @@ data class DriveUploadJob(
         const val SCHEMA_VERSION = 1
 
         fun fromMap(raw: Map<*, *>): DriveUploadJob? {
-            fun string(key: String): String {
-                val value = raw[key] ?: return ""
-                if (value === JSONObject.NULL) {
-                    return ""
-                }
-                return value.toString().trim()
-            }
-
-            fun long(key: String, fallback: Long = 0L): Long {
-                val value = raw[key] ?: return fallback
-                if (value === JSONObject.NULL) {
-                    return fallback
-                }
-                return when (value) {
-                    is Number -> value.toLong()
-                    else -> value.toString().toLongOrNull() ?: fallback
-                }
-            }
-
-            fun int(key: String, fallback: Int = 0): Int {
-                val value = raw[key] ?: return fallback
-                if (value === JSONObject.NULL) {
-                    return fallback
-                }
-                return when (value) {
+            fun string(key: String) = raw.jobString(key)
+            fun long(key: String, fallback: Long = 0L) = raw[key].jobLongOrNull() ?: fallback
+            fun int(key: String, fallback: Int = 0): Int =
+                when (val value = raw[key]) {
                     is Number -> value.toInt()
-                    else -> value.toString().toIntOrNull() ?: fallback
+                    else -> value?.toString()?.toIntOrNull() ?: fallback
                 }
-            }
 
             val phaseName = string("phase")
             val phase =
@@ -145,6 +138,8 @@ data class DriveUploadJob(
 
             return DriveUploadJob(
                 schemaVersion = int("schemaVersion", SCHEMA_VERSION),
+                backupIdentity = readBackupIdentity(raw["backupIdentity"]),
+                backupPurpose = string("backupPurpose").takeIf { it == "normal" || it == "preservation" },
                 jobId = string("jobId"),
                 phase = phase,
                 accountId = string("accountId"),
@@ -156,19 +151,8 @@ data class DriveUploadJob(
                 remoteFileId = string("remoteFileId"),
                 confirmedOffset = long("confirmedOffset"),
                 retryCount = retryCount,
-                nextRetryAtEpochMs =
-                    raw["nextRetryAtEpochMs"]?.let {
-                        if (it === JSONObject.NULL) {
-                            null
-                        } else {
-                            when (it) {
-                                is Number -> it.toLong()
-                                else -> it.toString().toLongOrNull()
-                            }
-                        }
-                    },
+                nextRetryAtEpochMs = raw["nextRetryAtEpochMs"].jobLongOrNull(),
                 lastErrorCode = string("lastErrorCode").ifEmpty { null },
-                lastErrorMessage = string("lastErrorMessage").ifEmpty { null },
                 generation = long("generation"),
                 updatedAtEpochMs = long("updatedAtEpochMs", System.currentTimeMillis()),
                 createdAtEpochMs = long("createdAtEpochMs", System.currentTimeMillis()),
@@ -177,7 +161,7 @@ data class DriveUploadJob(
     }
 }
 
-data class DriveUploadFailureNotice(
+internal data class DriveUploadFailureNotice(
     val jobId: String,
     val message: String,
 ) {
@@ -189,28 +173,20 @@ data class DriveUploadFailureNotice(
 
     companion object {
         fun fromMap(raw: Map<*, *>): DriveUploadFailureNotice? {
-            fun string(key: String): String {
-                val value = raw[key] ?: return ""
-                if (value === JSONObject.NULL) {
-                    return ""
-                }
-                return value.toString().trim()
-            }
-
-            val jobId = string("jobId")
+            val jobId = raw.jobString("jobId")
             if (jobId.isEmpty()) {
                 return null
             }
             val message =
-                string("message").ifEmpty {
-                    string("errorMessage")
+                raw.jobString("message").ifEmpty {
+                    raw.jobString("errorMessage")
                 }
             return DriveUploadFailureNotice(jobId = jobId, message = message)
         }
     }
 }
 
-sealed class DriveUploadOutcome {
+internal sealed class DriveUploadOutcome {
     data class WaitingNetwork(val job: DriveUploadJob) : DriveUploadOutcome()
 
     data class Committed(val job: DriveUploadJob) : DriveUploadOutcome()
@@ -219,3 +195,26 @@ sealed class DriveUploadOutcome {
 
     data object Cancelled : DriveUploadOutcome()
 }
+
+private val KDF_FINGERPRINT_PATTERN = Regex("[a-f0-9]{64}")
+
+private fun readBackupIdentity(value: Any?): Map<String, String>? {
+    val (vaultId, fingerprint) = when (value) {
+        is Map<*, *> -> (value["vault_id"] as? String) to (value["kdf_fingerprint"] as? String)
+        is JSONObject -> value.optString("vault_id") to value.optString("kdf_fingerprint")
+        else -> return null
+    }
+    if (vaultId.isNullOrBlank() || fingerprint == null || !KDF_FINGERPRINT_PATTERN.matches(fingerprint)) {
+        return null
+    }
+    return mapOf("vault_id" to vaultId, "kdf_fingerprint" to fingerprint)
+}
+
+private fun Map<*, *>.jobString(key: String): String =
+    this[key].takeUnless { it === JSONObject.NULL }?.toString()?.trim().orEmpty()
+
+private fun Any?.jobLongOrNull(): Long? =
+    when (this) {
+        is Number -> toLong()
+        else -> this?.toString()?.toLongOrNull()
+    }

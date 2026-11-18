@@ -3,10 +3,9 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/media_store_export.dart';
 import 'package:quill_diary/infrastructure/storage/shared/android_saf_file_copy.dart';
-import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
 import 'package:quill_diary/infrastructure/storage/shared/external_directory_picker.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 
 Future<String?> deliverToExternalDirectory({
   required String dialogTitle,
@@ -16,10 +15,6 @@ Future<String?> deliverToExternalDirectory({
   required Future<void> Function(String directoryOrTreeUri) rememberDirectory,
   BackupTaskProgressListener? onProgress,
 }) async {
-  if (Platform.isAndroid) {
-    await MediaStoreExport.ensureDownloadsSubfolder();
-  }
-
   final String? picked = await ExternalDirectoryPicker.pickExternalDirectory(
     prompt: dialogTitle,
     initialDirectory: await resolveInitialDirectory(),

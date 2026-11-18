@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/application/persona/persona_prompts.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/people/person.dart';
@@ -14,7 +15,7 @@ void main() {
 
   test('分身固定指令以身分句開頭，並使用目前生效的對話引導', () {
     for (final language in AppLanguage.values) {
-      final localized = lookupAppLocalizations(language.materialLocale);
+      final localized = lookupAppLocalizations(language.flutterLocale);
       final defaults = personaFixedInstructions(l10n: localized);
       expect(defaults, startsWith(localized.personaIdentityPrompt));
       expect(defaults, contains(localized.chatDiaryConversationRules));

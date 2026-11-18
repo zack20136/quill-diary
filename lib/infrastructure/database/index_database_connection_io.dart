@@ -12,14 +12,12 @@ Future<QueryExecutor> openIndexConnection({
   final String dbPath = await pathStrategy.indexDatabasePath();
   final File dbFile = File(dbPath);
   await dbFile.parent.create(recursive: true);
-  final String hexKey = encryptionKeyBytes
-      .map((int byte) => byte.toRadixString(16).padLeft(2, '0'))
-      .join();
+  final String hexKey = encodeIndexKey(encryptionKeyBytes);
 
   return NativeDatabase.createInBackground(
     dbFile,
     setup: (sqlite.Database rawDb) {
-      assert(_debugCheckHasCipher(rawDb));
+      if (!_hasCipher(rawDb)) throw const IndexCipherUnavailableException();
       rawDb.execute("PRAGMA hexkey = '$hexKey';");
       rawDb.select('SELECT count(*) FROM sqlite_master;');
       rawDb.execute('PRAGMA foreign_keys = ON;');
@@ -27,6 +25,13 @@ Future<QueryExecutor> openIndexConnection({
   );
 }
 
-bool _debugCheckHasCipher(sqlite.Database database) {
+String encodeIndexKey(List<int> keyBytes) =>
+    keyBytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+
+bool _hasCipher(sqlite.Database database) {
   return database.select('PRAGMA cipher;').isNotEmpty;
+}
+
+class IndexCipherUnavailableException implements Exception {
+  const IndexCipherUnavailableException();
 }

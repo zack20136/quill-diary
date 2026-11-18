@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
@@ -10,6 +12,7 @@ import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
+import 'package:quill_diary/infrastructure/storage/shared/zip_structure.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
@@ -36,15 +39,20 @@ class VaultBackupIo {
 
   Future<File> writeBackupZip(
     File target, {
+    VaultBackupPurpose purpose = VaultBackupPurpose.normal,
     BackupTaskProgressListener? onProgress,
   }) => _repository.runVaultMutation(
-    () => _writeBackupZip(target, onProgress: onProgress),
+    () => _writeBackupZip(target, purpose: purpose, onProgress: onProgress),
   );
 
   Future<File> _writeBackupZip(
     File target, {
+    required VaultBackupPurpose purpose,
     BackupTaskProgressListener? onProgress,
   }) async {
+    final preservedTags = await _repository.prepareTagCatalogBackup(
+      preservation: purpose == VaultBackupPurpose.preservation,
+    );
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
     final personas = Directory(p.join(vaultRoot.path, 'personas'));
     if (personaBackupFiles == null &&
@@ -87,6 +95,12 @@ class VaultBackupIo {
           );
           final String relative = p.relative(entity.path, from: vaultRoot.path);
           final List<String> segments = p.split(relative);
+          if (relative == 'tag_styles.json' ||
+              relative.startsWith('tag_styles.json.') &&
+                  relative != 'tag_styles.json.enc' ||
+              preservedTags.containsKey(relative)) {
+            return ZipFileOperation.skip;
+          }
           if (segments.isNotEmpty &&
               (segments.first == 'index' ||
                   segments.first == 'quarantine' ||
@@ -102,6 +116,11 @@ class VaultBackupIo {
           return ZipFileOperation.include;
         },
       );
+      for (final entry in preservedTags.entries) {
+        encoder.addArchiveFile(
+          ArchiveFile(entry.key, entry.value.length, entry.value),
+        );
+      }
       for (final entry in publishedPersonas.entries) {
         encoder.addArchiveFile(
           ArchiveFile(entry.key, entry.value.length, entry.value),
@@ -130,6 +149,12 @@ class VaultBackupIo {
       } finally {
         await zip.close();
       }
+    } on ZipUnsafePathException {
+      return const BackupInspectResult(
+        ok: false,
+        issue: VaultBackupIssue.unsafePath,
+        layout: VaultBackupLayout.empty,
+      );
     } on Object {
       return const BackupInspectResult(
         ok: false,
@@ -148,19 +173,14 @@ class VaultBackupIo {
       );
     }
 
-    final VaultBackupLayout layout = inspectZipEntryNames(
-      zip.archive.files.map((ArchiveFile file) => file.name),
-    );
+    final VaultBackupLayout layout = inspectBackupLayout(zip.archive);
+    RecoveryMetadata? recoveryMetadata;
     var ok = layout.isRestorable;
     var issue = ok ? VaultBackupIssue.passed : layout.issue;
 
-    if (ok && layout.hasRecovery) {
-      final Uint8List? recoveryBytes = readZipEntry(
-        zip.archive,
-        pathSuffix: 'recovery.json',
-      );
-      if (recoveryBytes == null ||
-          parseRecoveryMetadataBytes(recoveryBytes) == null) {
+    if (ok) {
+      recoveryMetadata = _readRecoveryMetadataFromZip(zip.archive);
+      if (recoveryMetadata == null) {
         ok = false;
         issue = VaultBackupIssue.invalidRecoveryJson;
       }
@@ -174,7 +194,12 @@ class VaultBackupIo {
       }
     }
 
-    return BackupInspectResult(ok: ok, issue: issue, layout: layout);
+    return BackupInspectResult(
+      ok: ok,
+      issue: issue,
+      layout: layout,
+      metadata: recoveryMetadata,
+    );
   }
 
   /// 還原前驗證 zip 結構並讀取 recovery 預覽；不合格拋 [VaultBackupException]。
@@ -182,28 +207,7 @@ class VaultBackupIo {
     try {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
-        if (zip.archive.files.isEmpty) {
-          throw const VaultBackupException(VaultBackupIssue.invalidArchive);
-        }
-        final VaultBackupLayout layout = inspectZipEntryNames(
-          zip.archive.files.map((ArchiveFile file) => file.name),
-        );
-        if (!layout.isRestorable) {
-          throw VaultBackupException(layout.issue);
-        }
-        final Uint8List? recoveryBytes = readZipEntry(
-          zip.archive,
-          pathSuffix: 'recovery.json',
-        );
-        final RecoveryMetadata? metadata = recoveryBytes == null
-            ? null
-            : parseRecoveryMetadataBytes(recoveryBytes);
-        if (metadata == null) {
-          throw const VaultBackupException(
-            VaultBackupIssue.invalidRecoveryJson,
-          );
-        }
-        return BackupRecoveryPreview(metadata: metadata);
+        return BackupRecoveryPreview(metadata: _requireRestorableBackup(zip));
       } finally {
         await zip.close();
       }
@@ -222,16 +226,13 @@ class VaultBackupIo {
     File backupFile,
     String recoveryKey,
   ) async {
+    final normalized = RecoveryKey.normalize(recoveryKey);
     try {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
-        final Uint8List? recoveryBytes = readZipEntry(
+        final RecoveryMetadata? metadata = _readRecoveryMetadataFromZip(
           zip.archive,
-          pathSuffix: 'recovery.json',
         );
-        final RecoveryMetadata? metadata = recoveryBytes == null
-            ? null
-            : parseRecoveryMetadataBytes(recoveryBytes);
         if (metadata == null) {
           throw const VaultBackupException(
             VaultBackupIssue.recoveryInfoMissing,
@@ -243,7 +244,7 @@ class VaultBackupIo {
         }
         await _repository.verifyRecoveryKeyAgainstBackupBytes(
           metadata: metadata,
-          recoveryKey: recoveryKey,
+          recoveryKey: normalized,
           encryptedDocumentBytes: sampleBytes,
         );
       } finally {
@@ -262,119 +263,126 @@ class VaultBackupIo {
     BackupTaskProgressListener? onProgress,
   }) async {
     final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    final Directory tempRoot = Directory('${vaultRoot.path}_restore_tmp');
-    if (tempRoot.existsSync()) {
-      await tempRoot.delete(recursive: true);
-    }
-    await tempRoot.create(recursive: true);
+    await vaultRoot.parent.create(recursive: true);
+    final Directory candidate = await vaultRoot.parent.createTemp(
+      '${p.basename(vaultRoot.path)}_restore_',
+    );
+    try {
+      final RecoveryMetadata backupMetadata = await _extractRestoreCandidate(
+        backupFile,
+        candidate,
+        onProgress: onProgress,
+      );
+      _validateRestoredVaultPayload(candidate);
+      if (preserveTrustedDeviceAccess) {
+        final RecoveryMetadata? local = await _repository
+            .readRecoveryMetadata();
+        if (local?.hasSameRecoveryGenerationAs(backupMetadata) != true) {
+          throw const VaultBackupException(
+            VaultBackupIssue.recoveryKeyMismatch,
+          );
+        }
+      }
 
+      Directory? previousBackup;
+      if (vaultRoot.existsSync()) {
+        previousBackup = Directory(
+          '${vaultRoot.path}.bak_${DateTime.now().microsecondsSinceEpoch}',
+        );
+        await vaultRoot.rename(previousBackup.path);
+      }
+      try {
+        await candidate.rename(vaultRoot.path);
+      } on Object {
+        if (!vaultRoot.existsSync() && previousBackup != null) {
+          await previousBackup.rename(vaultRoot.path);
+        }
+        rethrow;
+      }
+
+      _repository.clearRecoveryMetadataCache();
+      final Directory strayVaultIndex = Directory(
+        p.join(vaultRoot.path, 'index'),
+      );
+      if (strayVaultIndex.existsSync()) {
+        await strayVaultIndex.delete(recursive: true);
+      }
+
+      await _repository.closeUnlockedResources();
+      await _indexDatabaseManager.deleteDatabaseFiles();
+      await _editorDraftStore.deleteAll();
+      if (!preserveTrustedDeviceAccess) {
+        await _repository.clearTrustedDeviceAccess();
+      }
+      if (previousBackup != null) {
+        await _deleteRestoreDirectory(previousBackup);
+      }
+    } finally {
+      await _deleteRestoreDirectory(candidate);
+    }
+  }
+
+  Future<RecoveryMetadata> _extractRestoreCandidate(
+    File backupFile,
+    Directory candidate, {
+    BackupTaskProgressListener? onProgress,
+  }) async {
     try {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
-        _ensureZipRestorable(zip);
+        final RecoveryMetadata metadata = _requireRestorableBackup(zip);
         await extractArchiveToDirectory(
           zip: zip,
-          targetDirectory: tempRoot,
+          targetDirectory: candidate,
           onProgress: onProgress,
         );
+        return metadata;
       } finally {
         await zip.close();
       }
     } on VaultBackupException {
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
       rethrow;
     } on ArchiveExtractionLimitException {
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
       throw const VaultBackupException(
         VaultBackupIssue.extractionLimitExceeded,
       );
     } on Object {
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
       throw const VaultBackupException(VaultBackupIssue.invalidArchive);
-    }
-
-    _validateRestoredVaultPayload(tempRoot);
-
-    final Directory incomingVault = Directory('${vaultRoot.path}.incoming');
-    if (incomingVault.existsSync()) {
-      await incomingVault.delete(recursive: true);
-    }
-    await _copyDirectoryTree(tempRoot, incomingVault);
-    await tempRoot.delete(recursive: true);
-
-    Directory? previousBackup;
-    if (vaultRoot.existsSync()) {
-      previousBackup = Directory(
-        '${vaultRoot.path}.bak_${DateTime.now().microsecondsSinceEpoch}',
-      );
-      await vaultRoot.rename(previousBackup.path);
-    }
-    try {
-      await incomingVault.rename(vaultRoot.path);
-      if (previousBackup != null && previousBackup.existsSync()) {
-        await previousBackup.delete(recursive: true);
-      }
-    } on Object catch (error, stackTrace) {
-      if (!vaultRoot.existsSync() &&
-          previousBackup != null &&
-          previousBackup.existsSync()) {
-        await previousBackup.rename(vaultRoot.path);
-      }
-      if (incomingVault.existsSync()) {
-        await incomingVault.delete(recursive: true);
-      }
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-
-    final Directory strayVaultIndex = Directory(
-      p.join(vaultRoot.path, 'index'),
-    );
-    if (strayVaultIndex.existsSync()) {
-      await strayVaultIndex.delete(recursive: true);
-    }
-
-    await _repository.closeUnlockedResources();
-    await _indexDatabaseManager.deleteDatabaseFiles();
-    await _editorDraftStore.deleteAll();
-    _repository.clearRecoveryMetadataCache();
-    if (!preserveTrustedDeviceAccess) {
-      await _repository.clearTrustedDeviceAccess();
     }
   }
 
-  void _ensureZipRestorable(OpenedZipArchive zip) {
-    for (final file in zip.archive.files.where((file) => file.isFile)) {
-      final segments = p.posix.split(
-        p.posix.normalize(file.name.replaceAll('\\', '/')),
-      );
-      if (segments.isNotEmpty &&
-          segments.first.toLowerCase() == 'personas' &&
-          segments.length != 3) {
-        throw const VaultBackupException(VaultBackupIssue.invalidArchive);
-      }
+  Future<void> _deleteRestoreDirectory(Directory directory) async {
+    try {
+      if (directory.existsSync()) await directory.delete(recursive: true);
+    } on FileSystemException {
+      // 清理失敗不能掩蓋原始錯誤，也不撤銷已完成的替換。
     }
-    final VaultBackupLayout layout = inspectZipEntryNames(
-      zip.archive.files.map((ArchiveFile file) => file.name),
-    );
+  }
+
+  RecoveryMetadata _requireRestorableBackup(OpenedZipArchive zip) {
+    if (zip.archive.files.isEmpty) {
+      throw const VaultBackupException(VaultBackupIssue.invalidArchive);
+    }
+    final VaultBackupLayout layout = inspectBackupLayout(zip.archive);
     if (!layout.safePaths) {
       throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
     if (!layout.isRestorable) {
       throw VaultBackupException(layout.issue);
     }
-    try {
-      ensureArchiveExtractionBudget(zip.archive);
-    } on ArchiveExtractionLimitException {
-      throw const VaultBackupException(
-        VaultBackupIssue.extractionLimitExceeded,
-      );
-    }
+    ensureArchiveExtractionBudget(zip.archive);
+    return _readRecoveryMetadataFromZip(zip.archive) ??
+        (throw const VaultBackupException(
+          VaultBackupIssue.invalidRecoveryJson,
+        ));
+  }
+
+  RecoveryMetadata? _readRecoveryMetadataFromZip(Archive archive) {
+    final Uint8List? bytes = readZipEntry(
+      archive,
+      relativePath: 'recovery.json',
+    );
+    return bytes == null ? null : parseRecoveryMetadataBytes(bytes);
   }
 
   void _validateRestoredVaultPayload(Directory root) {
@@ -389,26 +397,6 @@ class VaultBackupIo {
       throw const VaultBackupException(VaultBackupIssue.missingVaultPayload);
     }
   }
-
-  Future<void> _copyDirectoryTree(
-    Directory source,
-    Directory destination,
-  ) async {
-    await destination.create(recursive: true);
-    await for (final FileSystemEntity entity in source.list(
-      recursive: true,
-      followLinks: false,
-    )) {
-      final String relative = p.relative(entity.path, from: source.path);
-      final String targetPath = p.join(destination.path, relative);
-      if (entity is Directory) {
-        await Directory(targetPath).create(recursive: true);
-      } else if (entity is File) {
-        await File(targetPath).parent.create(recursive: true);
-        await entity.copy(targetPath);
-      }
-    }
-  }
 }
 
 /// 完整備份 zip 備份檢查結果（`inspectBackup`）。
@@ -417,9 +405,11 @@ final class BackupInspectResult {
     required this.ok,
     required this.issue,
     required this.layout,
+    this.metadata,
   });
 
   final bool ok;
   final VaultBackupIssue issue;
   final VaultBackupLayout layout;
+  final RecoveryMetadata? metadata;
 }

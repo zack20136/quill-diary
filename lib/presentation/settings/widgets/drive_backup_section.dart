@@ -225,7 +225,7 @@ class _DriveBackupContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final bool isConnected = connectionState.isConnected;
-    final bool uploadBusy = uploadJob?.blocksConflictingDriveActions ?? false;
+    final bool uploadBusy = uploadJob != null;
     final bool cleanupPending = uploadJob?.isCancelCleanupPending ?? false;
     final bool cleanupRecovery =
         uploadJob?.needsCancelCleanupAccountRecovery ?? false;

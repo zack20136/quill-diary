@@ -5,6 +5,7 @@ import android.util.AtomicFile
 import android.util.Base64
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -13,15 +14,14 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import zack20136.com.quill_diary.AndroidAppStrings
 import zack20136.com.quill_diary.R
 
 /**
  * 原子持久化上傳工作；session URI 以 Android Keystore 加密後另存。
- * 同一 process 共用單一實例，避免 Service／Bridge 各建一份導致寫入競態。
- *
- * 失敗、取消與完成都以刪除 job 表達；failure notice 另存供 App 提示。
+ * 上傳服務和通道共用同一把鎖。
  */
-class DriveUploadJobStore private constructor(context: Context) {
+internal class DriveUploadJobStore private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val jobsDir: File =
         File(appContext.filesDir, "quill_diary/drive_upload_jobs").apply {
@@ -41,7 +41,6 @@ class DriveUploadJobStore private constructor(context: Context) {
             readJobLocked(jobId)
         }
 
-    /** 無衝突時原子建立新工作；已有 active job 時回傳 null。 */
     fun createJobIfNoConflict(job: DriveUploadJob): DriveUploadJob? =
         synchronized(lock) {
             if (!isValidJobId(job.jobId)) {
@@ -72,10 +71,7 @@ class DriveUploadJobStore private constructor(context: Context) {
             )
         }
 
-    /**
-     * 取消並清除 staging／session／job。
-     * 已進入 STATUS_PENDING／PRUNE_PENDING 時拒絕。
-     */
+    /** 已在遠端完成的備份必須交給成功流程收尾。 */
     fun cancelAndCleanup(jobId: String): DriveUploadJob? =
         synchronized(lock) {
             val existing = readJobLocked(jobId) ?: return null
@@ -87,7 +83,6 @@ class DriveUploadJobStore private constructor(context: Context) {
             return existing
         }
 
-    /** 未遠端提交時寫入 CANCEL_CLEANUP_PENDING；已是此 phase 則原樣回傳。 */
     fun markCancelCleanupPending(jobId: String): DriveUploadJob? =
         synchronized(lock) {
             val existing = readJobLocked(jobId) ?: return null
@@ -104,11 +99,8 @@ class DriveUploadJobStore private constructor(context: Context) {
             )
         }
 
-    /**
-     * 終止未提交工作並寫入 failure notice。
-     * 已進入 STATUS_PENDING／PRUNE_PENDING／CANCEL_CLEANUP_PENDING 時拒絕。
-     */
-    fun failAndCleanup(
+    /** 已開始取消對帳的工作仍要保留遠端清理資訊。 */
+    fun recordUploadFailure(
         jobId: String,
         errorCode: String,
         message: String,
@@ -118,29 +110,40 @@ class DriveUploadJobStore private constructor(context: Context) {
             if (existing.isRemoteCommittedPhase() || existing.isCancelCleanupPhase()) {
                 return null
             }
-            val failed =
-                existing.copy(
-                    lastErrorCode = errorCode,
-                    lastErrorMessage = message,
-                )
-            cleanupStagingLocked(failed)
+            val failed = existing.copy(lastErrorCode = errorCode)
+            val needsRemoteCleanup =
+                existing.remoteFileId.isNotBlank() ||
+                    existing.confirmedOffset > 0L ||
+                    sessionStore.contains(sessionKey(jobId))
+            val pending =
+                if (needsRemoteCleanup) {
+                    persistLocked(
+                        job = failed.copy(phase = DriveUploadPhase.CANCEL_CLEANUP_PENDING),
+                        expectedGeneration = existing.generation,
+                        mode = WriteMode.Cas,
+                    ) ?: return null
+                } else {
+                    null
+                }
             writeFailureNoticeLocked(
                 DriveUploadFailureNotice(
                     jobId = failed.jobId,
                     message =
                         message.ifBlank {
-                            DriveUploadLocalization.string(
+                            AndroidAppStrings.string(
                                 appContext,
                                 R.string.drive_upload_failure_default,
                             )
                         },
                 ),
             )
-            deleteJobLocked(failed.jobId)
-            return failed
+            if (pending == null) {
+                cleanupStagingLocked(failed)
+                deleteJobLocked(jobId)
+            }
+            return pending ?: failed
         }
 
-    /** 讀取失敗提示；不清除，需使用者 ack。 */
     fun readFailureNotice(): DriveUploadFailureNotice? =
         synchronized(lock) {
             readFailureNoticeLocked()
@@ -169,7 +172,6 @@ class DriveUploadJobStore private constructor(context: Context) {
             )
         }
 
-    /** 僅 PRUNE_PENDING 可 finalize；刪 staging 與 job。 */
     fun finalizeCommitted(jobId: String): DriveUploadJob? =
         synchronized(lock) {
             val existing = readJobLocked(jobId) ?: return null
@@ -231,43 +233,60 @@ class DriveUploadJobStore private constructor(context: Context) {
         val file = File(path)
         val root = stagingRoot().canonicalFile
         val canonical = runCatching { file.canonicalFile }.getOrNull() ?: return false
-        return canonical.path == root.path ||
-            canonical.path.startsWith(root.path + File.separator)
+        return canonical.path.startsWith(root.path + File.separator)
     }
 
-    /** 清除沒有對應工作引用的 staging／partial。 */
-    fun cleanupOrphanStaging() {
-        val root = stagingRoot()
-        val referenced =
-            synchronized(lock) {
-                listJobBaseFiles().mapNotNull { file ->
-                    runCatching { readJobFile(file)?.stagingPath }.getOrNull()
-                }.mapNotNull { path ->
-                    runCatching { File(path).canonicalPath }.getOrNull()
-                }.toSet()
+    fun cleanupAbandonedUploadFiles() {
+        synchronized(lock) {
+            val committedJobFiles = listJobBaseFiles() ?: return
+            val referenced = mutableSetOf<String>()
+            for (file in committedJobFiles) {
+                // 讀不到已提交的工作時，無法判斷哪份暫存仍有用途。
+                val job = runCatching { readJobFile(file) }.getOrNull() ?: return
+                if (job.stagingPath.isBlank() || !isInsideStagingRoot(job.stagingPath)) return
+                val path = runCatching { File(job.stagingPath).canonicalPath }.getOrNull() ?: return
+                referenced.add(path)
             }
-        root.listFiles()?.forEach { file ->
-            if (!file.isFile) {
-                return@forEach
+            stagingRoot().listFiles()?.forEach { file ->
+                val path = runCatching { file.canonicalPath }.getOrNull() ?: return@forEach
+                if (file.isFile && isInsideStagingRoot(path) && path !in referenced) {
+                    file.delete()
+                }
             }
-            val canonical = runCatching { file.canonicalPath }.getOrNull() ?: return@forEach
-            if (file.name.endsWith(".partial") || !referenced.contains(canonical)) {
-                file.delete()
+            val committedNames = committedJobFiles.map { it.name }.toSet()
+            jobsDir.listFiles()?.forEach { file ->
+                val baseName = file.name.removeSuffix(".new")
+                if (file.isFile &&
+                    file.name.endsWith(".json.new") &&
+                    isValidJobId(baseName.removeSuffix(".json")) &&
+                    baseName !in committedNames
+                ) {
+                    file.delete()
+                }
+            }
+            val orphanedSessions = sessionStore.all.keys.filter { key ->
+                val id = key.removePrefix("session_")
+                id != key && isValidJobId(id) && "$id.json" !in committedNames
+            }
+            if (orphanedSessions.isNotEmpty()) {
+                val editor = sessionStore.edit()
+                orphanedSessions.forEach(editor::remove)
+                editor.commit()
             }
         }
     }
 
     private fun readActiveJobLocked(): DriveUploadJob? {
         val jobs =
-            listJobBaseFiles().mapNotNull { file ->
+            listJobBaseFiles().orEmpty().mapNotNull { file ->
                 runCatching { readJobFile(file) }.getOrNull()
             }
         return jobs.maxByOrNull { it.updatedAtEpochMs }
     }
 
     /** 含僅剩 `.json.bak` 的 AtomicFile 工作。 */
-    private fun listJobBaseFiles(): List<File> {
-        val files = jobsDir.listFiles() ?: return emptyList()
+    private fun listJobBaseFiles(): List<File>? {
+        val files = jobsDir.listFiles() ?: return null
         val bases = linkedSetOf<String>()
         for (file in files) {
             if (!file.isFile) {
@@ -276,7 +295,7 @@ class DriveUploadJobStore private constructor(context: Context) {
             val name = file.name
             when {
                 name.endsWith(".json.bak") -> bases.add(name.removeSuffix(".bak"))
-                name.endsWith(".json") && !name.endsWith(".tmp") -> bases.add(name)
+                name.endsWith(".json") -> bases.add(name)
             }
         }
         return bases.map { File(jobsDir, it) }
@@ -309,9 +328,10 @@ class DriveUploadJobStore private constructor(context: Context) {
                 if (expectedGeneration == null || existing?.generation != expectedGeneration) {
                     return null
                 }
-                // 取消清理中只允許升 STATUS_PENDING（遠端已驗證）。
+                // 取消清理中只接受錯誤更新或遠端驗證成功，不能恢復上傳或改動內容。
                 if (existing.isCancelCleanupPhase() &&
-                    job.phase != DriveUploadPhase.STATUS_PENDING
+                    job.phase != DriveUploadPhase.STATUS_PENDING &&
+                    job.copy(lastErrorCode = existing.lastErrorCode) != existing
                 ) {
                     return null
                 }
@@ -329,16 +349,8 @@ class DriveUploadJobStore private constructor(context: Context) {
             )
         val target = jobFile(updated.jobId)
         val atomic = AtomicFile(target)
-        val json = JSONObject()
-        updated.toMap().forEach { (key, value) ->
-            if (value == null) {
-                json.put(key, JSONObject.NULL)
-            } else {
-                json.put(key, value)
-            }
-        }
-        val bytes = json.toString().toByteArray(StandardCharsets.UTF_8)
-        var stream: java.io.FileOutputStream? = null
+        val bytes = updated.toMap().toDriveJson().toString().toByteArray(StandardCharsets.UTF_8)
+        var stream: FileOutputStream? = null
         try {
             stream = atomic.startWrite()
             stream.write(bytes)
@@ -360,8 +372,11 @@ class DriveUploadJobStore private constructor(context: Context) {
     private fun cleanupStagingLocked(job: DriveUploadJob) {
         if (isInsideStagingRoot(job.stagingPath)) {
             runCatching { File(job.stagingPath).delete() }
+            val partial = "${job.stagingPath}.partial"
+            if (isInsideStagingRoot(partial)) {
+                runCatching { File(partial).delete() }
+            }
         }
-        clearSessionUri(job.jobId)
     }
 
     private fun deleteJobLocked(jobId: String) {
@@ -381,32 +396,19 @@ class DriveUploadJobStore private constructor(context: Context) {
         val atomic = AtomicFile(file)
         val bytes = atomic.readFully()
         val json = JSONObject(String(bytes, StandardCharsets.UTF_8))
-        val map = mutableMapOf<String, Any?>()
-        val keys = json.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val value = json.opt(key)
-            map[key] = if (value == JSONObject.NULL) null else value
+        return DriveUploadJob.fromMap(json.toDriveMap())?.takeIf {
+            it.jobId == file.nameWithoutExtension && it.schemaVersion == DriveUploadJob.SCHEMA_VERSION
         }
-        return DriveUploadJob.fromMap(map)
     }
 
     private fun readFailureNoticeLocked(): DriveUploadFailureNotice? {
         val encoded = sessionStore.getString(FAILURE_NOTICE_KEY, null) ?: return null
         return runCatching {
-            val json = JSONObject(encoded)
-            val map = mutableMapOf<String, Any?>()
-            val keys = json.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val value = json.opt(key)
-                map[key] = if (value == JSONObject.NULL) null else value
-            }
-            DriveUploadFailureNotice.fromMap(map)?.let { notice ->
+            DriveUploadFailureNotice.fromMap(JSONObject(encoded).toDriveMap())?.let { notice ->
                 if (notice.message.isBlank()) {
                     notice.copy(
                         message =
-                            DriveUploadLocalization.string(
+                            AndroidAppStrings.string(
                                 appContext,
                                 R.string.drive_upload_failure_default,
                             ),
@@ -419,10 +421,7 @@ class DriveUploadJobStore private constructor(context: Context) {
     }
 
     private fun writeFailureNoticeLocked(notice: DriveUploadFailureNotice) {
-        val json =
-            JSONObject()
-                .put("jobId", notice.jobId)
-                .put("message", notice.message)
+        val json = notice.toMap().toDriveJson()
         sessionStore.edit().putString(FAILURE_NOTICE_KEY, json.toString()).commit()
     }
 
@@ -478,10 +477,7 @@ class DriveUploadJobStore private constructor(context: Context) {
     }
 
     enum class Durability {
-        /**
-         * 進度寫入：AtomicFile 換檔（finishWrite 仍可能 sync），
-         * 略過額外 fd.sync；可用 probe 校正。
-         */
+        /** 進度可由伺服器校正，略過額外的檔案同步。 */
         Progress,
 
         /** 關鍵狀態：AtomicFile 換檔前再顯式 fsync。 */
@@ -562,3 +558,20 @@ class DriveUploadJobStore private constructor(context: Context) {
         fun newJobId(): String = UUID.randomUUID().toString()
     }
 }
+
+private fun JSONObject.toDriveMap(): Map<String, Any?> =
+    keys().asSequence().associateWith { key -> opt(key).takeUnless { it === JSONObject.NULL } }
+
+private fun Map<String, Any?>.toDriveJson(): JSONObject =
+    JSONObject().also { json ->
+        for ((key, value) in this) {
+            json.put(
+                key,
+                when (value) {
+                    null -> JSONObject.NULL
+                    is Map<*, *> -> JSONObject(value)
+                    else -> value
+                },
+            )
+        }
+    }

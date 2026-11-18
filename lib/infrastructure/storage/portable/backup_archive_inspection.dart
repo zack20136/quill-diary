@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
@@ -81,39 +82,40 @@ final class VaultBackupLayout {
   }
 }
 
-/// 依 zip 內 entry 路徑掃描完整備份結構（不解壓內容）。
-VaultBackupLayout inspectZipEntryNames(Iterable<String> rawNames) {
+VaultBackupLayout inspectBackupLayout(Archive archive) {
   var safePaths = true;
   var hasRecovery = false;
   var hasManifest = false;
   var entrySampleFound = false;
   var hasMarkdownPortableLayout = false;
 
-  for (final String rawName in rawNames) {
+  for (final ArchiveFile entry in archive.files) {
+    final String rawName = entry.name;
+    try {
+      ensureSafeArchivePath(rawName);
+    } on FormatException {
+      safePaths = false;
+      continue;
+    }
     final String normalized = p.posix.normalize(rawName.replaceAll('\\', '/'));
     final segments = p.posix.split(normalized);
     if (segments.isNotEmpty && segments.first.toLowerCase() == 'personas') {
       if (segments.first != 'personas' ||
           segments.length > 3 ||
+          entry.isFile && segments.length != 3 ||
           segments.length >= 2 && !isPrefixedId(segments[1], 'per') ||
           segments.length == 3 && segments[2] != 'state.json.enc') {
         safePaths = false;
       }
     }
+    if (!entry.isFile) continue;
     if (_isPortableMarkdownExportPath(normalized)) {
       hasMarkdownPortableLayout = true;
     }
-    try {
-      ensureSafeArchivePath(rawName);
-    } on FormatException {
-      safePaths = false;
-    }
-    if (normalized == 'recovery.json' ||
-        normalized.endsWith('/recovery.json')) {
+    if (normalized == 'recovery.json') {
       hasRecovery = true;
     }
-    if (normalized == 'manifest.json.enc' ||
-        normalized.endsWith('/manifest.json.enc')) {
+    if (normalized == 'manifest.json.enc') {
       hasManifest = true;
     }
     if (normalized.startsWith('entries/') && normalized.endsWith('.md.enc')) {

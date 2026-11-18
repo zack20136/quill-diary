@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
@@ -14,6 +15,7 @@ import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/infrastructure/ai/ai_transport.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_model_thinking_dialog.dart';
@@ -1326,9 +1328,8 @@ class _AiConnectionSettingsDialogState
                                 title: (l10n) => l10n.chatDiaryRulesLabel,
                                 help: (l10n) => l10n.organizationRulesHelp,
                                 defaultPrompt: (language) =>
-                                    lookupAppLocalizations(
-                                      language.materialLocale,
-                                    ).organizationRules,
+                                    localizationsFor(language)
+                                        .organizationRules,
                                 fieldKey: const ValueKey(
                                   'organization-rules-prompt',
                                 ),

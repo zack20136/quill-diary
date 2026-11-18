@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 test
 powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 build appbundle --release
 ```
 
-產物為 `build/app/outputs/bundle/release/app-release.aab`。核對套件、版本、SDK、簽章、權限、服務及 `queries`，保存 AAB、測試與 Console 紀錄。AAB 不能直接安裝；以 Play 測試軌道驗證交付簽章、OAuth 與 Billing，勿引用舊 build 作為本版證據。
+產物為 `build/app/outputs/bundle/release/app-release.aab`。核對套件、版本、SDK、簽章、權限、服務及 `queries`，保存 AAB、測試與 Console 紀錄。AAB 不能直接安裝；以 Play 測試軌道驗證交付簽章、OAuth 與 Billing，勿引用舊 build 作為當次證據。
 
 ## 商店文字底稿
 
@@ -77,7 +77,7 @@ powershell -ExecutionPolicy Bypass -File .\tool\flutter-safe.ps1 build appbundle
 
 ## App content 與審查資料
 
-| 項目 | 本版填寫與交付依據 |
+| 項目 | 填寫與交付依據 |
 |------|------|
 | 隱私政策 | 使用上節公開 URL，確認 App 內連結與 Google OAuth consent screen 一致 |
 | Data safety | 使用權限文件的資料流與分類表；包含 AI、Drive、Google Sign-In、Billing 及發布版 SDK |
@@ -120,7 +120,7 @@ Google Play 的 [AI 生成內容政策](https://support.google.com/googleplay/an
 
 ## Foreground service（dataSync）declaration
 
-target API 34+ 並使用 `FOREGROUND_SERVICE_DATA_SYNC` 須提交 declaration。本版為 `TYPE_DATA_SYNC`，use case 為 `Network transfer: Backup and restore`，實際說明見下表。
+target API 34+ 並使用 `FOREGROUND_SERVICE_DATA_SYNC` 須提交 declaration。目前為 `TYPE_DATA_SYNC`，use case 為 `Network transfer: Backup and restore`，實際說明見下表。
 
 同一服務存活期間可在網路恢復後重試；遠端驗證前的停止、系統逾時或程序中斷先對帳，保留已完成檔或清殘檔，不建立失敗提示，也不跨程序續傳；對帳完成前不能新上傳。驗證後保留成功收尾狀態；授權失效、重試耗盡或 FGS 啟動失敗仍須提示並重新備份。額度及內部狀態見[備份生命週期](../功能/備份與還原.md#背景上傳生命週期)。後續若改用官方建議的 User-Initiated Data Transfer job，再同步 declaration。
 
@@ -133,7 +133,7 @@ target API 34+ 並使用 `FOREGROUND_SERVICE_DATA_SYNC` 須提交 declaration。
 | 使用的功能 | 使用者手動將完整備份 ZIP（加密日記庫及部分明文 metadata）上傳至自己的 Drive appDataFolder，前景服務只負責交接後上傳 |
 | 延後啟動的影響 | 使用者無法即時取得剛建立的雲端備份，換機或重裝前必須等待上傳確認完成；App 因而在操作後立即啟動並顯示進度 |
 | 中斷的影響 | 中斷前若尚未驗證遠端完成，App 對帳後保留已完成備份或刪除未完成殘檔；不宣稱跨程序續傳。未成功備份時須重新操作 |
-| 使用者控制 | 功能由使用者按鈕觸發；App 內顯示進度並可停止，通知可用時也提供進度與停止。通知被拒絕或頻道關閉不阻止上傳服務啟動。完成、取消或系統終止後依生命週期收尾，不常駐排程同步 |
+| 使用者控制 | 功能由使用者按鈕觸發；App 內顯示進度並可停止，通知可用時也提供進度與停止。通知處理見[權限文件](Android-權限與資料揭露.md)。完成、取消或系統終止後依生命週期收尾，不常駐排程同步 |
 
 影片使用送審版與合成資料：連結 Drive → 點上傳 → 顯示通知 → 切換 App 仍有進度 → 回 App 顯示完成；另示範通知停止、清理完成及可重新操作。勿揭露金鑰／私人帳戶，將免申請權限即可觀看的真實影片 URL 填入 Console。見 [FGS declaration 要求](https://support.google.com/googleplay/android-developer/answer/13392821)。
 
@@ -143,7 +143,7 @@ target API 34+ 並使用 `FOREGROUND_SERVICE_DATA_SYNC` 須提交 declaration。
 
 ## 建議送審檢查清單
 
-1. 確認版本遞增、套件名稱及 release 簽章，產出本次 AAB 並核對 Manifest。
+1. 確認版本遞增、套件名稱及 release 簽章，產出本次 AAB；Manifest 核對見[權限文件](Android-權限與資料揭露.md#發布核對)。
 2. 確認開發者驗證、套件註冊與 Console 必要宣告均完成。
 3. 核對公開法律頁、第三方授權與 OAuth consent screen，保留 Google API Limited Use 聲明。
 4. 依[權限文件](Android-權限與資料揭露.md)更新 Data safety；依實際功能填寫目標對象、內容分級與廣告宣告。

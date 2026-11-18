@@ -12,7 +12,6 @@ import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/domain/vault_salvage_draft.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -23,12 +22,11 @@ import 'package:quill_diary/infrastructure/markdown/visible_text_from_markdown.d
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/infrastructure/storage/tag_catalog_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
-import 'package:quill_diary/shared/data_versions.dart';
 
 const String _kLastRepairSummaryKey = 'last_repair_summary';
 const String _kLastInspectSummaryKey = 'last_inspect_summary';
@@ -358,7 +356,10 @@ class VaultRepairService {
 
       if (_looksLikeVaultRelativePath(reference)) {
         final String absolute = p.normalize(p.join(normalizedRoot, reference));
-        if (_isSafeVaultContentPath(absolute, normalizedRoot)) {
+        if (_repairFileOperations.isInsideVaultContent(
+          absolute,
+          normalizedRoot,
+        )) {
           pathsToDelete.add(absolute);
         }
         continue;
@@ -370,7 +371,10 @@ class VaultRepairService {
           assetId: reference,
         );
         for (final File file in assetFiles) {
-          if (_isSafeVaultContentPath(file.path, normalizedRoot)) {
+          if (_repairFileOperations.isInsideVaultContent(
+            file.path,
+            normalizedRoot,
+          )) {
             pathsToDelete.add(p.normalize(file.path));
           }
         }
@@ -400,7 +404,9 @@ class VaultRepairService {
 
     var deletedCount = 0;
     for (final String path in pathsToDelete) {
-      if (!_isSafeVaultContentPath(path, normalizedRoot)) continue;
+      if (!_repairFileOperations.isInsideVaultContent(path, normalizedRoot)) {
+        continue;
+      }
       if (path.endsWith('.md.enc')) await deleteEntryChatFiles(path);
       if (path.endsWith('.chat.json.enc')) {
         await deleteFileIfExists('$path.previous');
@@ -447,18 +453,6 @@ class VaultRepairService {
     return normalized.startsWith('entries/') ||
         normalized.startsWith('assets/') ||
         normalized.contains('/');
-  }
-
-  bool _isSafeVaultContentPath(String absolutePath, String normalizedRoot) {
-    final String normalized = p.normalize(absolutePath);
-    if (!p.isWithin(normalizedRoot, normalized) &&
-        normalized != normalizedRoot) {
-      return false;
-    }
-    final String relative = p
-        .relative(normalized, from: normalizedRoot)
-        .replaceAll('\\', '/');
-    return relative.startsWith('entries/') || relative.startsWith('assets/');
   }
 
   Future<List<File>> _findAssetFilesById({
@@ -597,7 +591,9 @@ class VaultRepairService {
     await _people.cancelRebuild();
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final ({List<File> entries, List<File> assets}) inventory =
-        await _snapshotRepairInventory();
+        await _repairFileOperations.snapshotVaultContent(
+          await _pathStrategy.vaultRootDirectory(),
+        );
 
     onProgress?.call(VaultRepairPhase.scanningEntries);
     final _EntryRepairStats entryStats = await _scanEntries(
@@ -629,7 +625,12 @@ class VaultRepairService {
       entryStats.scanned,
     );
     onProgress?.call(VaultRepairPhase.rebuildingIndex);
-    await _writeRebuiltIndex(indexEntries, prunePinnedEntries: !hasEntryIssues);
+    await _writeRebuiltIndex(
+      indexEntries,
+      session: session,
+      metadata: metadata,
+      prunePinnedEntries: !hasEntryIssues,
+    );
     onProgress?.call(VaultRepairPhase.rebuildingPeopleAnalytics);
     await _people.ensurePeopleAnalyticsReady(session);
 
@@ -650,6 +651,8 @@ class VaultRepairService {
 
   Future<void> _writeRebuiltIndex(
     List<_ScannedEntry> entries, {
+    required UnlockedVaultSession session,
+    required RecoveryMetadata metadata,
     required bool prunePinnedEntries,
   }) async {
     final IndexDatabase indexDb = _indexDatabaseManager.requireOpen();
@@ -680,37 +683,23 @@ class VaultRepairService {
         kLastRebuildAtKey,
         DateTime.now().toIso8601String(),
       );
-      await indexDb.setAppValue(
-        kIndexGenerationKey,
-        DataVersions.entryIndexGeneration.toString(),
-      );
     });
 
-    await TagStylesStore(_pathStrategy).read();
-    if (collectedTagLabels.isNotEmpty) {
-      await TagStylesStore(_pathStrategy).ensureLabels(collectedTagLabels);
+    try {
+      final tags = TagCatalogStore(_pathStrategy, _cryptoService);
+      await tags.ensureLabels(collectedTagLabels, session, metadata);
+      await tags.applyToIndex(
+        _indexDatabaseManager.requireOpen(),
+        session,
+        metadata,
+      );
+    } on TagCatalogException {
+      // 標籤目錄不可讀時，仍可從正文建立索引；目錄由獨立重試恢復。
     }
-    await TagStylesStore(_pathStrategy)
-        .applyToIndex(_indexDatabaseManager.requireOpen());
     if (prunePinnedEntries) {
       await PinnedEntriesStore(_pathStrategy)
           .pruneTo(entries.map((_ScannedEntry item) => item.entry.id));
     }
-  }
-
-  Future<({List<File> entries, List<File> assets})>
-  _snapshotRepairInventory() async {
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    return (
-      entries: await _repairFileOperations.snapshotFiles(
-        Directory(p.join(vaultRoot.path, 'entries')),
-        '.md.enc',
-      ),
-      assets: await _repairFileOperations.snapshotFiles(
-        Directory(p.join(vaultRoot.path, 'assets')),
-        '.enc',
-      ),
-    );
   }
 
   bool _hasUnresolvedEntryIssues(List<VaultRepairIssue> issues) {
@@ -765,7 +754,9 @@ class VaultRepairService {
     await _people.cancelRebuild();
     final RecoveryMetadata metadata = await _requireMetadataForSession(session);
     final ({List<File> entries, List<File> assets}) inventory =
-        await _snapshotRepairInventory();
+        await _repairFileOperations.snapshotVaultContent(
+          await _pathStrategy.vaultRootDirectory(),
+        );
 
     onProgress?.call(VaultRepairPhase.scanningEntries);
     final _EntryRepairStats entryStats = await _scanEntries(
@@ -784,9 +775,15 @@ class VaultRepairService {
       repair: true,
     );
 
-    final Set<String> catalogNorms = (await TagStylesStore(
-      _pathStrategy,
-    ).read()).map((TagCatalogItem item) => item.normalized).toSet();
+    Set<String> catalogNorms;
+    try {
+      catalogNorms = (await TagCatalogStore(
+        _pathStrategy,
+        _cryptoService,
+      ).read(session, metadata)).map((item) => item.normalized).toSet();
+    } on TagCatalogException {
+      catalogNorms = {};
+    }
     final Set<String> collectedTagLabels = <String>{};
     for (final _ScannedEntry scanned in entryStats.scanned) {
       collectedTagLabels.addAll(scanned.entry.tags);
@@ -1019,7 +1016,12 @@ class VaultRepairService {
     );
 
     onProgress?.call(VaultRepairPhase.rebuildingIndex);
-    await _writeRebuiltIndex(indexEntries, prunePinnedEntries: false);
+    await _writeRebuiltIndex(
+      indexEntries,
+      session: session,
+      metadata: metadata,
+      prunePinnedEntries: false,
+    );
     if (!hasEntryIssues) {
       await PinnedEntriesStore(_pathStrategy)
           .pruneTo(indexEntries.map((_ScannedEntry item) => item.entry.id));
@@ -1086,12 +1088,16 @@ class VaultRepairService {
                 if (target.fileId == 'unknown' || target.countsAsBadAsset) {
                   final Directory root = await _pathStrategy
                       .vaultRootDirectory();
-                  return _isSafeVaultContentPath(path, p.normalize(root.path));
+                  return _repairFileOperations.isInsideVaultContent(
+                    path,
+                    p.normalize(root.path),
+                  );
                 }
-                return _validateRepairFile(
+                return _repairFileOperations.matchesEncryptedFile(
                   path,
                   session: session,
-                  metadata: metadata,
+                  crypto: _cryptoService,
+                  vaultId: metadata.vaultId,
                   expectedId: target.fileId,
                   expectedContentType: target.contentType,
                   expectedPlaintextHash: target.plaintextHash,
@@ -1822,15 +1828,17 @@ class VaultRepairService {
               .copyAtomicallyIfAbsent(
                 sourcePath: currentPath,
                 targetPath: normalizedCanonical,
-                validate: (String copiedPath) => _validateRepairFile(
-                  copiedPath,
-                  session: session,
-                  metadata: metadata,
-                  expectedId: raw.entry.id,
-                  expectedContentType: 'text/markdown',
-                  expectedPlaintextHash: raw.plaintextHash,
-                  validateAttachmentContent: false,
-                ),
+                validate: (String copiedPath) =>
+                    _repairFileOperations.matchesEncryptedFile(
+                      copiedPath,
+                      session: session,
+                      crypto: _cryptoService,
+                      vaultId: metadata.vaultId,
+                      expectedId: raw.entry.id,
+                      expectedContentType: 'text/markdown',
+                      expectedPlaintextHash: raw.plaintextHash,
+                      validateAttachmentContent: false,
+                    ),
               );
           if (result == VaultRepairCopyResult.targetExists) {
             issues.add(
@@ -2308,15 +2316,17 @@ class VaultRepairService {
               .copyAtomicallyIfAbsent(
                 sourcePath: selected.path,
                 targetPath: canonicalPath,
-                validate: (String copiedPath) => _validateRepairFile(
-                  copiedPath,
-                  session: session,
-                  metadata: metadata,
-                  expectedId: selected.id,
-                  expectedContentType: selected.mimeType,
-                  expectedPlaintextHash: selected.plaintextHash,
-                  validateAttachmentContent: true,
-                ),
+                validate: (String copiedPath) =>
+                    _repairFileOperations.matchesEncryptedFile(
+                      copiedPath,
+                      session: session,
+                      crypto: _cryptoService,
+                      vaultId: metadata.vaultId,
+                      expectedId: selected.id,
+                      expectedContentType: selected.mimeType,
+                      expectedPlaintextHash: selected.plaintextHash,
+                      validateAttachmentContent: true,
+                    ),
               );
           if (result == VaultRepairCopyResult.targetExists) {
             addAssetFinding(
@@ -2449,35 +2459,6 @@ class VaultRepairService {
     return DateTime.tryParse(value);
   }
 
-  Future<bool> _validateRepairFile(
-    String path, {
-    required UnlockedVaultSession session,
-    required RecoveryMetadata metadata,
-    required String expectedId,
-    required String expectedContentType,
-    required String expectedPlaintextHash,
-    required bool validateAttachmentContent,
-  }) async {
-    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
-      await File(path).readAsBytes(),
-    );
-    if (parsed.header.fileId != expectedId ||
-        parsed.header.vaultId != metadata.vaultId ||
-        parsed.header.contentType != expectedContentType) {
-      return false;
-    }
-    final List<int> plaintext = await _cryptoService.decryptBytes(
-      headerBytes: parsed.headerBytes,
-      ciphertextBytes: parsed.ciphertextBytes,
-      context: vaultDecryptionContext(session),
-    );
-    if (validateAttachmentContent &&
-        !attachmentContentMatchesMimeType(plaintext, expectedContentType)) {
-      return false;
-    }
-    return await hashVaultBytes(plaintext) == expectedPlaintextHash;
-  }
-
   Future<String> _vaultRelativeReference(String absolutePath) async {
     final Directory root = await _pathStrategy.vaultRootDirectory();
     return p
@@ -2555,10 +2536,11 @@ class VaultRepairService {
           // 無法解密時比對原始檔 bytes，避免 targetExists 誤刪來源。
           return _sameFileBytes(path, target.path);
         }
-        return _validateRepairFile(
+        return _repairFileOperations.matchesEncryptedFile(
           path,
           session: session,
-          metadata: metadata,
+          crypto: _cryptoService,
+          vaultId: metadata.vaultId,
           expectedId: target.fileId,
           expectedContentType: target.contentType,
           expectedPlaintextHash: target.plaintextHash,

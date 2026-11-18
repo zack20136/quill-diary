@@ -23,8 +23,7 @@ void main() {
   RestorePrecheck buildPrecheck({required bool willOverwriteLocalVault}) {
     return RestorePrecheck(
       preview: BackupRecoveryPreview(metadata: backupMetadata),
-      localVaultId: 'vlt_restore_dialog',
-      localRecoverySaltBase64: backupMetadata.kdf.saltBase64,
+      localMetadata: backupMetadata,
       localHasTrustedDevice: true,
       willOverwriteLocalVault: willOverwriteLocalVault,
     );

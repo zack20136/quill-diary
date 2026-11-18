@@ -15,6 +15,8 @@ import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
 import 'package:quill_diary/application/transfer/vault_backup_service.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
@@ -245,6 +247,7 @@ class _FlowRepairService extends FakeSessionVaultRepository {
 
 class _RecoverySessionVaultRepository extends FakeSessionVaultRepository {
   _RecoverySessionVaultRepository({
+    super.metadata,
     this.setupRecoveryKeyResult,
     this.rotateRecoveryKeyResult,
     this.ensureKeystoreResult,
@@ -253,6 +256,7 @@ class _RecoverySessionVaultRepository extends FakeSessionVaultRepository {
   final RecoverySetupResult? setupRecoveryKeyResult;
   final RecoverySetupResult? rotateRecoveryKeyResult;
   final Object? ensureKeystoreResult;
+  PreparedRecoveryKeyRotation? appliedRotation;
 
   @override
   Future<RecoverySetupResult> setupRecoveryKey() async {
@@ -266,7 +270,9 @@ class _RecoverySessionVaultRepository extends FakeSessionVaultRepository {
   @override
   Future<RecoverySetupResult> rotateRecoveryKey(
     UnlockedVaultSession session,
+    PreparedRecoveryKeyRotation prepared,
   ) async {
+    appliedRotation = prepared;
     final RecoverySetupResult? result = rotateRecoveryKeyResult;
     if (result == null) {
       throw StateError('rotateRecoveryKeyResult not configured');
@@ -366,7 +372,11 @@ void main() {
 
         await expectLater(
           () => controller.prepareDriveRestore(
-            pickBackup: (List<DriveBackupFile> backups) async => backups.first,
+            (const DriveBackupFile(
+              id: 'drive_1',
+              name: 'drive-backup.zip',
+              createdAt: null,
+            )),
           ),
           throwsA(isA<StateError>()),
         );
@@ -740,9 +750,19 @@ void main() {
     });
 
     group('rotateRecoveryKey', () {
-      test('輪替復原金鑰成功時回傳金鑰與 success feedback', () async {
+      test('輪替使用已確認保存的草稿，成功後啟用新會話', () async {
         final _RecoverySessionVaultRepository repository =
             _RecoverySessionVaultRepository(
+              metadata: RecoveryMetadata(
+                vaultId: _kUnlockedSession.vaultId,
+                recoveryEnabled: true,
+                recoveryKeyVersion: 1,
+                recoveryKeyHint: 'TEST',
+                createdAt: DateTime.utc(2026),
+                kdf: KdfDescriptor.argon2idRecovery(
+                  saltBytes: List.filled(16, 1),
+                ),
+              ),
               rotateRecoveryKeyResult: const RecoverySetupResult(
                 recoveryKey: 'rotated-key',
                 session: _kSyncedUnlockedSession,
@@ -765,12 +785,16 @@ void main() {
           settingsFlowControllerProvider,
         );
 
-        final SettingsRecoveryKeyResult result = await controller
-            .rotateRecoveryKey(l10n);
+        final prepared = await controller.prepareRecoveryKeyRotation();
+        expect(repository.appliedRotation, isNull);
+        final SettingsFlowFeedback result = await controller.rotateRecoveryKey(
+          l10n,
+          prepared,
+        );
 
-        expect(result.recoveryKey, 'rotated-key');
-        expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
-        expect(result.feedback.message, l10n.sessionRecoveryKeyRotatedMessage);
+        expect(repository.appliedRotation, same(prepared));
+        expect(result.tone, SettingsFlowFeedbackTone.success);
+        expect(result.message, l10n.sessionRecoveryKeyRotatedMessage);
         expect(
           container.read(appSessionProvider).session,
           same(_kSyncedUnlockedSession),

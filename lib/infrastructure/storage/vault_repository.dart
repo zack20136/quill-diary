@@ -14,6 +14,8 @@ import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -30,11 +32,13 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/recovery_rotation_record.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
-import 'package:quill_diary/infrastructure/storage/tag_styles_store.dart';
+import 'package:quill_diary/infrastructure/storage/tag_catalog_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
@@ -50,38 +54,11 @@ class RecoverySetupResult {
   final UnlockedVaultSession session;
 }
 
-class _RecoveryRotationPending {
-  const _RecoveryRotationPending({
-    required this.oldMetadata,
-    required this.newMetadata,
-    required this.newRecoveryKey,
-  });
+final class PreparedRecoveryKeyRotation {
+  const PreparedRecoveryKeyRotation._(this.recoveryKey, this._metadata);
 
-  final RecoveryMetadata oldMetadata;
-  final RecoveryMetadata newMetadata;
-  final String newRecoveryKey;
-
-  Map<String, Object?> toJson() => <String, Object?>{
-    'old_metadata': oldMetadata.toJson(),
-    'new_metadata': newMetadata.toJson(),
-    'new_recovery_key': newRecoveryKey,
-  };
-
-  factory _RecoveryRotationPending.fromJson(Map<String, Object?> json) {
-    final Object? old = json['old_metadata'];
-    final Object? next = json['new_metadata'];
-    if (old is! Map<String, Object?> ||
-        next is! Map<String, Object?> ||
-        json['new_recovery_key'] is! String ||
-        (json['new_recovery_key'] as String).trim().isEmpty) {
-      throw const FormatException('Recovery Key 輪替續跑資料格式不正確。');
-    }
-    return _RecoveryRotationPending(
-      oldMetadata: RecoveryMetadata.fromJson(old),
-      newMetadata: RecoveryMetadata.fromJson(next),
-      newRecoveryKey: json['new_recovery_key'] as String,
-    );
-  }
+  final String recoveryKey;
+  final RecoveryMetadata _metadata;
 }
 
 class _RecoveryRotationResolution {
@@ -119,7 +96,9 @@ class VaultRepository {
     required this._deviceKeyManager,
     required this._appLockService,
     this._repairFileOperations = const VaultRepairFileOperations(),
-  });
+    BackupStatusStore? backupStatusStore,
+  }) : _backupStatus =
+           backupStatusStore ?? BackupStatusStore(pathStrategy: _pathStrategy);
 
   final VaultPathStrategy _pathStrategy;
   final FrontMatterCodec _frontMatterCodec;
@@ -128,6 +107,7 @@ class VaultRepository {
   final DeviceKeyManager _deviceKeyManager;
   final AppLockService _appLockService;
   final VaultRepairFileOperations _repairFileOperations;
+  final BackupStatusStore _backupStatus;
 
   late final VaultPeopleService _people = VaultPeopleService(
     pathStrategy: _pathStrategy,
@@ -146,6 +126,55 @@ class VaultRepository {
     copyChatFiles: _copyChatFilesBesideEntry,
     repairFileOperations: _repairFileOperations,
   );
+
+  late final TagCatalogStore _tagCatalog = TagCatalogStore(
+    _pathStrategy,
+    _cryptoService,
+  );
+  UnlockedVaultSession? _tagCatalogSession;
+  final ValueNotifier<bool> tagCatalogNeedsRetry = ValueNotifier(false);
+
+  UnlockedVaultSession get _requireTagCatalogSession =>
+      _tagCatalogSession ?? (throw StateError('標籤目錄需要已解鎖的日記庫'));
+
+  Future<List<TagCatalogItem>> _readTagCatalog() async {
+    try {
+      final items = await _tagCatalog.read(
+        _requireTagCatalogSession,
+        await _requireMetadataForSession(_requireTagCatalogSession),
+      );
+      tagCatalogNeedsRetry.value = false;
+      return items;
+    } on TagCatalogException {
+      tagCatalogNeedsRetry.value = true;
+      rethrow;
+    }
+  }
+
+  Future<void> retryTagCatalog() => runVaultMutation(() async {
+    await _readTagCatalog();
+    await _applyTagCatalogFromVaultToIndex();
+  });
+
+  Future<Map<String, Uint8List>> prepareTagCatalogBackup({
+    required bool preservation,
+  }) async {
+    if (_tagCatalogSession == null &&
+        !File(await _pathStrategy.tagCatalogPath()).existsSync() &&
+        !File(await _pathStrategy.legacyTagCatalogPath()).existsSync()) {
+      return {};
+    }
+    try {
+      await _readTagCatalog();
+      return {};
+    } on TagCatalogException {
+      if (!preservation) rethrow;
+      return _tagCatalog.preserveLegacyFiles(
+        _requireTagCatalogSession,
+        await _requireMetadataForSession(_requireTagCatalogSession),
+      );
+    }
+  }
 
   Future<void> _mutationTail = Future<void>.value();
 
@@ -436,16 +465,18 @@ class VaultRepository {
     }
 
     final File file = File(await _pathStrategy.recoveryMetadataPath());
-    if (!file.existsSync()) {
-      return null;
-    }
-
-    final Object? decoded = jsonDecode(await file.readAsString());
-    if (decoded is! Map<String, Object?>) {
-      throw const FormatException('Recovery metadata 格式不正確。');
-    }
-
-    _cachedRecoveryMetadata = RecoveryMetadata.fromJson(decoded);
+    RecoveryMetadata? metadata;
+    await recoverFileReplacement(
+      file,
+      validate: (candidate) async {
+        final Object? decoded = jsonDecode(await candidate.readAsString());
+        if (decoded is! Map<String, Object?>) {
+          throw const FormatException('Recovery metadata 格式不正確。');
+        }
+        metadata = RecoveryMetadata.fromJson(decoded);
+      },
+    );
+    _cachedRecoveryMetadata = metadata;
     return _cachedRecoveryMetadata;
   }
 
@@ -454,7 +485,7 @@ class VaultRepository {
       throw StateError('復原金鑰已存在。');
     }
 
-    final String recoveryKey = _generateRecoveryKey();
+    final String recoveryKey = RecoveryKey.generate();
     final KdfDescriptor recoveryKdf = KdfDescriptor.argon2idRecovery(
       saltBytes: List<int>.generate(16, (_) => Random.secure().nextInt(256)),
     );
@@ -464,7 +495,7 @@ class VaultRepository {
     final RecoveryMetadata metadata = RecoveryMetadata(
       vaultId: generateVaultId(),
       recoveryEnabled: true,
-      recoveryKeyVersion: DataVersions.initialRecoveryKey,
+      recoveryKeyVersion: RecoveryMetadata.initialKeyVersion,
       recoveryKeyHint: recoveryKey.substring(recoveryKey.length - 4),
       createdAt: DateTime.now(),
       kdf: recoveryKdf,
@@ -504,25 +535,40 @@ class VaultRepository {
     return RecoverySetupResult(recoveryKey: recoveryKey, session: session);
   }
 
-  /// 輪替復原金鑰：先建立可用舊金鑰還原的續跑資料，再更新日記庫。
-  Future<RecoverySetupResult> rotateRecoveryKey(UnlockedVaultSession session) =>
-      runVaultMutation(() => _rotateRecoveryKey(session));
+  Future<PreparedRecoveryKeyRotation> prepareRecoveryKeyRotation(
+    UnlockedVaultSession session,
+  ) => runVaultMutation(() async {
+    await _ensureRecoveryRotationIdle();
+    final metadata = await _requireMetadataForSession(session);
+    requireRecoveryWrapKey(session);
+    return PreparedRecoveryKeyRotation._(RecoveryKey.generate(), metadata);
+  });
+
+  Future<RecoverySetupResult> rotateRecoveryKey(
+    UnlockedVaultSession session,
+    PreparedRecoveryKeyRotation prepared,
+  ) => runVaultMutation(() => _rotateRecoveryKey(session, prepared));
 
   Future<RecoverySetupResult> _rotateRecoveryKey(
     UnlockedVaultSession session,
+    PreparedRecoveryKeyRotation prepared,
   ) async {
+    await _ensureRecoveryRotationIdle();
     final RecoveryMetadata oldMetadata = await _requireMetadataForSession(
       session,
     );
+    if (!oldMetadata.hasSameRecoveryGenerationAs(prepared._metadata)) {
+      throw const RecoveryKeyRotationDraftExpiredException();
+    }
     final List<int> oldWrapKey = requireRecoveryWrapKey(session);
     await _verifyRecoveryKey(oldMetadata, oldWrapKey);
     final KeystoreAuthKind authKind = await _requireCurrentKeystoreAuthKind();
 
     await _validatePersonaReplacementState();
     await _openIndexForSession(session);
-    await _setRewrapState(inProgress: true);
+    await _readTagCatalog();
     try {
-      final String recoveryKey = _generateRecoveryKey();
+      final String recoveryKey = prepared.recoveryKey;
       final KdfDescriptor newKdf = KdfDescriptor.argon2idRecovery(
         saltBytes: List<int>.generate(16, (_) => Random.secure().nextInt(256)),
       );
@@ -539,18 +585,32 @@ class VaultRepository {
         kdf: newKdf,
       );
 
+      final oldIdentity = await RecoveryKeyIdentity.fromMetadata(oldMetadata);
+      final newIdentity = await RecoveryKeyIdentity.fromMetadata(newMetadata);
+      await _backupStatus.reconcileRecoveryRotation(oldIdentity);
+      final previousRequirement = await _backupStatus.beginRecoveryRotation(
+        oldIdentity,
+        newIdentity,
+      );
       await _writeRecoveryRotationPending(
+        previousBackupRequirement: previousRequirement,
         oldMetadata: oldMetadata,
         newMetadata: newMetadata,
         newRecoveryKey: recoveryKey,
         oldRecoveryWrapKey: oldWrapKey,
       );
+      await _setRewrapState(inProgress: true);
       await _rewrapVaultRecoveryKey(
         vaultId: session.vaultId,
         oldRecoveryWrapKey: oldWrapKey,
         newRecoveryWrapKey: newWrapKey,
         newMetadata: newMetadata,
       );
+      UnlockedVaultSession updatedSession = session.copyWith(
+        recoveryWrapKey: newWrapKey,
+      );
+      await _indexDatabaseManager.rekeyForSession(updatedSession);
+      await _verifyRecoveryKey(newMetadata, newWrapKey);
 
       await atomicWriteString(
         File(await _pathStrategy.recoveryMetadataPath()),
@@ -558,20 +618,17 @@ class VaultRepository {
       );
       _cachedRecoveryMetadata = newMetadata;
 
-      UnlockedVaultSession updatedSession = session.copyWith(
-        recoveryWrapKey: newWrapKey,
-      );
+      await _repair.inspectVaultWithReport(updatedSession);
       await _storeWrappedRecoveryKey(
         vaultId: oldMetadata.vaultId,
         recoveryWrapKey: newWrapKey,
         authKind: authKind,
       );
       updatedSession = await ensureKeystoreMatchesUnlockMode(updatedSession);
-      await _repair.inspectVaultWithReport(updatedSession);
       await _setRewrapState(inProgress: false);
-      await deleteFileIfExists(
-        await _pathStrategy.recoveryRotationPendingPath(),
-      );
+      await _backupStatus.setBackupRequirement(newIdentity);
+      await _deleteRecoveryRotationPending();
+      _tagCatalogSession = updatedSession;
 
       return RecoverySetupResult(
         recoveryKey: recoveryKey,
@@ -579,9 +636,17 @@ class VaultRepository {
       );
     } catch (_, stackTrace) {
       Error.throwWithStackTrace(
-        StateError('復原金鑰輪替失敗，已保留進行中旗標以便下次自動續跑。'),
+        StateError('復原金鑰輪替未完成，已開始的作業會在下次解鎖時恢復。'),
         stackTrace,
       );
+    }
+  }
+
+  Future<void> _ensureRecoveryRotationIdle() async {
+    if (hasFileReplacementCandidates(
+      File(await _pathStrategy.recoveryRotationPendingPath()),
+    )) {
+      throw const RecoveryKeyRotationPendingException();
     }
   }
 
@@ -763,9 +828,8 @@ class VaultRepository {
     return _requireOpenIndex().attachmentsForEntry(entryId);
   }
 
-  Future<List<TagCatalogItem>> listTagCatalog() {
-    return TagStylesStore(_pathStrategy).read();
-  }
+  Future<List<TagCatalogItem>> listTagCatalog() =>
+      runVaultMutation(_readTagCatalog);
 
   Future<Set<EntryId>> listPinnedEntryIds() {
     return PinnedEntriesStore(_pathStrategy).readIds();
@@ -783,6 +847,18 @@ class VaultRepository {
     String label, {
     int? accentArgb,
     bool? accentIsCustom,
+  }) => runVaultMutation(
+    () => _upsertTagCatalogItem(
+      label,
+      accentArgb: accentArgb,
+      accentIsCustom: accentIsCustom,
+    ),
+  );
+
+  Future<void> _upsertTagCatalogItem(
+    String label, {
+    int? accentArgb,
+    bool? accentIsCustom,
   }) async {
     final String displayLabel = label.trim().replaceAll(RegExp(r'\s+'), ' ');
     final String normalized = normalizeText(displayLabel);
@@ -790,8 +866,8 @@ class VaultRepository {
       throw ArgumentError.value(label, 'label', '標籤名稱不可為空白');
     }
 
-    final List<TagCatalogItem> catalog = await listTagCatalog();
-    final List<TagCatalogItem> merged = TagStylesStore.merge(
+    final List<TagCatalogItem> catalog = await _readTagCatalog();
+    final List<TagCatalogItem> merged = TagCatalogStore.merge(
       catalog,
       <TagCatalogItem>[
         TagCatalogItem(
@@ -801,7 +877,7 @@ class VaultRepository {
         ),
       ],
     );
-    await _persistTagCatalogToVault(merged);
+    await _writeTagCatalogWithinMutation(merged);
     final TagCatalogItem saved = merged.firstWhere(
       (TagCatalogItem item) => item.normalized == normalized,
     );
@@ -813,19 +889,33 @@ class VaultRepository {
     }
   }
 
-  Future<void> ensureTagCatalogLabels(Iterable<String> labels) =>
-      TagStylesStore(_pathStrategy).ensureLabels(labels);
+  Future<void> _ensureTagCatalogLabels(Iterable<String> labels) async {
+    if (labels.every((label) => label.trim().isEmpty)) return;
+    try {
+      await _tagCatalog.ensureLabels(
+        labels,
+        _requireTagCatalogSession,
+        await _requireMetadataForSession(_requireTagCatalogSession),
+      );
+      tagCatalogNeedsRetry.value = false;
+    } on TagCatalogException {
+      tagCatalogNeedsRetry.value = true;
+    }
+  }
 
-  Future<void> deleteTagCatalogItem(String label) async {
+  Future<void> deleteTagCatalogItem(String label) =>
+      runVaultMutation(() => _deleteTagCatalogItem(label));
+
+  Future<void> _deleteTagCatalogItem(String label) async {
     final String normalized = normalizeText(label);
     if (normalized.isEmpty) {
       return;
     }
-    final List<TagCatalogItem> catalog = await listTagCatalog();
+    final List<TagCatalogItem> catalog = await _readTagCatalog();
     final List<TagCatalogItem> next = catalog
         .where((TagCatalogItem item) => item.normalized != normalized)
         .toList(growable: false);
-    await _persistTagCatalogToVault(next);
+    await _writeTagCatalogWithinMutation(next);
     await _requireOpenIndex().deleteTagAccentArgb(label);
   }
 
@@ -883,7 +973,7 @@ class VaultRepository {
     final List<TagCatalogItem> base = catalog
         .where((TagCatalogItem item) => item.normalized != fromNorm)
         .toList(growable: false);
-    final List<TagCatalogItem> merged = TagStylesStore.merge(
+    final List<TagCatalogItem> merged = TagCatalogStore.merge(
       base,
       <TagCatalogItem>[
         TagCatalogItem(
@@ -989,17 +1079,41 @@ class VaultRepository {
     return updatedCount;
   }
 
-  Future<void> _persistTagCatalogToVault(List<TagCatalogItem> catalog) {
-    return TagStylesStore(_pathStrategy).write(catalog);
+  Future<void> _writeTagCatalogWithinMutation(
+    List<TagCatalogItem> catalog,
+  ) async {
+    try {
+      await _tagCatalog.write(
+        catalog,
+        _requireTagCatalogSession,
+        await _requireMetadataForSession(_requireTagCatalogSession),
+      );
+      tagCatalogNeedsRetry.value = false;
+    } on TagCatalogException {
+      tagCatalogNeedsRetry.value = true;
+      rethrow;
+    }
   }
 
-  Future<void> _applyTagCatalogFromVaultToIndex() =>
-      TagStylesStore(_pathStrategy).applyToIndex(_requireOpenIndex());
+  Future<void> _persistTagCatalogToVault(List<TagCatalogItem> catalog) =>
+      runVaultMutation(() => _writeTagCatalogWithinMutation(catalog));
+
+  Future<void> _applyTagCatalogFromVaultToIndex() async {
+    try {
+      await _tagCatalog.applyToIndex(
+        _requireOpenIndex(),
+        _requireTagCatalogSession,
+        await _requireMetadataForSession(_requireTagCatalogSession),
+      );
+      tagCatalogNeedsRetry.value = false;
+    } on TagCatalogException {
+      tagCatalogNeedsRetry.value = true;
+    }
+  }
 
   /// 重建或還原後保持日記庫檔案與索引同步。
-  Future<void> syncTagStylesBetweenVaultAndIndex() async {
-    await _applyTagCatalogFromVaultToIndex();
-  }
+  Future<void> applyTagCatalogToIndex() =>
+      runVaultMutation(_applyTagCatalogFromVaultToIndex);
 
   Future<bool> canSalvageFindings(
     UnlockedVaultSession session,
@@ -1236,7 +1350,7 @@ class VaultRepository {
       },
     );
     await _writeEncryptedManifest(session, metadata);
-    await ensureTagCatalogLabels(normalized.tags);
+    await _ensureTagCatalogLabels(normalized.tags);
     await _deleteObsoleteFilesAfterSave(obsoletePathsAfterSave);
     return normalized;
   }
@@ -1306,13 +1420,15 @@ class VaultRepository {
     UnlockedVaultSession session, {
     VaultRepairProgressCallback? onProgress,
     String? backupFileName,
-  }) => runVaultMutation(
-    () => _repair.repairVaultWithReport(
+  }) => runVaultMutation(() async {
+    final report = await _repair.repairVaultWithReport(
       session,
       onProgress: onProgress,
       backupFileName: backupFileName,
-    ),
-  );
+    );
+    await cleanupAbandonedLocalArtifacts(_pathStrategy);
+    return report;
+  });
 
   Future<bool> _copyAssetFileIfNeeded({
     required DateOnly date,
@@ -1369,14 +1485,17 @@ class VaultRepository {
   }
 
   /// 僅在 catalog 為空時寫入預設標籤；已存在則 no-op。需 index 已開啟。
-  Future<bool> seedDefaultTagCatalogIfEmpty(
+  Future<bool> seedDefaultTagCatalogIfEmpty(List<TagCatalogItem> items) =>
+      runVaultMutation(() => _seedDefaultTagCatalogIfEmpty(items));
+
+  Future<bool> _seedDefaultTagCatalogIfEmpty(
     List<TagCatalogItem> defaultCatalog,
   ) async {
-    final List<TagCatalogItem> existing = await listTagCatalog();
+    final List<TagCatalogItem> existing = await _readTagCatalog();
     if (existing.isNotEmpty) {
       return false;
     }
-    await _persistTagCatalogToVault(defaultCatalog);
+    await _writeTagCatalogWithinMutation(defaultCatalog);
     final IndexDatabase indexDb = _requireOpenIndex();
     for (final TagCatalogItem item in defaultCatalog) {
       if (item.accentArgb == null) {
@@ -1634,22 +1753,25 @@ class VaultRepository {
   }
 
   Future<void> _writeRecoveryRotationPending({
+    RecoveryKeyIdentity? previousBackupRequirement,
     required RecoveryMetadata oldMetadata,
     required RecoveryMetadata newMetadata,
     required String newRecoveryKey,
     required List<int> oldRecoveryWrapKey,
   }) async {
-    final _RecoveryRotationPending pending = _RecoveryRotationPending(
+    final RecoveryRotationRecord pending = RecoveryRotationRecord(
       oldMetadata: oldMetadata,
       newMetadata: newMetadata,
       newRecoveryKey: newRecoveryKey,
+      previousBackupRequirement: previousBackupRequirement,
+      hasBackupRequirementSnapshot: true,
     );
     final DateTime now = DateTime.now();
     final EncryptionResult encrypted = await _cryptoService.encryptBytes(
-      documentId: 'recovery_rotation_pending',
+      documentId: RecoveryRotationRecord.documentId,
       vaultId: oldMetadata.vaultId,
-      plaintextBytes: utf8.encode(jsonEncode(pending.toJson())),
-      contentType: 'application/vnd.quill-diary.recovery-rotation',
+      plaintextBytes: pending.encode(),
+      contentType: RecoveryRotationRecord.contentType,
       recoveryWrapKey: oldRecoveryWrapKey,
       recoverySlotKdf: oldMetadata.kdf,
       createdAt: now,
@@ -1661,9 +1783,7 @@ class VaultRepository {
     );
   }
 
-  /// 中斷的輪替一律收斂回使用者已持有的舊 Recovery Key。
-  ///
-  /// 新金鑰尚未能安全交給使用者前，不能把它變成唯一的解鎖方式。
+  /// 中斷時回到使用者已持有的舊金鑰，避免新金鑰成為唯一入口。
   Future<_RecoveryRotationResolution> _recoverInterruptedRecoveryKeyRotation({
     required RecoveryMetadata metadata,
     required List<int> recoveryWrapKey,
@@ -1672,7 +1792,8 @@ class VaultRepository {
     final File pendingFile = File(
       await _pathStrategy.recoveryRotationPendingPath(),
     );
-    if (!pendingFile.existsSync()) {
+    final File? candidate = fileReplacementCandidate(pendingFile);
+    if (candidate == null) {
       return _RecoveryRotationResolution(
         metadata: metadata,
         recoveryWrapKey: recoveryWrapKey,
@@ -1680,7 +1801,7 @@ class VaultRepository {
     }
 
     final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
-      await pendingFile.readAsBytes(),
+      await candidate.readAsBytes(),
     );
     final KdfDescriptor? pendingKdf = parsed.header.keySlots
         .where((EncryptionKeySlot slot) => slot.slotType == 'recovery')
@@ -1688,7 +1809,7 @@ class VaultRepository {
         .whereType<KdfDescriptor>()
         .firstOrNull;
     List<int> oldRecoveryWrapKey = recoveryWrapKey;
-    _RecoveryRotationPending? pending = await _readRecoveryRotationPending(
+    RecoveryRotationRecord? pending = await _readRecoveryRotationPending(
       parsed,
       vaultId: metadata.vaultId,
       recoveryWrapKey: oldRecoveryWrapKey,
@@ -1696,18 +1817,18 @@ class VaultRepository {
     if (pending == null &&
         suppliedRecoveryKey != null &&
         pendingKdf != null &&
-        !_sameKdf(pendingKdf, metadata.kdf)) {
-      final List<int> candidate = await _cryptoService.deriveRecoveryWrapKey(
+        !pendingKdf.hasSameParametersAs(metadata.kdf)) {
+      final List<int> candidateKey = await _cryptoService.deriveRecoveryWrapKey(
         recoveryKey: suppliedRecoveryKey,
         kdf: pendingKdf,
       );
       pending = await _readRecoveryRotationPending(
         parsed,
         vaultId: metadata.vaultId,
-        recoveryWrapKey: candidate,
+        recoveryWrapKey: candidateKey,
       );
       if (pending != null) {
-        oldRecoveryWrapKey = candidate;
+        oldRecoveryWrapKey = candidateKey;
       }
     }
 
@@ -1748,22 +1869,34 @@ class VaultRepository {
       );
       _cachedRecoveryMetadata = pending.oldMetadata;
     }
-    await deleteFileIfExists(pendingFile.path);
+    if (pending.hasBackupRequirementSnapshot) {
+      await _backupStatus.setBackupRequirement(
+        pending.previousBackupRequirement,
+      );
+    }
+    await _indexDatabaseManager.openForSession(
+      UnlockedVaultSession(
+        vaultId: metadata.vaultId,
+        trustedDevice: false,
+        recoveryWrapKey: oldRecoveryWrapKey,
+      ),
+      interruptedRotationWrapKey: newRecoveryWrapKey,
+    );
     return _RecoveryRotationResolution(
       metadata: pending.oldMetadata,
       recoveryWrapKey: oldRecoveryWrapKey,
+      clearPendingAfterVerification: true,
     );
   }
 
-  Future<_RecoveryRotationPending?> _readRecoveryRotationPending(
+  Future<RecoveryRotationRecord?> _readRecoveryRotationPending(
     ParsedEncryptedDocument parsed, {
     required VaultId vaultId,
     required List<int> recoveryWrapKey,
   }) async {
     if (parsed.header.vaultId != vaultId ||
-        parsed.header.fileId != 'recovery_rotation_pending' ||
-        parsed.header.contentType !=
-            'application/vnd.quill-diary.recovery-rotation') {
+        parsed.header.fileId != RecoveryRotationRecord.documentId ||
+        parsed.header.contentType != RecoveryRotationRecord.contentType) {
       throw const FormatException('復原金鑰輪替續跑檔案身分不符');
     }
     try {
@@ -1775,11 +1908,7 @@ class VaultRepository {
           vaultId: vaultId,
         ),
       );
-      final Object? decoded = jsonDecode(utf8.decode(bytes));
-      if (decoded is! Map<String, Object?>) {
-        throw const FormatException('Recovery Key 輪替續跑資料格式不正確。');
-      }
-      return _RecoveryRotationPending.fromJson(decoded);
+      return RecoveryRotationRecord.decode(bytes);
     } on SecretBoxAuthenticationError {
       return null;
     }
@@ -1789,13 +1918,19 @@ class VaultRepository {
     _RecoveryRotationResolution resolution,
   ) async {
     if (!resolution.clearPendingAfterVerification) return;
-    await deleteFileIfExists(await _pathStrategy.recoveryRotationPendingPath());
+    await _deleteRecoveryRotationPending();
+  }
+
+  Future<void> _deleteRecoveryRotationPending() async {
+    final String base = await _pathStrategy.recoveryRotationPendingPath();
+    // 主紀錄最後刪除，避免清理中斷後改採舊副本。
+    for (final suffix in ['.tmp', '.previous', '']) {
+      final file = File('$base$suffix');
+      if (file.existsSync()) await file.delete();
+    }
   }
 
   bool _sameRecoveryMetadata(RecoveryMetadata a, RecoveryMetadata b) =>
-      jsonEncode(a.toJson()) == jsonEncode(b.toJson());
-
-  bool _sameKdf(KdfDescriptor a, KdfDescriptor b) =>
       jsonEncode(a.toJson()) == jsonEncode(b.toJson());
 
   Future<void> _rewrapVaultRecoveryKey({
@@ -1938,6 +2073,8 @@ class VaultRepository {
               }
             }
             if (identity == null) throw const FormatException('無效的分身加密路徑');
+          } else if (relative.last == 'tag_styles.json.enc') {
+            identity = 'tag_styles';
           } else if (relative.last == 'ai_settings.json.enc') {
             identity = 'ai_settings';
           } else if (relative.first == 'diary_organization_drafts' &&
@@ -2186,25 +2323,10 @@ class VaultRepository {
     return completer.future;
   }
 
-  String _generateRecoveryKey() {
-    final String first = generateBackupId().replaceFirst('bkp_', '');
-    final String second = generateBackupId().replaceFirst('bkp_', '');
-    final String raw = '$first$second';
-    return raw
-        .replaceAll('_', '')
-        .replaceAll('-', '')
-        .substring(0, 24)
-        .toUpperCase()
-        .replaceAllMapped(
-          RegExp(r'.{4}'),
-          (Match match) => '${match.group(0)}-',
-        )
-        .replaceAll(RegExp(r'-$'), '');
-  }
-
   Future<void> closeUnlockedResources() async {
     // 鎖定時的最後一次暫存仍需要索引，先完成已排入的寫入再關閉。
     await _mutationTail;
+    _tagCatalogSession = null;
     await _people.closeUnlockedResources();
     await _indexDatabaseManager.close();
   }
@@ -2329,7 +2451,7 @@ class VaultRepository {
     );
   }
 
-  /// 解鎖後 attach 搜尋索引：開啟連線、必要時重建不相容 schema、同步標籤樣式。
+  /// 解鎖後準備搜尋索引，必要時重建並同步標籤設定。
   ///
   /// schema 正常時，把索引路徑與 `entries/**/*.md.enc` 對一下，不一致就從正式日記庫重建。
   /// 重建後仍列不進索引的檔只記住簽名，檔案沒變就不重掃。
@@ -2340,6 +2462,13 @@ class VaultRepository {
     bool reconcileEntryFiles = true,
   }) async {
     await _openIndexForSession(session);
+    await runVaultMutation(() async {
+      try {
+        await _readTagCatalog();
+      } on TagCatalogException {
+        // 標籤錯誤由設定頁重試，正文與索引仍繼續準備。
+      }
+    });
     if (!await _requireOpenIndex().hasExpectedIndexSchema()) {
       await _indexDatabaseManager.deleteDatabaseFiles();
       await _openIndexForSession(session);
@@ -2353,7 +2482,7 @@ class VaultRepository {
       return;
     }
     await _requireOpenIndex().ensurePeopleAnalyticsTable();
-    await syncTagStylesBetweenVaultAndIndex();
+    await applyTagCatalogToIndex();
   }
 
   /// 索引與磁碟日記檔的差異：磁碟上有檔沒被索引，或索引指到已不存在的檔。
@@ -2531,8 +2660,9 @@ class VaultRepository {
     UnlockedVaultSession session,
   ) => _people.pendingPeopleAnalysisDocumentCountForTest(session);
 
-  Future<void> _openIndexForSession(UnlockedVaultSession session) {
-    return _indexDatabaseManager.openForSession(session);
+  Future<void> _openIndexForSession(UnlockedVaultSession session) async {
+    await _indexDatabaseManager.openForSession(session);
+    _tagCatalogSession = session;
   }
 
   IndexDatabase _requireOpenIndex() => _indexDatabaseManager.requireOpen();

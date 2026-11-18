@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/app/app.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: QuillDiaryApp()));
 }

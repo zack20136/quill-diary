@@ -9,6 +9,7 @@ import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/ai/ai_settings_store.dart';
+import 'package:quill_diary/infrastructure/ai/ai_transport.dart';
 
 final aiSettingsStoreProvider = Provider<AiSettingsStore>(
   (Ref ref) => AiSettingsStore(

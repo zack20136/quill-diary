@@ -387,8 +387,14 @@ class _EditorPageState extends ConsumerState<EditorPage>
     );
   }
 
+  bool get _canPersistDraft =>
+      _isEditing &&
+      !_saving &&
+      !_handlingDraftRestore &&
+      _activeSession != null;
+
   bool _shouldSkipDraftPersist() {
-    if (!_isEditing || _saving || _handlingDraftRestore) {
+    if (!_canPersistDraft) {
       return true;
     }
     final EditorDraftSnapshot current = _currentDraftSnapshot();
@@ -610,15 +616,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<void> _persistDraftAndMaybeClear() async {
-    if (_isEditing &&
-        !_saving &&
-        !_handlingDraftRestore &&
-        _activeSession != null &&
-        mounted) {
-      await _persistDraftNow();
-    }
-    if (mounted && !_preservesEditorOnLock) {
-      _clearSensitiveLocalState();
+    try {
+      if (mounted && _canPersistDraft) await _persistDraftNow();
+    } finally {
+      if (mounted && !_preservesEditorOnLock) _clearSensitiveLocalState();
     }
   }
 
@@ -649,11 +650,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   void _persistDraftBeforeDispose() {
-    if (_isEditing &&
-        !_saving &&
-        !_handlingDraftRestore &&
-        _activeSession != null &&
-        _isDraftDirty()) {
+    if (_canPersistDraft && _isDraftDirty()) {
       unawaited(_persistDraftNow());
     }
   }

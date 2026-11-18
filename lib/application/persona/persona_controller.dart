@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/application/persona/persona_material.dart';
 import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/persona/persona_request_payload.dart';
@@ -387,14 +388,19 @@ class PersonaController extends ChangeNotifier {
 
   void schedulePersist() {
     _revision++;
-    _saveTimer?.cancel();
+    _cancelSaveTimer();
     _saveTimer = Timer(const Duration(milliseconds: 400), _persistInBackground);
     notifyListeners();
   }
 
+  void _cancelSaveTimer() {
+    _saveTimer?.cancel();
+    _saveTimer = null;
+  }
+
   void _cancelDraftSaves() {
     _draftEpoch++;
-    _saveTimer?.cancel();
+    _cancelSaveTimer();
     _savedRevision = _revision;
   }
 
@@ -411,7 +417,7 @@ class PersonaController extends ChangeNotifier {
   }
 
   Future<void> persist({void Function()? ensureCurrent}) async {
-    _saveTimer?.cancel();
+    _cancelSaveTimer();
     if (session == null || record == null) return;
     final current = record!;
     final vault = session!;
@@ -512,7 +518,7 @@ class PersonaController extends ChangeNotifier {
         ..clear()
         ..addAll(excluded);
     }
-    _saveTimer?.cancel();
+    _cancelSaveTimer();
     busy = true;
     notifyListeners();
     try {
@@ -565,7 +571,7 @@ class PersonaController extends ChangeNotifier {
     next.draft!.chats.removeWhere((c) => c.importId == id);
     next.draft!.candidate = null;
     next.draft!.step = PersonaStep.materials;
-    _saveTimer?.cancel();
+    _cancelSaveTimer();
     busy = true;
     notifyListeners();
     try {
@@ -1190,7 +1196,7 @@ class PersonaController extends ChangeNotifier {
 
   void lock() {
     stop();
-    _saveTimer?.cancel();
+    _cancelSaveTimer();
     if (_revision != _savedRevision) _persistInBackground();
     session = null;
     record = null;

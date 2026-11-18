@@ -6,6 +6,7 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/diary/diary_markdown.dart';
 import 'package:quill_diary/domain/people/person.dart';
+import 'package:quill_diary/domain/people/person_name_matcher.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/shared/data_versions.dart';
 
@@ -83,7 +84,7 @@ class PeopleAnalysisDocumentResult {
 class IndexDatabase extends GeneratedDatabase {
   IndexDatabase(super.executor);
 
-  static const String kPeopleAnalyticsGenerationKey =
+  static const String kPeopleMatchingRulesRevisionKey =
       'people_analytics_generation';
   static const String kPeopleAnalyticsStaleKey = 'people_analytics_stale';
   static const String kPeopleAnalyticsCatalogFingerprintKey =
@@ -811,33 +812,32 @@ class IndexDatabase extends GeneratedDatabase {
     return value == '1';
   }
 
-  Future<void> markPeopleAnalyticsReady(String catalogFingerprint) async {
-    await setAppValue(
-      kPeopleAnalyticsGenerationKey,
-      DataVersions.peopleAnalyticsGeneration.toString(),
-    );
-    await setAppValue(
-      kPeopleAnalyticsCatalogFingerprintKey,
-      catalogFingerprint,
-    );
-    await setPeopleAnalyticsStale(false);
-  }
+  Future<void> markPeopleAnalyticsReady(String catalogFingerprint) =>
+      _setPeopleAnalyticsState(catalogFingerprint, stale: false);
 
-  Future<void> beginPeopleAnalyticsRebuild(String catalogFingerprint) async {
+  Future<void> beginPeopleAnalyticsRebuild(String catalogFingerprint) =>
+      _setPeopleAnalyticsState(catalogFingerprint, stale: true);
+
+  Future<void> _setPeopleAnalyticsState(
+    String catalogFingerprint, {
+    required bool stale,
+  }) => transaction(() async {
     await setAppValue(
-      kPeopleAnalyticsGenerationKey,
-      DataVersions.peopleAnalyticsGeneration.toString(),
+      kPeopleMatchingRulesRevisionKey,
+      PersonNameMatcher.rulesRevision.toString(),
     );
     await setAppValue(
       kPeopleAnalyticsCatalogFingerprintKey,
       catalogFingerprint,
     );
-    await setPeopleAnalyticsStale(true);
-  }
+    await setPeopleAnalyticsStale(stale);
+  });
 
   Future<bool> needsPeopleAnalyticsReset(String catalogFingerprint) async {
-    final String? generation = await getAppValue(kPeopleAnalyticsGenerationKey);
-    if (generation != DataVersions.peopleAnalyticsGeneration.toString()) {
+    final String? rulesRevision = await getAppValue(
+      kPeopleMatchingRulesRevisionKey,
+    );
+    if (rulesRevision != PersonNameMatcher.rulesRevision.toString()) {
       return true;
     }
     return await getAppValue(kPeopleAnalyticsCatalogFingerprintKey) !=

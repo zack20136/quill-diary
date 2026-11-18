@@ -370,6 +370,10 @@ class ChatDiaryController extends ChangeNotifier {
       return;
     }
     chatSession.pendingImageIds.remove(id);
+    _persistAfterPruningImages();
+  }
+
+  void _persistAfterPruningImages() {
     _pruneUnreferencedImages();
     unawaited(persist(pruneImages: true));
     notifyListeners();
@@ -434,8 +438,8 @@ class ChatDiaryController extends ChangeNotifier {
             );
       _ensureOperationIsCurrent(operationVersion);
       final replyPersona = loadedPersona?.record;
-      final l10n = lookupAppLocalizations(
-        (await ref.read(userPreferencesProvider).appLocale).materialLocale,
+      final l10n = localizationsFor(
+        await ref.read(userPreferencesProvider).appLocale,
       );
       final missingPersonaName = l10n.personaRoleSubject;
       _ensureOperationIsCurrent(operationVersion);
@@ -666,8 +670,8 @@ class ChatDiaryController extends ChangeNotifier {
     final vaultSession = _vaultSession!;
     final result = <AiInputMessage>[];
     final selectedHistory = history ?? chatSession.activeMessages;
-    final l10n = lookupAppLocalizations(
-      (await ref.read(userPreferencesProvider).appLocale).materialLocale,
+    final l10n = localizationsFor(
+      await ref.read(userPreferencesProvider).appLocale,
     );
     final missingPersonaName = l10n.personaRoleSubject;
     _ensureOperationIsCurrent(operationVersion);
@@ -729,7 +733,7 @@ class ChatDiaryController extends ChangeNotifier {
     _ensureOperationIsCurrent(operationVersion);
     final language = await preferences.appLocale;
     _ensureOperationIsCurrent(operationVersion);
-    final l10n = lookupAppLocalizations(language.materialLocale);
+    final l10n = localizationsFor(language);
     if (purpose == ChatDiaryPromptPurpose.conversation &&
         replyPersona != null) {
       final people = await ref
@@ -1021,10 +1025,8 @@ class ChatDiaryController extends ChangeNotifier {
     chatSession.composer = chatSession.editBackup!;
     chatSession.editingMessageId = null;
     chatSession.editBackup = null;
-    _pruneUnreferencedImages();
     _setError(null);
-    unawaited(persist(pruneImages: true));
-    notifyListeners();
+    _persistAfterPruningImages();
   }
 
   void selectVersion(String messageId) {

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
@@ -15,6 +14,8 @@ import 'package:quill_diary/infrastructure/storage/shared/external_directory_pic
 import 'package:quill_diary/infrastructure/storage/shared/external_file_delivery.dart';
 import 'package:quill_diary/infrastructure/storage/shared/picked_file_materializer.dart';
 import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
@@ -22,6 +23,12 @@ typedef ConfirmPortableImportPreview =
     Future<PortableImportConfirmResult?> Function(
       PortableImportPreview preview,
     );
+
+const _unreadablePickedFiles = PortableImportResult(
+  importedEntries: 0,
+  skippedFiles: 0,
+  failureCode: PortableImportFailureCode.selectedFilesUnreadable,
+);
 
 class PortableTransferService {
   PortableTransferService({
@@ -33,12 +40,15 @@ class PortableTransferService {
     bool allowBytesFallback = false,
     CopyAndroidUriToPath? copyAndroidUriToPath,
     PickedFileMaterializer? pickedFileMaterializer,
-  }) : _pickedFileMaterializer =
+    VaultPathStrategy pathStrategy = const VaultPathStrategy(),
+  }) : _pathStrategy = pathStrategy,
+       _pickedFileMaterializer =
            pickedFileMaterializer ??
            PickedFileMaterializer(
              copyAndroidUriToPath: copyAndroidUriToPath,
              readPlatformFileBytes: readPlatformFileBytes,
              allowBytesFallback: allowBytesFallback,
+             pathStrategy: pathStrategy,
            );
 
   final PortableExportIo _exportIo;
@@ -46,6 +56,7 @@ class PortableTransferService {
   final ExternalDirectoryStore _externalDirectoryStore;
   final PickPortableFiles? _pickPortableFiles;
   final PickedFileMaterializer _pickedFileMaterializer;
+  final VaultPathStrategy _pathStrategy;
 
   Future<String?> exportMarkdownToDirectory(
     UnlockedVaultSession session,
@@ -218,8 +229,8 @@ class PortableTransferService {
         fallbackBaseName: baseName,
         alwaysCopyToTemp: true,
       );
-    } on PickedFileMaterializationException catch (error) {
-      return importResultForMaterializationFailure(error.failure);
+    } on PickedFileMaterializationException {
+      return _unreadablePickedFiles;
     }
 
     Directory? ownedTempRoot;
@@ -240,7 +251,7 @@ class PortableTransferService {
         await ownedTempRoot.delete(recursive: true);
       }
       if (materialized.shouldDeleteAfterUse) {
-        await _deleteIfExists(materialized.file);
+        await deleteFileIfExists(materialized.file.path);
       }
     }
   }
@@ -250,7 +261,10 @@ class PortableTransferService {
     List<PlatformFile> documentFiles,
     ConfirmPortableImportPreview confirmPreview,
   ) async {
-    final Directory tempRoot = await _createTempDirectory('import_picked');
+    final Directory tempRoot = await createWorkingDirectory(
+      _pathStrategy,
+      'import_picked',
+    );
     try {
       var copiedFiles = 0;
       for (final PlatformFile file in documentFiles) {
@@ -280,11 +294,7 @@ class PortableTransferService {
       }
 
       if (copiedFiles == 0) {
-        return const PortableImportResult(
-          importedEntries: 0,
-          skippedFiles: 0,
-          failureCode: PortableImportFailureCode.selectedFilesUnreadable,
-        );
+        return _unreadablePickedFiles;
       }
 
       final AnalyzedPortableImport analyzed = await _importIo.analyzeDocuments(
@@ -347,7 +357,13 @@ class PortableTransferService {
     required AppLocalizations l10n,
     required Future<void> Function(File target) writeTarget,
   }) async {
-    final File tempFile = await _createTempFile(fileName);
+    final Directory workDirectory = await _pathStrategy.transferWorkDirectory();
+    final File tempFile = await File(
+      p.join(
+        workDirectory.path,
+        '${DateTime.now().microsecondsSinceEpoch}_$fileName',
+      ),
+    ).create(recursive: true, exclusive: true);
     try {
       await writeTarget(tempFile);
       return await deliverToExternalDirectory(
@@ -359,30 +375,8 @@ class PortableTransferService {
         rememberDirectory: _externalDirectoryStore.rememberDirectory,
       );
     } finally {
-      await _deleteIfExists(tempFile);
+      await deleteFileIfExists(tempFile.path);
     }
-  }
-
-  Future<Directory> _createTempDirectory(String prefix) async {
-    final Directory tempDirectory = await getTemporaryDirectory();
-    final Directory directory = Directory(
-      p.join(
-        tempDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_$prefix',
-      ),
-    );
-    await directory.create(recursive: true);
-    return directory;
-  }
-
-  Future<File> _createTempFile(String fileName) async {
-    final Directory tempDirectory = await getTemporaryDirectory();
-    return File(
-      p.join(
-        tempDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_$fileName',
-      ),
-    );
   }
 
   String _extensionOf(PlatformFile file) {
@@ -399,11 +393,5 @@ class PortableTransferService {
 
   bool _isPortableDocumentExtension(String extension) {
     return extension == '.md' || extension == '.html' || extension == '.htm';
-  }
-
-  Future<void> _deleteIfExists(File file) async {
-    if (file.existsSync()) {
-      await file.delete();
-    }
   }
 }

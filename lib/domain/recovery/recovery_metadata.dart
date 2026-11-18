@@ -15,18 +15,23 @@ class RecoveryMetadata {
     required this.createdAt,
     required this.kdf,
   }) : assert(
-         recoveryKeyVersion >= DataVersions.initialRecoveryKey,
+         recoveryKeyVersion >= initialKeyVersion,
          'recovery_key_version must be >= 1.',
        );
+
+  static const int initialKeyVersion = 1;
 
   final VaultId vaultId;
   final bool recoveryEnabled;
 
-  /// 結構版本保留欄位；金鑰輪替與還原世代判斷以 [kdf] salt 為準。
+  /// 歷史保留欄位，沿用既有值；不能用來判斷是否已備份目前金鑰。
   final int recoveryKeyVersion;
   final String recoveryKeyHint;
   final DateTime createdAt;
   final KdfDescriptor kdf;
+
+  bool hasSameRecoveryGenerationAs(RecoveryMetadata other) =>
+      vaultId == other.vaultId && kdf.hasSameParametersAs(other.kdf);
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
@@ -47,17 +52,16 @@ class RecoveryMetadata {
     if (kdfMap == null) {
       throw const FormatException('Recovery metadata missing kdf.');
     }
-    final int schemaVersion =
-        int.tryParse(
-          '${json['schema_version'] ?? DataVersions.recoveryMetadata}',
-        ) ??
-        DataVersions.recoveryMetadata;
+    final rawSchemaVersion = json.containsKey('schema_version')
+        ? json['schema_version']
+        : DataVersions.recoveryMetadata;
+    final int? schemaVersion = int.tryParse('$rawSchemaVersion');
     if (schemaVersion != DataVersions.recoveryMetadata) {
       throw FormatException('不支援的 recovery metadata 版本：$schemaVersion。');
     }
     final int version =
         int.tryParse('${json['recovery_key_version'] ?? 0}') ?? 0;
-    if (version < DataVersions.initialRecoveryKey) {
+    if (version < initialKeyVersion) {
       throw FormatException('不支援的復原金鑰版本：$version。');
     }
     return RecoveryMetadata(
@@ -68,7 +72,7 @@ class RecoveryMetadata {
       createdAt:
           DateTime.tryParse('${json['created_at'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      kdf: KdfDescriptor.fromRecoveryMetadataKdf(kdfMap),
+      kdf: KdfDescriptor.fromJson(kdfMap),
     );
   }
 }

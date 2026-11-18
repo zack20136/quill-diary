@@ -218,7 +218,7 @@ class EditorDraftStore {
   Future<void> clearAllMaterializedPendingFiles() async {
     _materializedPreviewCache.clear();
     final Directory previewRoot = await _pathStrategy
-        .editorDraftPreviewRootDirectory();
+        .editorDraftPreviewWorkDirectory();
     if (previewRoot.existsSync()) {
       await previewRoot.delete(recursive: true);
     }
@@ -349,7 +349,7 @@ class EditorDraftStore {
   Future<Directory> _materializedPreviewDirectory(String draftKey) async {
     return Directory(
       p.join(
-        (await _pathStrategy.editorDraftPreviewRootDirectory()).path,
+        (await _pathStrategy.editorDraftPreviewWorkDirectory()).path,
         draftKey,
       ),
     );

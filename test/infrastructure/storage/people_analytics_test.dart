@@ -24,6 +24,46 @@ void main() {
     await harness.dispose();
   });
 
+  test('人物分析狀態寫入失敗時規則修訂與指紋一起回復', () async {
+    final database = harness.indexDatabaseManager.requireOpen();
+    await database.markPeopleAnalyticsReady('原人物名冊');
+    await database.setAppValue(
+      IndexDatabase.kPeopleMatchingRulesRevisionKey,
+      '舊比對規則',
+    );
+    await database.customStatement('''
+      CREATE TRIGGER reject_analytics_fingerprint
+      BEFORE INSERT ON app_kv
+      WHEN NEW.key = '${IndexDatabase.kPeopleAnalyticsCatalogFingerprintKey}'
+      BEGIN
+        SELECT RAISE(ABORT, '模擬狀態寫入失敗');
+      END;
+    ''');
+    await expectLater(
+      database.beginPeopleAnalyticsRebuild('新人物名冊'),
+      throwsException,
+    );
+    expect(
+      await database.getAppValue(IndexDatabase.kPeopleMatchingRulesRevisionKey),
+      '舊比對規則',
+    );
+    expect(
+      await database.getAppValue(
+        IndexDatabase.kPeopleAnalyticsCatalogFingerprintKey,
+      ),
+      '原人物名冊',
+    );
+    expect(await database.isPeopleAnalyticsStale(), isFalse);
+    await database.customStatement(
+      'DROP TRIGGER reject_analytics_fingerprint;',
+    );
+    await database.beginPeopleAnalyticsRebuild('新人物名冊');
+    expect(await database.isPeopleAnalyticsStale(), isTrue);
+    await database.markPeopleAnalyticsReady('新人物名冊');
+    expect(await database.needsPeopleAnalyticsReset('新人物名冊'), isFalse);
+    expect(await database.isPeopleAnalyticsStale(), isFalse);
+  });
+
   test('新增人物後延遲分析既有日記', () async {
     await harness.saveSimpleEntry(
       setup,

@@ -1,15 +1,15 @@
 package zack20136.com.quill_diary.drive
 
-import android.accounts.Account
 import android.content.Context
 import com.google.android.gms.auth.GoogleAuthException
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.UserRecoverableAuthException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.Scope
 import java.io.IOException
 
-class DriveAccessTokenProvider(private val context: Context) {
+internal class DriveAccessTokenProvider(private val context: Context) {
     data class TokenResult(
         val accessToken: String,
         val accountId: String,
@@ -26,9 +26,9 @@ class DriveAccessTokenProvider(private val context: Context) {
         data object Permanent : TokenError()
     }
 
-    fun currentAccountSnapshot(): Pair<String, String>? {
+    fun currentAccountIdentity(): DriveAccountIdentity? {
         val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
-        if (!GoogleSignIn.hasPermissions(account, Scope(DRIVE_APPDATA_SCOPE))) {
+        if (!hasDriveAppDataPermission(account)) {
             return null
         }
         val email = account.email?.trim().orEmpty()
@@ -37,22 +37,12 @@ class DriveAccessTokenProvider(private val context: Context) {
         }
         // id 缺失時保持空字串，不要用 email 偽裝成 accountId。
         val id = account.id?.trim().orEmpty()
-        return id to email
+        return DriveAccountIdentity(id = id, email = email)
     }
 
-    fun ensureAccountMatches(
-        job: DriveUploadJob,
-        token: TokenResult? = null,
-    ): TokenError? {
-        if (token != null) {
-            return matchTokenToJob(job, token)
-        }
-        val snapshot = currentAccountSnapshot()
-        if (snapshot == null) {
-            return TokenError.NeedsUserInteraction
-        }
-        val (accountId, accountEmail) = snapshot
-        return matchIds(job, accountId, accountEmail)
+    fun checkSignedInAccount(job: DriveUploadJob): TokenError? {
+        val account = currentAccountIdentity() ?: return TokenError.NeedsUserInteraction
+        return matchIds(job, account.id, account.email)
     }
 
     fun matchTokenToJob(job: DriveUploadJob, token: TokenResult): TokenError? =
@@ -64,32 +54,23 @@ class DriveAccessTokenProvider(private val context: Context) {
         accountEmail: String,
     ): TokenError? {
         // 有 accountId 時以 ID 為準；僅在缺少 ID 時退回比較 email。
-        if (job.accountId.isNotBlank()) {
-            if (accountId != job.accountId) {
-                return TokenError.Permanent
-            }
-            return null
-        }
-        if (!accountEmail.equals(job.accountEmail, ignoreCase = true)) {
-            return TokenError.Permanent
-        }
-        return null
+        val matches =
+            if (job.accountId.isNotBlank()) accountId == job.accountId
+            else accountEmail.equals(job.accountEmail, ignoreCase = true)
+        return if (matches) null else TokenError.Permanent
     }
 
     fun getAccessToken(clearCache: Boolean = false): Result<TokenResult> {
         val signedIn = GoogleSignIn.getLastSignedInAccount(context)
         if (signedIn == null ||
-            !GoogleSignIn.hasPermissions(signedIn, Scope(DRIVE_APPDATA_SCOPE))
+            !hasDriveAppDataPermission(signedIn)
         ) {
-            return Result.failure(
-                TokenException(TokenError.NeedsUserInteraction),
-            )
+            return Result.failure(TokenException(TokenError.NeedsUserInteraction))
         }
         val email = signedIn.email?.trim().orEmpty()
-        if (email.isEmpty() || signedIn.account == null) {
-            return Result.failure(
-                TokenException(TokenError.NotSignedIn),
-            )
+        val googleAccount = signedIn.account
+        if (email.isEmpty() || googleAccount == null) {
+            return Result.failure(TokenException(TokenError.NotSignedIn))
         }
         val accountId = signedIn.id?.trim().orEmpty()
         return try {
@@ -104,7 +85,7 @@ class DriveAccessTokenProvider(private val context: Context) {
             val token =
                 GoogleAuthUtil.getToken(
                     context,
-                    signedIn.account as Account,
+                    googleAccount,
                     OAUTH2_SCOPE,
                 )
             lastTokenCache = token
@@ -116,15 +97,9 @@ class DriveAccessTokenProvider(private val context: Context) {
                 ),
             )
         } catch (_: UserRecoverableAuthException) {
-            Result.failure(
-                TokenException(TokenError.NeedsUserInteraction),
-            )
+            Result.failure(TokenException(TokenError.NeedsUserInteraction))
         } catch (_: GoogleAuthException) {
-            Result.failure(
-                TokenException(
-                    TokenError.Permanent,
-                ),
-            )
+            Result.failure(TokenException(TokenError.Permanent))
         } catch (_: IOException) {
             Result.failure(
                 TokenException(
@@ -143,5 +118,42 @@ class DriveAccessTokenProvider(private val context: Context) {
 
         @Volatile
         private var lastTokenCache: String? = null
+    }
+}
+
+internal data class DriveAccountIdentity(val id: String, val email: String)
+
+internal fun hasDriveAppDataPermission(account: GoogleSignInAccount): Boolean =
+    GoogleSignIn.hasPermissions(account, Scope(DriveAccessTokenProvider.DRIVE_APPDATA_SCOPE))
+
+/** Google Play 服務狀態碼轉成 Flutter 可穩定處理的 Drive 授權錯誤碼。 */
+internal object DriveAuthErrorCode {
+    const val CONFIGURATION = "google_drive_auth_configuration"
+    const val NETWORK = "google_drive_auth_network"
+    const val REAUTH = "google_drive_auth_reauth"
+    const val UNAVAILABLE = "google_drive_auth_unavailable"
+    const val CANCELLED = "google_drive_auth_cancelled"
+    const val FAILED = "google_drive_auth_failed"
+
+    fun fromApiStatus(statusCode: Int, detail: String?): String =
+        when (statusCode) {
+            10 -> CONFIGURATION
+            7 -> NETWORK
+            16 -> REAUTH
+            12500 -> UNAVAILABLE
+            12501 ->
+                if (isConfigurationDetail(detail)) {
+                    CONFIGURATION
+                } else {
+                    CANCELLED
+                }
+            else -> FAILED
+        }
+
+    private fun isConfigurationDetail(detail: String?): Boolean {
+        val normalized = detail?.lowercase().orEmpty()
+        return normalized.contains("activity is cancelled by the user") ||
+            normalized.contains("account reauth failed") ||
+            normalized.contains("account auth failed")
     }
 }

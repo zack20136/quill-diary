@@ -2,12 +2,16 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 
 enum VaultRepairCopyResult { copied, targetExists }
 
 enum VaultRepairDeleteResult { deleted, missing, validationFailed }
 
-/// 修復流程唯一可執行檔案搬移與刪除的入口。
+/// 檢查與修復共用的檔案操作。
 class VaultRepairFileOperations {
   const VaultRepairFileOperations();
 
@@ -24,6 +28,61 @@ class VaultRepairFileOperations {
       (File a, File b) => p.normalize(a.path).compareTo(p.normalize(b.path)),
     );
     return List<File>.unmodifiable(files);
+  }
+
+  bool isInsideVaultContent(String absolutePath, String normalizedRoot) {
+    final String normalized = p.normalize(absolutePath);
+    if (!p.isWithin(normalizedRoot, normalized) &&
+        normalized != normalizedRoot) {
+      return false;
+    }
+    final String relative = p
+        .relative(normalized, from: normalizedRoot)
+        .replaceAll('\\', '/');
+    return relative.startsWith('entries/') || relative.startsWith('assets/');
+  }
+
+  Future<({List<File> entries, List<File> assets})> snapshotVaultContent(
+    Directory vaultRoot,
+  ) async => (
+    entries: await snapshotFiles(
+      Directory(p.join(vaultRoot.path, 'entries')),
+      '.md.enc',
+    ),
+    assets: await snapshotFiles(
+      Directory(p.join(vaultRoot.path, 'assets')),
+      '.enc',
+    ),
+  );
+
+  Future<bool> matchesEncryptedFile(
+    String path, {
+    required UnlockedVaultSession session,
+    required CryptoService crypto,
+    required String vaultId,
+    required String expectedId,
+    required String expectedContentType,
+    required String expectedPlaintextHash,
+    required bool validateAttachmentContent,
+  }) async {
+    final ParsedEncryptedDocument parsed = crypto.parseFileBytes(
+      await File(path).readAsBytes(),
+    );
+    if (parsed.header.fileId != expectedId ||
+        parsed.header.vaultId != vaultId ||
+        parsed.header.contentType != expectedContentType) {
+      return false;
+    }
+    final List<int> plaintext = await crypto.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: vaultDecryptionContext(session),
+    );
+    if (validateAttachmentContent &&
+        !attachmentContentMatchesMimeType(plaintext, expectedContentType)) {
+      return false;
+    }
+    return await hashVaultBytes(plaintext) == expectedPlaintextHash;
   }
 
   Future<VaultRepairCopyResult> copyAtomicallyIfAbsent({

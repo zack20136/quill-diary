@@ -8,8 +8,8 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.IOException
 
-object MediaStoreExportChannel {
-    const val CHANNEL_NAME = "quill_diary/media_store_export"
+internal object MediaStoreExportChannel {
+    private const val CHANNEL_NAME = "quill_diary/media_store_export"
 
     fun register(flutterEngine: FlutterEngine, context: Context) {
         MethodChannel(
@@ -19,7 +19,6 @@ object MediaStoreExportChannel {
             try {
                 when (call.method) {
                     "saveImageToPictures" -> saveImageToPictures(context, call, result)
-                    "ensureDownloadsSubfolder" -> ensureDownloadsSubfolder(context, result)
                     else -> result.notImplemented()
                 }
             } catch (error: Exception) {
@@ -30,19 +29,6 @@ object MediaStoreExportChannel {
                 )
             }
         }
-    }
-
-    private fun exportSubfolder(context: Context): String =
-        context.getString(R.string.user_export_subfolder)
-
-    private fun ensureDownloadsSubfolder(
-        context: Context,
-        result: MethodChannel.Result,
-    ) {
-        // Do not create marker files such as README.txt just to materialize the folder.
-        // The directory will be created naturally when the user actually exports a file.
-        exportSubfolder(context)
-        result.success(null)
     }
 
     private fun saveImageToPictures(
@@ -65,7 +51,7 @@ object MediaStoreExportChannel {
         val mimeType = call.argument<String>("mimeType")?.trim().orEmpty()
             .ifEmpty { "image/jpeg" }
 
-        val relativePath = "Pictures/${exportSubfolder(context)}"
+        val relativePath = "Pictures/${context.getString(R.string.user_export_subfolder)}"
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
@@ -92,14 +78,12 @@ object MediaStoreExportChannel {
             val publishValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }
-            resolver.update(uri, publishValues, null, null)
+            if (resolver.update(uri, publishValues, null, null) == 0) {
+                throw IOException("Unable to publish the image.")
+            }
             result.success(fileName)
         } catch (error: Exception) {
-            try {
-                resolver.delete(uri, null, null)
-            } catch (_: Exception) {
-                // Ignore cleanup failures.
-            }
+            runCatching { resolver.delete(uri, null, null) }
             result.error(
                 "write_failed",
                 error.message ?: "Unable to save the image.",

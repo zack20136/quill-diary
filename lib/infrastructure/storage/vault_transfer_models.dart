@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 
 typedef PickPortableFiles = Future<List<PlatformFile>> Function({
   required String dialogTitle,
@@ -14,9 +15,13 @@ final class BackupPersistResult {
     required this.status,
     this.savedPath,
     this.message = '',
+    this.identity,
+    this.purpose,
   });
 
   final BackupPersistStatus status;
+  final RecoveryKeyIdentity? identity;
+  final VaultBackupPurpose? purpose;
   final String? savedPath;
   final String message;
 }

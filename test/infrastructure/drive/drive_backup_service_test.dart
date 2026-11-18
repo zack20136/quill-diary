@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:path/path.dart' as p;
 import 'package:quill_diary/application/transfer/transfer_feedback.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
@@ -7,6 +11,72 @@ import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
   final AppLocalizations zhTwL10n = lookupAppLocalizations(appZhLocale);
+
+  group('Drive 下載暫存', () {
+    late Directory directory;
+    late File existing;
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('drive_backup_');
+      existing = await File(p.join(directory.path, 'backup.zip'))
+          .writeAsBytes([7]);
+    });
+
+    tearDown(() => directory.delete(recursive: true));
+
+    GoogleDriveBackupService createService(Stream<List<int>> Function() bytes) {
+      return GoogleDriveBackupService(
+        signInClient: FakeGoogleDriveSignInClient(
+          lightweightAccount: FakeGoogleDriveSignedInAccount(
+            email: 'writer@example.com',
+            existingAuthorization: FakeGoogleDriveAuthorizationHandle(
+              _DownloadDriveApi(bytes),
+            ),
+          ),
+        ),
+      );
+    }
+
+    test('同名下載各自取得可獨立清理的副本', () async {
+      var nextByte = 0;
+      final service = createService(() => Stream.value([++nextByte]));
+      final first = await service.downloadBackupById(
+        fileId: 'first',
+        fileName: 'backup.zip',
+        destinationDirectory: directory,
+      );
+      final second = await service.downloadBackupById(
+        fileId: 'second',
+        fileName: 'backup.zip',
+        destinationDirectory: directory,
+      );
+
+      expect(await first.readAsBytes(), [1]);
+      expect(await second.readAsBytes(), [2]);
+      await first.delete();
+      expect(await second.readAsBytes(), [2]);
+      expect(await existing.readAsBytes(), [7]);
+    });
+
+    test('串流中斷保留原始錯誤並只刪除本次的下載暫存', () async {
+      final interrupted = StateError('測試下載中斷');
+      final service = createService(() async* {
+        yield [1, 2, 3];
+        throw interrupted;
+      });
+      await expectLater(
+        service.downloadBackupById(
+          fileId: 'interrupted',
+          fileName: 'backup.zip',
+          destinationDirectory: directory,
+        ),
+        throwsA(same(interrupted)),
+      );
+
+      expect(directory.listSync().map((entry) => entry.path), [existing.path]);
+      expect(await existing.readAsBytes(), [7]);
+    });
+  });
 
   group('isVisibleDriveBackupFileName', () {
     test('接受可見的備份檔名', () {
@@ -420,10 +490,43 @@ final class FakeGoogleDriveSignedInAccount
 
 final class FakeGoogleDriveAuthorizationHandle
     implements GoogleDriveAuthorizationHandle {
-  const FakeGoogleDriveAuthorizationHandle();
+  const FakeGoogleDriveAuthorizationHandle([this.api]);
+
+  final drive.DriveApi? api;
 
   @override
-  Never createDriveApi(List<String> scopes) {
-    throw UnimplementedError('DriveApi creation is not needed in this test.');
-  }
+  drive.DriveApi createDriveApi(List<String> scopes) =>
+      api ?? (throw UnimplementedError('此測試未設定 Drive API。'));
+}
+
+final class _DownloadDriveApi implements drive.DriveApi {
+  _DownloadDriveApi(Stream<List<int>> Function() bytes)
+    : files = _DownloadFilesResource(bytes);
+
+  @override
+  final drive.FilesResource files;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _DownloadFilesResource implements drive.FilesResource {
+  _DownloadFilesResource(this.bytes);
+
+  final Stream<List<int>> Function() bytes;
+
+  @override
+  Future<drive.Media> get(
+    String fileId, {
+    bool? acknowledgeAbuse,
+    String? includeLabels,
+    String? includePermissionsForView,
+    bool? supportsAllDrives,
+    bool? supportsTeamDrives,
+    String? $fields,
+    drive.DownloadOptions downloadOptions = drive.DownloadOptions.metadata,
+  }) async => drive.Media(bytes(), null);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

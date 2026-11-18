@@ -6,23 +6,103 @@ import 'package:cryptography/cryptography.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+
+/// 帶進度的複製會等待寫入端，以限制緩衝區。
+Future<void> copyFileToPath(
+  File source,
+  String destinationPath, {
+  BackupTaskProgressListener? onProgress,
+  BackupTaskPhase phase = BackupTaskPhase.copyingBackup,
+}) async {
+  final File destination = File(destinationPath);
+  await destination.parent.create(recursive: true);
+  if (onProgress == null) {
+    await source.copy(destinationPath);
+    return;
+  }
+
+  final int totalBytes = await source.length();
+  onProgress(BackupTaskProgress(phase: phase));
+  await writeByteStreamToFile(
+    reportByteStreamProgress(
+      source.openRead(),
+      totalBytes: totalBytes,
+      phase: phase,
+      onProgress: onProgress,
+    ),
+    destination,
+  );
+}
+
+Future<void> writeByteStreamToFile(
+  Stream<List<int>> source,
+  File destination,
+) async {
+  final IOSink sink = destination.openWrite();
+  // 寫入錯誤會另外傳給 done，實際錯誤由下方等待的操作處理。
+  sink.done.ignore();
+  try {
+    await sink.addStream(source);
+    await sink.flush();
+  } on Object {
+    try {
+      await sink.close();
+    } on Object {
+      // 保留首次複製或寫入失敗。
+    }
+    rethrow;
+  }
+  await sink.close();
+}
 
 /// 在 app 暫存目錄建立唯一工作資料夾。
 Future<Directory> createWorkingDirectory(
   VaultPathStrategy pathStrategy,
   String prefix,
 ) async {
-  final Directory appRoot = await pathStrategy.appRootDirectory();
-  final Directory tempRoot = Directory(p.join(appRoot.path, '_tmp'));
+  final Directory tempRoot = await pathStrategy.transferWorkDirectory();
   await tempRoot.create(recursive: true);
+  return tempRoot.createTemp('${prefix}_');
+}
 
-  final Directory workingDirectory = Directory(
-    p.join(tempRoot.path, '${prefix}_${DateTime.now().microsecondsSinceEpoch}'),
-  );
-  await workingDirectory.create(recursive: true);
-  return workingDirectory;
+/// 修復時清除前次程序的暫存。整個現行程序目錄保留，內部可能有其他工作。
+Future<void> cleanupAbandonedLocalArtifacts(VaultPathStrategy paths) async {
+  for (final active in [
+    await paths.editorDraftPreviewWorkDirectory(),
+    await paths.transferWorkDirectory(),
+  ]) {
+    final Directory root = active.parent;
+    if (!root.existsSync()) continue;
+    try {
+      await for (final artifact in root.list(followLinks: false)) {
+        if (p.equals(artifact.path, active.path)) continue;
+        try {
+          await artifact.delete(recursive: artifact is Directory);
+        } on FileSystemException {
+          // 保留無法清除的項目，讓其他暫存仍可清理。
+        }
+      }
+    } on FileSystemException {
+      // 掃描失敗時留到下次修復再試。
+    }
+  }
+  final backups = await paths.localBackupsDirectory();
+  if (!backups.existsSync()) return;
+  try {
+    await for (final file in backups.list(followLinks: false)) {
+      if (file is File &&
+          p.extension(file.path) == '.partial' &&
+          isPrefixedId(p.basenameWithoutExtension(file.path), 'bkp')) {
+        await deleteFileIfExists(file.path);
+      }
+    }
+  } on FileSystemException {
+    // 掃描失敗時保留正式備份。
+  }
 }
 
 /// 以可復原替換寫入文字檔，避免中斷時失去最後有效版本。
@@ -85,13 +165,7 @@ Future<void> recoverFileReplacement(
 }) async {
   final File tempFile = File('${file.path}.tmp');
   final File backupFile = File('${file.path}.previous');
-  final candidate = file.existsSync()
-      ? file
-      : backupFile.existsSync()
-      ? backupFile
-      : tempFile.existsSync()
-      ? tempFile
-      : null;
+  final candidate = fileReplacementCandidate(file);
   if (candidate != null) await validate?.call(candidate);
   if (!file.existsSync() && backupFile.existsSync()) {
     await backupFile.rename(file.path);
@@ -225,7 +299,14 @@ Future<void> deleteEntryChatFiles(String entryPath) async {
   }
 }
 
+File? fileReplacementCandidate(File file) {
+  if (file.existsSync()) return file;
+  for (final suffix in ['.previous', '.tmp']) {
+    final candidate = File('${file.path}$suffix');
+    if (candidate.existsSync()) return candidate;
+  }
+  return null;
+}
+
 bool hasFileReplacementCandidates(File file) =>
-    file.existsSync() ||
-    File('${file.path}.previous').existsSync() ||
-    File('${file.path}.tmp').existsSync();
+    fileReplacementCandidate(file) != null;

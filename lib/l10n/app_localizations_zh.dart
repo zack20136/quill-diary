@@ -192,6 +192,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String commonRelativeDaysFromNow(int count) {
+    return '$count 天後';
+  }
+
+  @override
   String commonGoogleAccountLabel(String name, String email) {
     return '$name · $email';
   }
@@ -206,6 +211,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonCopiedToClipboard => '已複製到剪貼簿';
+
+  @override
+  String get commonClipboardWriteFailed => '無法複製，請稍後再試。';
 
   @override
   String get commonActionRetry => '重試';
@@ -834,6 +842,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tagNameRequiredMessage => '請輸入標籤名稱';
+
+  @override
+  String get tagCatalogUnavailable => '標籤設定暫時無法使用，原始資料已保留。請重試。';
+
+  @override
+  String get tagCatalogRetry => '重新讀取標籤設定';
 
   @override
   String get tagUnnamedPreview => '未命名標籤';
@@ -2670,9 +2684,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get driveErrorInvalidDownloadPath => 'Google Drive 備份下載路徑無效。';
-
-  @override
   String get driveErrorPrepareUploadFailed => '無法準備 Google Drive 上傳暫存路徑。';
 
   @override
@@ -2933,16 +2944,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsActionConfirm => '確認還原';
 
   @override
-  String get settingsActionUpdate => '更新';
-
-  @override
   String get settingsActionVerifyAndRestore => '驗證並還原';
 
   @override
   String get settingsRecoveryKeyFieldLabel => '復原金鑰';
 
   @override
-  String get settingsRecoveryKeyFieldHint => 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
+  String get settingsRecoveryKeyFieldHint => '0123-4567-89AB-CDEF-GHJK-MNPQ';
+
+  @override
+  String get recoveryKeyInvalidInput => '請確認復原金鑰為 24 碼，且沒有多餘字元。';
+
+  @override
+  String get recoveryKeyRotationNeedsUnlock => '前次金鑰更新尚未恢復，請先重新解鎖再更新金鑰。';
 
   @override
   String get settingsRecoveryKeyShowTooltip => '顯示復原金鑰';
@@ -3001,6 +3015,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRecoveryKeySetupBanner => '復原金鑰已建立，請確認已妥善保存。';
 
   @override
+  String get settingsRecoveryKeyBackupRequired => '復原金鑰已更新，請重新建立備份。';
+
+  @override
   String get settingsRecoveryKeyCreateButton => '建立復原金鑰';
 
   @override
@@ -3025,11 +3042,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRecoveryKeySaveDialogHint => '請立即保存。關閉此畫面後不會再次顯示。';
 
   @override
-  String get settingsRecoveryKeyRotateDialogTitle => '更新復原金鑰？';
+  String get settingsRecoveryKeySaveBeforeUpdateHint =>
+      '先將新金鑰存入密碼管理工具，或抄寫後妥善收存。確認保存後才會開始更新。';
 
   @override
-  String get settingsRecoveryKeyRotateDialogBody =>
-      '將產生全新的復原金鑰，請立即保存。\n\n既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。';
+  String get settingsRecoveryKeyKeepOldBackupKey => '舊備份仍需舊金鑰。';
+
+  @override
+  String get settingsRecoveryKeySavedCheckbox => '已保存新金鑰';
+
+  @override
+  String get settingsRecoveryKeyStartUpdate => '開始更新';
+
+  @override
+  String get settingsRecoveryKeyUpdateInProgress => '正在更新復原金鑰…';
+
+  @override
+  String get recoveryKeyRotationDraftExpired => '金鑰世代已變更，請重新開啟更新畫面。';
 
   @override
   String get settingsSecurityOverviewSectionTitle => '安全狀態';
@@ -3040,6 +3069,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewRecoveryKeyTitle => '復原金鑰';
+
+  @override
+  String get settingsBackupStatusReadFailed => '無法讀取備份提醒狀態，請重試。';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyReady => '已建立，可用於換機與還原。';
@@ -3074,10 +3106,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSecurityOverviewIndexTitle => '日記庫';
 
   @override
-  String get settingsSecurityOverviewCreateRecoveryKeyButton => '建立復原金鑰';
-
-  @override
-  String get settingsSecurityOverviewRotateRecoveryKeyButton => '更新復原金鑰';
+  String get indexCipherUnavailable => '目前無法使用加密索引，日記與附件已保留。';
 
   @override
   String get settingsSecurityOverviewInspectVaultButton => '檢查日記庫';
@@ -3298,7 +3327,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLocalBackupNoBackups => '目前沒有本機備份。';
 
   @override
-  String get settingsLocalBackupDeleteBackupTooltip => '刪除備份';
+  String get settingsBackupDeleteTooltip => '刪除備份';
 
   @override
   String get settingsLocalBackupDeleteConfirmTitle => '刪除本機備份？';
@@ -3327,7 +3356,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String settingsLocalBackupDeleteConfirmBody(String fileName) {
+  String settingsBackupDeleteConfirmBody(String fileName) {
     return '將刪除 $fileName。此動作不會影響目前日記庫。';
   }
 
@@ -3417,19 +3446,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDriveBackupUnknownCreatedTime => '無建立時間';
 
   @override
-  String get settingsDriveBackupDeleteBackupTooltip => '刪除備份';
-
-  @override
   String get settingsDriveBackupDeleteConfirmTitle => '刪除 Google Drive 備份？';
 
   @override
   String settingsDriveBackupDeleteBackupSuccess(String fileName) {
     return '已從 Google Drive 刪除：$fileName';
-  }
-
-  @override
-  String settingsDriveBackupDeleteConfirmBody(String fileName) {
-    return '將刪除 $fileName。此動作不會影響目前日記庫。';
   }
 
   @override
@@ -3691,7 +3712,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String settingsInspectVaultResultCheckedEntries(int entryCount) {
+  String settingsVaultMaintenanceCheckedEntries(int entryCount) {
     return '已檢查 $entryCount 篇日記。';
   }
 
@@ -3751,11 +3772,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String settingsRepairVaultResultWarning(int count) {
     return '修復已完成，但有 $count 篇日記尚未解決。可手動修復可讀內容，或永久刪除無法復原的檔案。';
-  }
-
-  @override
-  String settingsRepairVaultResultCheckedEntries(int entryCount) {
-    return '已檢查 $entryCount 篇日記。';
   }
 
   @override
@@ -4148,7 +4164,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabIntroSection0Item0Body =>
-      '日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定、標籤目錄與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。';
+      '日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。';
 
   @override
   String get aboutTabIntroSection0Item1Title => '不用註冊就能開始';
@@ -4448,7 +4464,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabEncryptionSection2Subtitle =>
-      '內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如標籤目錄與釘選項目 ID。明文匯出與解鎖後的使用也需留意。';
+      '內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如釘選項目 ID。明文匯出與解鎖後的使用也需留意。';
 
   @override
   String get aboutTabEncryptionSection2Item0Title => '匯出後不再是同一層保護';
@@ -4868,7 +4884,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutTabBackupRestoreSection1Item0Body =>
-      '完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。內容檔案維持加密，但 ZIP 外層、復原設定，以及存在時的標籤目錄與釘選項目 ID 不另行加密。';
+      '完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。新備份的標籤目錄也會加密；ZIP 外層、復原設定與釘選項目 ID 為明文。歷史 ZIP 可能仍含明文標籤目錄。';
 
   @override
   String get aboutTabBackupRestoreSection1Item1Title => '建立後會先檢查';

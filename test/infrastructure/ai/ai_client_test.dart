@@ -6,6 +6,7 @@ import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_model_thinking_override.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
+import 'package:quill_diary/infrastructure/ai/ai_transport.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 
@@ -559,7 +560,9 @@ void main() {
       transport: wire,
     );
     expect(
-      await client.reply(await prepareAiTestRequest(client, 'prompt', [])).join(),
+      await client
+          .reply(await prepareAiTestRequest(client, 'prompt', []))
+          .join(),
       '完整',
     );
   });

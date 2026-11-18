@@ -52,7 +52,10 @@ void main() {
     await archiveIo.backup.writeBackupZip(backupFile);
 
     await expectLater(
-      archiveIo.backup.verifyBackupRecoveryKey(backupFile, 'WRONG-KEY-XXXX'),
+      archiveIo.backup.verifyBackupRecoveryKey(
+        backupFile,
+        '1123-4567-89AB-CDEF-GHJK-MNPQ',
+      ),
       throwsA(
         isA<VaultBackupException>().having(
           (VaultBackupException error) => error.issue,
@@ -72,7 +75,10 @@ void main() {
     await backupFile.writeAsBytes(ZipEncoder().encode(archive));
 
     await expectLater(
-      archiveIo.backup.verifyBackupRecoveryKey(backupFile, 'ANY-KEY'),
+      archiveIo.backup.verifyBackupRecoveryKey(
+        backupFile,
+        '0123-4567-89AB-CDEF-GHJK-MNPQ',
+      ),
       throwsA(
         isA<VaultBackupException>().having(
           (VaultBackupException error) => error.issue,

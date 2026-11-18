@@ -22,6 +22,16 @@ final class _PeopleAnalyticsCancelled implements Exception {
   const _PeopleAnalyticsCancelled();
 }
 
+const int _peopleWorkerBatchMaxDocuments = 8;
+const int _peopleWorkerBatchMaxCodeUnits = 32 * 1024;
+
+bool _isPeopleWorkerBatchFull({
+  required int documents,
+  required int codeUnits,
+}) =>
+    documents >= _peopleWorkerBatchMaxDocuments ||
+    codeUnits >= _peopleWorkerBatchMaxCodeUnits;
+
 void _peopleAnalysisWorkerMain(SendPort readyPort) {
   PersonNameMatcher? matcher;
   final ReceivePort requests = ReceivePort();
@@ -760,7 +770,10 @@ class VaultPeopleService {
               document.titleText.length +
               document.bodyVisibleText.length,
         );
-        final bool useWorker = changed.length > 8 || payloadLength > 32 * 1024;
+        final bool useWorker = _isPeopleWorkerBatchFull(
+          documents: changed.length,
+          codeUnits: payloadLength,
+        );
         final Map<String, List<String>>? backgroundHits;
         if (useWorker) {
           if (job.worker == null) {
@@ -896,7 +909,10 @@ class VaultPeopleService {
         );
         markdownByEntryId[document.entryId] = markdown;
         payloadLength += markdown.length;
-        if (markdownByEntryId.length >= 8 || payloadLength >= 32 * 1024) {
+        if (_isPeopleWorkerBatchFull(
+          documents: markdownByEntryId.length,
+          codeUnits: payloadLength,
+        )) {
           await flushWorkerPayload();
         }
       }

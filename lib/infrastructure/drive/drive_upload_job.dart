@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 
 /// 原生背景上傳服務回報的上傳階段。
 enum DriveUploadPhase {
@@ -89,9 +90,10 @@ final class DriveUploadJobSnapshot {
     required this.retryCount,
     required this.progressFraction,
     this.generation = 0,
+    this.backupIdentity,
+    this.backupPurpose,
     this.nextRetryAt,
     this.lastErrorCode,
-    this.lastErrorMessage,
     this.updatedAt,
     this.createdAt,
   });
@@ -109,9 +111,10 @@ final class DriveUploadJobSnapshot {
   final int retryCount;
   final double progressFraction;
   final int generation;
+  final RecoveryKeyIdentity? backupIdentity;
+  final VaultBackupPurpose? backupPurpose;
   final DateTime? nextRetryAt;
   final String? lastErrorCode;
-  final String? lastErrorMessage;
   final DateTime? updatedAt;
   final DateTime? createdAt;
 
@@ -123,8 +126,6 @@ final class DriveUploadJobSnapshot {
     final int boundedOffset = confirmedOffset.clamp(0, sizeBytes);
     return (boundedOffset * 100) ~/ sizeBytes;
   }
-
-  bool get blocksConflictingDriveActions => true;
 
   bool get isCancelCleanupPending =>
       phase == DriveUploadPhase.cancelCleanupPending;
@@ -146,43 +147,21 @@ final class DriveUploadJobSnapshot {
       phase == DriveUploadPhase.prunePending;
 
   factory DriveUploadJobSnapshot.fromMap(Map<Object?, Object?> raw) {
-    int readInt(String key, [int fallback = 0]) {
-      final Object? value = raw[key];
-      if (value is int) {
-        return value;
-      }
-      if (value is num) {
-        return value.toInt();
-      }
-      return int.tryParse('$value') ?? fallback;
-    }
+    String readString(String key) => '${raw[key] ?? ''}'.trim();
 
-    double readDouble(String key, [double fallback = 0]) {
+    int? parseInt(String key) {
       final Object? value = raw[key];
-      if (value is double) {
-        return value;
-      }
-      if (value is num) {
-        return value.toDouble();
-      }
-      return double.tryParse('$value') ?? fallback;
+      return switch (value) {
+        int() => value,
+        num() when value.isFinite => value.toInt(),
+        String() => int.tryParse(value),
+        _ => null,
+      };
     }
 
     DateTime? readTime(String key) {
-      final int? epoch = () {
-        final Object? value = raw[key];
-        if (value == null) {
-          return null;
-        }
-        if (value is int) {
-          return value;
-        }
-        if (value is num) {
-          return value.toInt();
-        }
-        return int.tryParse('$value');
-      }();
-      if (epoch == null || epoch <= 0) {
+      final int? epoch = parseInt(key);
+      if (epoch == null || epoch <= 0 || epoch > 8640000000000000) {
         return null;
       }
       return DateTime.fromMillisecondsSinceEpoch(epoch);
@@ -195,55 +174,44 @@ final class DriveUploadJobSnapshot {
       throw FormatException('未知的 Drive 上傳 phase：${raw['phase']}');
     }
 
-    final double progress = raw.containsKey('progressFraction')
-        ? readDouble('progressFraction')
-        : () {
-            final int size = readInt('sizeBytes');
-            final int offset = readInt('confirmedOffset');
-            if (size <= 0) {
-              return 0.0;
-            }
-            return (offset / size).clamp(0.0, 1.0);
-          }();
-
-    final String md5 = () {
-      final String value = '${raw['md5'] ?? ''}'.trim();
-      if (value.isNotEmpty) {
-        return value;
-      }
-      // 相容舊快照欄位。
-      return '${raw['sha256'] ?? ''}'.trim();
-    }();
+    final int sizeBytes = parseInt('sizeBytes') ?? 0;
+    final int confirmedOffset = parseInt('confirmedOffset') ?? 0;
+    final Object? rawProgress = raw['progressFraction'];
+    final double? platformProgress = rawProgress is num
+        ? rawProgress.toDouble()
+        : double.tryParse('$rawProgress');
+    final double progress =
+        platformProgress != null && platformProgress.isFinite
+        ? platformProgress
+        : (sizeBytes > 0 ? confirmedOffset / sizeBytes : 0.0);
+    final String md5 = readString('md5');
+    final int retries = parseInt('retryCount') ?? -1;
+    final String errorCode = readString('lastErrorCode');
 
     return DriveUploadJobSnapshot(
-      jobId: '${raw['jobId'] ?? ''}'.trim(),
+      jobId: readString('jobId'),
       phase: phase,
-      accountId: '${raw['accountId'] ?? ''}'.trim(),
-      accountEmail: '${raw['accountEmail'] ?? ''}'.trim(),
-      stagingPath: '${raw['stagingPath'] ?? ''}'.trim(),
-      fileName: '${raw['fileName'] ?? ''}'.trim(),
-      sizeBytes: readInt('sizeBytes'),
-      md5: md5,
-      remoteFileId: '${raw['remoteFileId'] ?? ''}'.trim(),
-      confirmedOffset: readInt('confirmedOffset'),
-      retryCount: () {
-        final int retry = readInt('retryCount', -1);
-        if (retry >= 0) {
-          return retry;
-        }
-        return readInt('attemptCount');
-      }(),
+      accountId: readString('accountId'),
+      accountEmail: readString('accountEmail'),
+      stagingPath: readString('stagingPath'),
+      fileName: readString('fileName'),
+      sizeBytes: sizeBytes,
+      md5: md5.isNotEmpty ? md5 : readString('sha256'),
+      remoteFileId: readString('remoteFileId'),
+      confirmedOffset: confirmedOffset,
+      retryCount: retries >= 0 ? retries : (parseInt('attemptCount') ?? 0),
       progressFraction: progress.clamp(0.0, 1.0),
-      generation: readInt('generation'),
+      generation: parseInt('generation') ?? 0,
+      backupIdentity: raw['backupIdentity'] is Map
+          ? RecoveryKeyIdentity.fromJson(raw['backupIdentity'] as Map)
+          : null,
+      backupPurpose: switch (raw['backupPurpose']) {
+        'normal' => VaultBackupPurpose.normal,
+        'preservation' => VaultBackupPurpose.preservation,
+        _ => null,
+      },
       nextRetryAt: readTime('nextRetryAtEpochMs'),
-      lastErrorCode: () {
-        final String value = '${raw['lastErrorCode'] ?? ''}'.trim();
-        return value.isEmpty ? null : value;
-      }(),
-      lastErrorMessage: () {
-        final String value = '${raw['lastErrorMessage'] ?? ''}'.trim();
-        return value.isEmpty ? null : value;
-      }(),
+      lastErrorCode: errorCode.isEmpty ? null : errorCode,
       updatedAt: readTime('updatedAtEpochMs'),
       createdAt: readTime('createdAtEpochMs'),
     );

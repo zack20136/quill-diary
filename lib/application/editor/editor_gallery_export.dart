@@ -52,7 +52,6 @@ Future<String?> saveGalleryImageToPictures({
   required String fileName,
   required String mimeType,
 }) async {
-  await MediaStoreExport.ensureDownloadsSubfolder();
   final String stampedName =
       '${DateTime.now().microsecondsSinceEpoch}_$fileName';
   try {

@@ -1,8 +1,11 @@
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/transfer/transfer_feedback.dart';
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
+import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
 import 'package:quill_diary/infrastructure/storage/shared/android_saf_file_copy.dart';
+import 'package:quill_diary/infrastructure/storage/tag_catalog_store.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 String userFacingErrorMessage(
@@ -10,6 +13,17 @@ String userFacingErrorMessage(
   required AppLocalizations l10n,
   String? fallback,
 }) {
+  if (error is TagCatalogException) return l10n.tagCatalogUnavailable;
+  if (error is RecoveryKeyFormatException) return l10n.recoveryKeyInvalidInput;
+  if (error is RecoveryKeyRotationPendingException) {
+    return l10n.recoveryKeyRotationNeedsUnlock;
+  }
+  if (error is RecoveryKeyRotationDraftExpiredException) {
+    return l10n.recoveryKeyRotationDraftExpired;
+  }
+  if (error is IndexCipherUnavailableException) {
+    return l10n.indexCipherUnavailable;
+  }
   if (error is VaultTransferBlockedException) {
     return vaultTransferBlockMessage(l10n, error.reason);
   }

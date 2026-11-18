@@ -1,6 +1,5 @@
 package zack20136.com.quill_diary.drive
 
-import android.content.Context
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -16,16 +15,11 @@ import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 class DriveUploadJobStoreTest {
-    private lateinit var context: Context
     private lateinit var store: DriveUploadJobStore
 
     @Before
     fun setUp() {
-        context = RuntimeEnvironment.getApplication()
-        val field = DriveUploadJobStore::class.java.getDeclaredField("instance")
-        field.isAccessible = true
-        field.set(null, null)
-        store = DriveUploadJobStore.get(context)
+        store = freshDriveUploadJobStore()
     }
 
     private fun stagingFile(name: String, bytes: ByteArray): File {
@@ -50,15 +44,26 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun 惡意_jobId_不得讀寫() {
-        assertNull(store.readJob("../etc/passwd"))
-        assertNull(store.readJob("not-a-uuid"))
-        assertNull(store.cancelAndCleanup("../evil"))
-        assertNull(store.failAndCleanup("../evil", "x", "y"))
+    fun 備份世代持久化後重新讀取仍綁定原工作() {
+        val staging = stagingFile("identity.zip", byteArrayOf(1, 2, 3))
+        val identity = mapOf("vault_id" to "vault", "kdf_fingerprint" to "a".repeat(64))
+        val created = store.createJobIfNoConflict(newJob(staging).copy(backupIdentity = identity, backupPurpose = "normal"))!!
+        val read = store.readJob(created.jobId)!!
+        assertEquals(identity, read.backupIdentity)
+        assertEquals("normal", read.backupPurpose)
+        assertEquals(created.generation, read.generation)
     }
 
     @Test
-    fun 無衝突時可建立工作且_generation_從_1_開始() {
+    fun 惡意工作識別碼不得讀寫() {
+        assertNull(store.readJob("../etc/passwd"))
+        assertNull(store.readJob("not-a-uuid"))
+        assertNull(store.cancelAndCleanup("../evil"))
+        assertNull(store.recordUploadFailure("../evil", "x", "y"))
+    }
+
+    @Test
+    fun 沒有進行中的工作時可建立新工作() {
         val staging = stagingFile("ok.zip", byteArrayOf(1, 2, 3))
         val created = store.createJobIfNoConflict(newJob(staging))
         assertNotNull(created)
@@ -68,7 +73,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun 已有_active_時拒絕第二個工作() {
+    fun 有進行中的工作時拒絕另建工作() {
         val a = stagingFile("a.zip", byteArrayOf(1))
         val b = stagingFile("b.zip", byteArrayOf(2))
         assertNotNull(store.createJobIfNoConflict(newJob(a)))
@@ -76,7 +81,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun generation_不符時_CAS_拒絕() {
+    fun 拒絕寫入過期的工作版本() {
         val staging = stagingFile("cas.zip", byteArrayOf(9))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val updated =
@@ -95,10 +100,10 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun 刪除後不得以舊_generation_復活() {
+    fun 舊版本無法復原已刪除的工作() {
         val staging = stagingFile("gone.zip", byteArrayOf(3))
         val created = store.createJobIfNoConflict(newJob(staging))!!
-        store.failAndCleanup(created.jobId, "test", "gone")
+        store.recordUploadFailure(created.jobId, "test", "gone")
         assertNull(
             store.updateJobCas(
                 created.copy(phase = DriveUploadPhase.UPLOADING),
@@ -109,7 +114,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun isInsideStagingRoot_拒絕_root_外路徑() {
+    fun 拒絕暫存根目錄以外的路徑() {
         val outside = File.createTempFile("outside", ".bin")
         outside.writeBytes(byteArrayOf(7, 7, 7))
         try {
@@ -122,11 +127,11 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun failAndCleanup_清除工作並寫入_failure_notice() {
+    fun 失敗時清除工作並保留提示() {
         val staging = stagingFile("fail.zip", byteArrayOf(4, 5))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val failed =
-            store.failAndCleanup(
+            store.recordUploadFailure(
                 created.jobId,
                 "abandoned",
                 "上次備份未完成，請重新備份。",
@@ -143,17 +148,17 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun ackFailure_才清除_failure_notice() {
+    fun 確認對應工作後才清除失敗提示() {
         val staging = stagingFile("ack.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
-        store.failAndCleanup(created.jobId, "x", "msg")
+        store.recordUploadFailure(created.jobId, "x", "msg")
         assertFalse(store.ackFailure("wrong-id"))
         assertTrue(store.ackFailure(created.jobId))
         assertNull(store.readFailureNotice())
     }
 
     @Test
-    fun cancelAndCleanup_刪除_staging_與工作() {
+    fun 取消清理刪除備份暫存與工作() {
         val staging = stagingFile("cancel.zip", byteArrayOf(4, 5))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val cancelled = store.cancelAndCleanup(created.jobId)
@@ -163,7 +168,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun cancelAndCleanup_拒絕_STATUS_PENDING() {
+    fun 取消不會刪除等待記錄成功的工作() {
         val staging = stagingFile("comm.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val committed =
@@ -180,7 +185,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun cancelAndCleanup_拒絕_PRUNE_PENDING() {
+    fun 取消不會刪除等待清理舊備份的工作() {
         val staging = stagingFile("prune.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val pending =
@@ -195,7 +200,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun markStatusRecorded_僅_STATUS_PENDING_可轉_PRUNE_PENDING() {
+    fun 記錄成功後可進入清理舊備份階段() {
         val staging = stagingFile("status.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         assertNull(store.markStatusRecorded(created.jobId))
@@ -210,7 +215,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun finalizeCommitted_僅_PRUNE_PENDING_可完成() {
+    fun 清理舊備份階段才允許完成收尾() {
         val staging = stagingFile("fin.zip", byteArrayOf(1, 2))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         assertNull(store.finalizeCommitted(created.jobId))
@@ -228,11 +233,11 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun failAndCleanup_保留_CANCEL_CLEANUP_PENDING() {
+    fun 失敗不會刪除等待取消清理的工作() {
         val staging = stagingFile("keep-cancel.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         store.markCancelCleanupPending(created.jobId)
-        assertNull(store.failAndCleanup(created.jobId, "x", "y"))
+        assertNull(store.recordUploadFailure(created.jobId, "x", "y"))
         assertEquals(
             DriveUploadPhase.CANCEL_CLEANUP_PENDING,
             store.readActiveJob()!!.phase,
@@ -241,7 +246,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun markCancelCleanupPending_未提交可標記_已提交拒絕() {
+    fun 只有未提交的工作可標記取消清理() {
         val staging = stagingFile("cancel-pending.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val pending = store.markCancelCleanupPending(created.jobId)
@@ -262,7 +267,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun CANCEL_CLEANUP_PENDING_允許cancelAndCleanup() {
+    fun 已標記取消的工作可完成本機清理() {
         val staging = stagingFile("cancel-ok.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val pending = store.markCancelCleanupPending(created.jobId)!!
@@ -273,7 +278,7 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun CANCEL_CLEANUP_PENDING_允許cancelAndCleanup_且CAS只允許升STATUS_PENDING() {
+    fun 取消清理中只允許更新錯誤或提交已驗證結果() {
         val staging = stagingFile("cas-cancel.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val pending = store.markCancelCleanupPending(created.jobId)!!
@@ -289,21 +294,26 @@ class DriveUploadJobStoreTest {
                 expectedGeneration = pending.generation,
             ),
         )
+        val withError = store.updateJobCas(
+            pending.copy(lastErrorCode = "cleanup_needs_reauth"),
+            expectedGeneration = pending.generation,
+        )!!
+        assertEquals("cleanup_needs_reauth", store.readJob(pending.jobId)!!.lastErrorCode)
         val committed =
             store.updateJobCas(
-                pending.copy(
+                withError.copy(
                     phase = DriveUploadPhase.STATUS_PENDING,
                     remoteFileId = "r",
                     confirmedOffset = pending.sizeBytes,
                 ),
-                expectedGeneration = pending.generation,
+                expectedGeneration = withError.generation,
             )
         assertNotNull(committed)
         assertEquals(DriveUploadPhase.STATUS_PENDING, committed!!.phase)
     }
 
     @Test
-    fun Progress_持久化會連續保留最新伺服器確認進度() {
+    fun 連續寫入進度會保留最新確認位置() {
         val staging = stagingFile("progress.zip", ByteArray(100))
         val created = store.createJobIfNoConflict(newJob(staging, size = 100))!!
         val first =
@@ -327,31 +337,65 @@ class DriveUploadJobStoreTest {
     }
 
     @Test
-    fun getStateEnvelope_回傳_job_與_failure() {
+    fun 工作狀態同時回傳進行中工作與失敗提示() {
         val staging = stagingFile("env.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val active = store.getStateEnvelope()
         assertNotNull(active["job"])
         assertNull(active["failure"])
-        store.failAndCleanup(created.jobId, "x", "fail msg")
+        store.recordUploadFailure(created.jobId, "x", "fail msg")
         val withFailure = store.getStateEnvelope()
         assertNull(withFailure["job"])
         assertNotNull(withFailure["failure"])
     }
 
     @Test
-    fun cleanupOrphanStaging_清除無引用檔案() {
-        val staging = stagingFile("orphan.zip", byteArrayOf(9, 9))
-        val created = store.createJobIfNoConflict(newJob(staging))!!
-        store.failAndCleanup(created.jobId, "x", "y")
-        val orphan = stagingFile("lonely.zip", byteArrayOf(1))
-        assertTrue(orphan.exists())
-        store.cleanupOrphanStaging()
+    fun 清除孤兒同時保留有效工作引用的暫存和工作網址() {
+        val staging = stagingFile("active.zip", byteArrayOf(1))
+        val active = store.createJobIfNoConflict(newJob(staging))!!
+        val orphan = stagingFile("orphan.zip.partial", byteArrayOf(2))
+        val orphanId = UUID.randomUUID().toString()
+        val abandonedJob = File(jobsDirectory(), "$orphanId.json.new").apply {
+            writeText("uncommitted")
+        }
+        val url = "https://www.googleapis.com/upload/drive/v3/files?upload_id=sample"
+        store.writeSessionUri(orphanId, url)
+        store.writeSessionUri(active.jobId, url)
+
+        store.cleanupAbandonedUploadFiles()
+
+        assertTrue(staging.exists())
         assertFalse(orphan.exists())
+        assertFalse(abandonedJob.exists())
+        assertNull(store.readSessionUri(orphanId))
+        assertEquals(url, store.readSessionUri(active.jobId))
     }
 
     @Test
-    fun sessionUri_加密往返() {
+    fun 工作紀錄讀不到時保留無法確認用途的暫存() {
+        val staging = stagingFile("unknown.zip", byteArrayOf(1))
+        File(jobsDirectory(), "${UUID.randomUUID()}.json").writeText("{")
+
+        store.cleanupAbandonedUploadFiles()
+
+        assertTrue(staging.exists())
+    }
+
+    @Test
+    fun 已有遠端識別碼的失敗工作保留對帳所需資訊() {
+        val staging = stagingFile("interrupted.zip", byteArrayOf(1))
+        val active = store.createJobIfNoConflict(newJob(staging).copy(remoteFileId = "remote-id"))!!
+
+        val failed = store.recordUploadFailure(active.jobId, "completion_mismatch", "測試失敗")
+
+        assertEquals(DriveUploadPhase.CANCEL_CLEANUP_PENDING, failed?.phase)
+        assertEquals("remote-id", store.readJob(active.jobId)?.remoteFileId)
+        assertEquals(active.jobId, store.readFailureNotice()?.jobId)
+        assertTrue(staging.exists())
+    }
+
+    @Test
+    fun 上傳工作網址可加密保存並讀回() {
         val staging = stagingFile("sess.zip", byteArrayOf(1))
         val created = store.createJobIfNoConflict(newJob(staging))!!
         val uri = "https://www.googleapis.com/upload/drive/v3/files?upload_id=abc"
@@ -361,17 +405,6 @@ class DriveUploadJobStoreTest {
         assertNull(store.readSessionUri(created.jobId))
     }
 
-    @Test
-    fun md5Hex_對小檔可重複() {
-        val file = File.createTempFile("drive_md5", ".bin")
-        try {
-            file.writeBytes(byteArrayOf(1, 2, 3, 4, 5))
-            val first = DriveUploadJobStore.md5Hex(file)
-            val second = DriveUploadJobStore.md5Hex(file)
-            assertEquals(first, second)
-            assertEquals(32, first.length)
-        } finally {
-            file.delete()
-        }
-    }
+    private fun jobsDirectory(): File =
+        File(RuntimeEnvironment.getApplication().filesDir, "quill_diary/drive_upload_jobs")
 }

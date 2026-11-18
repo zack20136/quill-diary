@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
@@ -53,16 +55,17 @@ class DriveUploadPlatform {
       'prepareStagingPath',
       <String, Object?>{'fileName': fileName},
     );
-    final String path = '$raw'.trim();
-    if (path.isEmpty) {
+    if (raw is! String || !p.isAbsolute(raw)) {
       throw const GoogleDriveException(
         GoogleDriveErrorCode.prepareUploadFailed,
       );
     }
-    return path;
+    return raw;
   }
 
   Future<DriveUploadJobSnapshot> startUpload({
+    RecoveryKeyIdentity? backupIdentity,
+    VaultBackupPurpose? backupPurpose,
     required String stagingPath,
     required String fileName,
     required int sizeBytes,
@@ -71,6 +74,8 @@ class DriveUploadPlatform {
     final Object? raw = await _methods.invokeMethod<Object?>(
       'startUpload',
       <String, Object?>{
+        'backupIdentity': backupIdentity?.toJson(),
+        'backupPurpose': backupPurpose?.name,
         'stagingPath': stagingPath,
         'fileName': fileName,
         'sizeBytes': sizeBytes,
@@ -89,6 +94,12 @@ class DriveUploadPlatform {
       return;
     }
     await _methods.invokeMethod<Object?>('cancelUpload');
+  }
+
+  Future<void> cleanupAbandonedUploadFiles() async {
+    if (isSupported) {
+      await _methods.invokeMethod<void>('cleanupAbandonedUploadFiles');
+    }
   }
 
   Future<DriveUploadState> abandonCancelCleanup(String jobId) async {

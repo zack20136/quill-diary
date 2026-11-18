@@ -1,6 +1,8 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 
@@ -18,6 +20,8 @@ void main() {
     required String indexMessage,
     bool hasUnlockedSession = true,
     BackupStatusSnapshot backupStatus = const BackupStatusSnapshot(),
+    bool needsBackup = false,
+    Object? backupStatusError,
   }) async {
     await tester.binding.setSurfaceSize(const Size(800, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -25,7 +29,13 @@ void main() {
     await tester.pumpWidget(
       widgetTestApp(
         center: false,
-        overrides: const [],
+        overrides: [
+          recoveryBackupRequiredProvider.overrideWithValue(
+            backupStatusError == null
+                ? AsyncData(needsBackup)
+                : AsyncError(backupStatusError, StackTrace.empty),
+          ),
+        ],
         child: SettingsSecurityOverview(
           hasRecoveryKey: true,
           recoveryKeyHint: 'ABCD',
@@ -45,6 +55,57 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('更新金鑰後在既有安全卡顯示備份提醒，完成後恢復就緒', (tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+      needsBackup: true,
+    );
+    expect(
+      find.text(testL10n.settingsRecoveryKeyBackupRequired),
+      findsOneWidget,
+    );
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+    );
+    expect(find.text(testL10n.settingsRecoveryKeyBackupRequired), findsNothing);
+    expect(
+      find.text(testL10n.settingsSecurityOverviewRecoveryKeyReady),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('備份提醒讀取失敗顯示錯誤與重試，恢復後才顯示就緒', (tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+      backupStatusError: const FormatException('損壞'),
+    );
+    expect(find.text(testL10n.settingsBackupStatusReadFailed), findsOneWidget);
+    expect(
+      find.text(testL10n.settingsSecurityOverviewRecoveryKeyReady),
+      findsNothing,
+    );
+    expect(
+      find.widgetWithText(TextButton, testL10n.commonActionRetry),
+      findsOneWidget,
+    );
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+    );
+    expect(find.text(testL10n.settingsBackupStatusReadFailed), findsNothing);
+    expect(
+      find.text(testL10n.settingsSecurityOverviewRecoveryKeyReady),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('索引卡片在 health level 為 ok 時顯示就緒訊息', (WidgetTester tester) async {
     await pumpOverview(
@@ -138,9 +199,7 @@ void main() {
     expect(find.textContaining('異常日記'), findsNothing);
   });
 
-  testWidgets('復原金鑰副標只有末四碼使用等寬字，標籤維持一般字', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('復原金鑰副標只有末四碼使用等寬字，標籤維持一般字', (WidgetTester tester) async {
     await pumpOverview(
       tester,
       indexHealthLevel: SettingsHealthLevel.ok,

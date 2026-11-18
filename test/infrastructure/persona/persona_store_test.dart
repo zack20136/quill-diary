@@ -66,7 +66,7 @@ void main() {
       final metadata = (await harness.repository.readRecoveryMetadata())!
           .toJson();
       await expectLater(
-        harness.repository.rotateRecoveryKey(setup.session),
+        harness.rotateRecoveryKey(setup.session),
         throwsFormatException,
       );
       expect(state.existsSync(), isFalse);
@@ -120,7 +120,7 @@ void main() {
     );
     final file = File(await harness.pathStrategy.aiSettingsPath());
     await file.rename('${file.path}.tmp');
-    final rotated = await harness.repository.rotateRecoveryKey(setup.session);
+    final rotated = await harness.rotateRecoveryKey(setup.session);
     expect((await settings.read(rotated.session)).hidePersonNames, isFalse);
     expect(
       (await store.load(record.personId, rotated.session))!.toJson(),
@@ -148,7 +148,7 @@ void main() {
     final published = await publish();
     crypto.failRotationAfterEncryptedFiles = 1;
     await expectLater(
-      harness.repository.rotateRecoveryKey(setup.session),
+      harness.rotateRecoveryKey(setup.session),
       throwsStateError,
     );
     crypto.failRotationAfterEncryptedFiles = null;
@@ -664,7 +664,7 @@ void main() {
     };
     await store.saveDraft(live, setup.session);
     await store.publish(record.personId, record.personaId, setup.session);
-    final rotated = await harness.repository.rotateRecoveryKey(setup.session);
+    final rotated = await harness.rotateRecoveryKey(setup.session);
     expect(
       (await store.load(
         record.personId,

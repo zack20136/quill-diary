@@ -434,6 +434,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1 {1 天前} other {{count} 天前}}'**
   String commonRelativeDaysAgo(int count);
 
+  /// No description provided for @commonRelativeDaysFromNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 天後'**
+  String commonRelativeDaysFromNow(int count);
+
   /// No description provided for @commonGoogleAccountLabel.
   ///
   /// In zh, this message translates to:
@@ -457,6 +463,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已複製到剪貼簿'**
   String get commonCopiedToClipboard;
+
+  /// No description provided for @commonClipboardWriteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法複製，請稍後再試。'**
+  String get commonClipboardWriteFailed;
 
   /// No description provided for @commonActionRetry.
   ///
@@ -1555,6 +1567,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'請輸入標籤名稱'**
   String get tagNameRequiredMessage;
+
+  /// No description provided for @tagCatalogUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'標籤設定暫時無法使用，原始資料已保留。請重試。'**
+  String get tagCatalogUnavailable;
+
+  /// No description provided for @tagCatalogRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新讀取標籤設定'**
+  String get tagCatalogRetry;
 
   /// No description provided for @tagUnnamedPreview.
   ///
@@ -4901,12 +4925,6 @@ abstract class AppLocalizations {
   /// **'部分舊備份刪除失敗（{failedCount}/{totalCount}）。'**
   String driveErrorPruneFailed(int failedCount, int totalCount);
 
-  /// No description provided for @driveErrorInvalidDownloadPath.
-  ///
-  /// In zh, this message translates to:
-  /// **'Google Drive 備份下載路徑無效。'**
-  String get driveErrorInvalidDownloadPath;
-
   /// No description provided for @driveErrorPrepareUploadFailed.
   ///
   /// In zh, this message translates to:
@@ -5349,12 +5367,6 @@ abstract class AppLocalizations {
   /// **'確認還原'**
   String get settingsActionConfirm;
 
-  /// No description provided for @settingsActionUpdate.
-  ///
-  /// In zh, this message translates to:
-  /// **'更新'**
-  String get settingsActionUpdate;
-
   /// No description provided for @settingsActionVerifyAndRestore.
   ///
   /// In zh, this message translates to:
@@ -5370,8 +5382,20 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRecoveryKeyFieldHint.
   ///
   /// In zh, this message translates to:
-  /// **'ABCD-EFGH-IJKL-MNOP-QRST-UVWX'**
+  /// **'0123-4567-89AB-CDEF-GHJK-MNPQ'**
   String get settingsRecoveryKeyFieldHint;
+
+  /// No description provided for @recoveryKeyInvalidInput.
+  ///
+  /// In zh, this message translates to:
+  /// **'請確認復原金鑰為 24 碼，且沒有多餘字元。'**
+  String get recoveryKeyInvalidInput;
+
+  /// No description provided for @recoveryKeyRotationNeedsUnlock.
+  ///
+  /// In zh, this message translates to:
+  /// **'前次金鑰更新尚未恢復，請先重新解鎖再更新金鑰。'**
+  String get recoveryKeyRotationNeedsUnlock;
 
   /// No description provided for @settingsRecoveryKeyShowTooltip.
   ///
@@ -5481,6 +5505,12 @@ abstract class AppLocalizations {
   /// **'復原金鑰已建立，請確認已妥善保存。'**
   String get settingsRecoveryKeySetupBanner;
 
+  /// No description provided for @settingsRecoveryKeyBackupRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'復原金鑰已更新，請重新建立備份。'**
+  String get settingsRecoveryKeyBackupRequired;
+
   /// No description provided for @settingsRecoveryKeyCreateButton.
   ///
   /// In zh, this message translates to:
@@ -5529,17 +5559,41 @@ abstract class AppLocalizations {
   /// **'請立即保存。關閉此畫面後不會再次顯示。'**
   String get settingsRecoveryKeySaveDialogHint;
 
-  /// No description provided for @settingsRecoveryKeyRotateDialogTitle.
+  /// No description provided for @settingsRecoveryKeySaveBeforeUpdateHint.
   ///
   /// In zh, this message translates to:
-  /// **'更新復原金鑰？'**
-  String get settingsRecoveryKeyRotateDialogTitle;
+  /// **'先將新金鑰存入密碼管理工具，或抄寫後妥善收存。確認保存後才會開始更新。'**
+  String get settingsRecoveryKeySaveBeforeUpdateHint;
 
-  /// No description provided for @settingsRecoveryKeyRotateDialogBody.
+  /// No description provided for @settingsRecoveryKeyKeepOldBackupKey.
   ///
   /// In zh, this message translates to:
-  /// **'將產生全新的復原金鑰，請立即保存。\n\n既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。'**
-  String get settingsRecoveryKeyRotateDialogBody;
+  /// **'舊備份仍需舊金鑰。'**
+  String get settingsRecoveryKeyKeepOldBackupKey;
+
+  /// No description provided for @settingsRecoveryKeySavedCheckbox.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存新金鑰'**
+  String get settingsRecoveryKeySavedCheckbox;
+
+  /// No description provided for @settingsRecoveryKeyStartUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'開始更新'**
+  String get settingsRecoveryKeyStartUpdate;
+
+  /// No description provided for @settingsRecoveryKeyUpdateInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在更新復原金鑰…'**
+  String get settingsRecoveryKeyUpdateInProgress;
+
+  /// No description provided for @recoveryKeyRotationDraftExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'金鑰世代已變更，請重新開啟更新畫面。'**
+  String get recoveryKeyRotationDraftExpired;
 
   /// No description provided for @settingsSecurityOverviewSectionTitle.
   ///
@@ -5558,6 +5612,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'復原金鑰'**
   String get settingsSecurityOverviewRecoveryKeyTitle;
+
+  /// No description provided for @settingsBackupStatusReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取備份提醒狀態，請重試。'**
+  String get settingsBackupStatusReadFailed;
 
   /// No description provided for @settingsSecurityOverviewRecoveryKeyReady.
   ///
@@ -5615,17 +5675,11 @@ abstract class AppLocalizations {
   /// **'日記庫'**
   String get settingsSecurityOverviewIndexTitle;
 
-  /// No description provided for @settingsSecurityOverviewCreateRecoveryKeyButton.
+  /// No description provided for @indexCipherUnavailable.
   ///
   /// In zh, this message translates to:
-  /// **'建立復原金鑰'**
-  String get settingsSecurityOverviewCreateRecoveryKeyButton;
-
-  /// No description provided for @settingsSecurityOverviewRotateRecoveryKeyButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'更新復原金鑰'**
-  String get settingsSecurityOverviewRotateRecoveryKeyButton;
+  /// **'目前無法使用加密索引，日記與附件已保留。'**
+  String get indexCipherUnavailable;
 
   /// No description provided for @settingsSecurityOverviewInspectVaultButton.
   ///
@@ -5976,11 +6030,11 @@ abstract class AppLocalizations {
   /// **'目前沒有本機備份。'**
   String get settingsLocalBackupNoBackups;
 
-  /// No description provided for @settingsLocalBackupDeleteBackupTooltip.
+  /// No description provided for @settingsBackupDeleteTooltip.
   ///
   /// In zh, this message translates to:
   /// **'刪除備份'**
-  String get settingsLocalBackupDeleteBackupTooltip;
+  String get settingsBackupDeleteTooltip;
 
   /// No description provided for @settingsLocalBackupDeleteConfirmTitle.
   ///
@@ -6018,11 +6072,11 @@ abstract class AppLocalizations {
   /// **'已刪除本機備份：{fileName}'**
   String settingsLocalBackupDeleteBackupSuccess(String fileName);
 
-  /// No description provided for @settingsLocalBackupDeleteConfirmBody.
+  /// No description provided for @settingsBackupDeleteConfirmBody.
   ///
   /// In zh, this message translates to:
   /// **'將刪除 {fileName}。此動作不會影響目前日記庫。'**
-  String settingsLocalBackupDeleteConfirmBody(String fileName);
+  String settingsBackupDeleteConfirmBody(String fileName);
 
   /// No description provided for @settingsDriveBackupSectionTitle.
   ///
@@ -6168,12 +6222,6 @@ abstract class AppLocalizations {
   /// **'無建立時間'**
   String get settingsDriveBackupUnknownCreatedTime;
 
-  /// No description provided for @settingsDriveBackupDeleteBackupTooltip.
-  ///
-  /// In zh, this message translates to:
-  /// **'刪除備份'**
-  String get settingsDriveBackupDeleteBackupTooltip;
-
   /// No description provided for @settingsDriveBackupDeleteConfirmTitle.
   ///
   /// In zh, this message translates to:
@@ -6185,12 +6233,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已從 Google Drive 刪除：{fileName}'**
   String settingsDriveBackupDeleteBackupSuccess(String fileName);
-
-  /// No description provided for @settingsDriveBackupDeleteConfirmBody.
-  ///
-  /// In zh, this message translates to:
-  /// **'將刪除 {fileName}。此動作不會影響目前日記庫。'**
-  String settingsDriveBackupDeleteConfirmBody(String fileName);
 
   /// No description provided for @settingsDriveBackupRestoreSuccess.
   ///
@@ -6624,11 +6666,11 @@ abstract class AppLocalizations {
   /// **'發現 {count} 篇日記需要處理。修復會先建立並驗證本機備份，再整理可修復的項目。'**
   String settingsInspectVaultResultWarning(int count);
 
-  /// No description provided for @settingsInspectVaultResultCheckedEntries.
+  /// No description provided for @settingsVaultMaintenanceCheckedEntries.
   ///
   /// In zh, this message translates to:
   /// **'已檢查 {entryCount} 篇日記。'**
-  String settingsInspectVaultResultCheckedEntries(int entryCount);
+  String settingsVaultMaintenanceCheckedEntries(int entryCount);
 
   /// No description provided for @settingsInspectVaultResultMore.
   ///
@@ -6737,12 +6779,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'修復已完成，但有 {count} 篇日記尚未解決。可手動修復可讀內容，或永久刪除無法復原的檔案。'**
   String settingsRepairVaultResultWarning(int count);
-
-  /// No description provided for @settingsRepairVaultResultCheckedEntries.
-  ///
-  /// In zh, this message translates to:
-  /// **'已檢查 {entryCount} 篇日記。'**
-  String settingsRepairVaultResultCheckedEntries(int entryCount);
 
   /// No description provided for @settingsRepairVaultResultMissingAttachment.
   ///
@@ -7443,7 +7479,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabIntroSection0Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定、標籤目錄與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。'**
+  /// **'日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。'**
   String get aboutTabIntroSection0Item0Body;
 
   /// No description provided for @aboutTabIntroSection0Item1Title.
@@ -7971,7 +8007,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabEncryptionSection2Subtitle.
   ///
   /// In zh, this message translates to:
-  /// **'內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如標籤目錄與釘選項目 ID。明文匯出與解鎖後的使用也需留意。'**
+  /// **'內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如釘選項目 ID。明文匯出與解鎖後的使用也需留意。'**
   String get aboutTabEncryptionSection2Subtitle;
 
   /// No description provided for @aboutTabEncryptionSection2Item0Title.
@@ -8721,7 +8757,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTabBackupRestoreSection1Item0Body.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。內容檔案維持加密，但 ZIP 外層、復原設定，以及存在時的標籤目錄與釘選項目 ID 不另行加密。'**
+  /// **'完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。新備份的標籤目錄也會加密；ZIP 外層、復原設定與釘選項目 ID 為明文。歷史 ZIP 可能仍含明文標籤目錄。'**
   String get aboutTabBackupRestoreSection1Item0Body;
 
   /// No description provided for @aboutTabBackupRestoreSection1Item1Title.

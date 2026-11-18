@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
@@ -6,8 +7,8 @@ import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 void main() {
-  final zh = lookupAppLocalizations(AppLanguage.zh.materialLocale);
-  final en = lookupAppLocalizations(AppLanguage.en.materialLocale);
+  final zh = lookupAppLocalizations(AppLanguage.zh.flutterLocale);
+  final en = lookupAppLocalizations(AppLanguage.en.flutterLocale);
 
   test('聊天提示詞依語言使用內建，自訂內容不隨語言改寫', () {
     const defaults = ChatDiaryPromptSettings();
@@ -42,7 +43,7 @@ void main() {
       guidanceOverride: '自訂接話方式',
     );
     for (final language in AppLanguage.values) {
-      final l10n = lookupAppLocalizations(language.materialLocale);
+      final l10n = lookupAppLocalizations(language.flutterLocale);
       final conversation = resolveChatDiaryPrompt(
         ChatDiaryPromptPurpose.conversation,
         language,
@@ -72,7 +73,7 @@ void main() {
     const legacy = '  請用 JSON 輸出，並保留我的原始寫法。\n自訂內容不自動刪改。  ';
     const custom = ChatDiaryPromptSettings(generationOverride: legacy);
     for (final language in AppLanguage.values) {
-      final l10n = lookupAppLocalizations(language.materialLocale);
+      final l10n = lookupAppLocalizations(language.flutterLocale);
       final defaults = resolveChatDiaryPrompt(
         ChatDiaryPromptPurpose.generation,
         language,
@@ -151,7 +152,7 @@ void main() {
       generationOverride: 'Custom draft',
     );
     for (final language in AppLanguage.values) {
-      final l10n = lookupAppLocalizations(language.materialLocale);
+      final l10n = lookupAppLocalizations(language.flutterLocale);
       expect(
         resolveDiaryOrganizationInstructions(
           generate: false,

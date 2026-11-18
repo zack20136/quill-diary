@@ -3,6 +3,7 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
@@ -10,8 +11,25 @@ import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
-final backupStatusProvider = FutureProvider<BackupStatusSnapshot>((Ref ref) {
-  return ref.watch(backupStatusStoreProvider).read();
+final backupStatusProvider = FutureProvider<BackupStatusSnapshot>((
+  Ref ref,
+) async {
+  final session = ref.watch(
+    appSessionProvider.select((state) => state.session),
+  );
+  final store = ref.watch(backupStatusStoreProvider);
+  final status = await store.read();
+  if (session == null || status.pendingRecoveryRotation == null) return status;
+  final repository = ref.watch(vaultRepositoryProvider);
+  return repository.runVaultMutation(() async {
+    final metadata = await repository.readRecoveryMetadata();
+    if (metadata != null && metadata.vaultId == session.vaultId) {
+      await store.reconcileRecoveryRotation(
+        await RecoveryKeyIdentity.fromMetadata(metadata),
+      );
+    }
+    return store.read();
+  });
 });
 
 final recoveryMetadataProvider = FutureProvider<RecoveryMetadata?>((
@@ -64,3 +82,12 @@ final vaultInspectSummaryProvider =
       if (!session.isUnlocked || session.session == null) return null;
       return ref.read(vaultRepositoryProvider).readLastInspectSummary();
     });
+
+final recoveryBackupRequiredProvider = FutureProvider<bool>((Ref ref) async {
+  final status = await ref.watch(backupStatusProvider.future);
+  if (status.requiredBackupIdentity == null) return false;
+  final metadata = await ref.watch(recoveryMetadataProvider.future);
+  return metadata != null &&
+      status.requiredBackupIdentity ==
+          await RecoveryKeyIdentity.fromMetadata(metadata);
+});

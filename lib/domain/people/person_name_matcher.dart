@@ -6,6 +6,9 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 /// 姓名首尾若與相鄰文字同為 ASCII 英數就不算完整邊界；中文、空白與
 /// 標點皆可作為邊界，避免 `test` 誤命中 `testing`，同時支援 `張1a`。
 final class PersonNameMatcher {
+  /// 比對規則改變時遞增，使舊人物分析快取重新計算；一般分析不遞增。
+  static const int rulesRevision = 1;
+
   PersonNameMatcher(Iterable<Person> people) {
     for (final Person person in people) {
       for (final String name in person.allNormalizedNames) {

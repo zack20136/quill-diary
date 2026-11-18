@@ -1,10 +1,61 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
+import 'package:quill_diary/infrastructure/drive/drive_upload_platform.dart';
+import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
+
+class _TestDriveUploadPlatform extends DriveUploadPlatform {
+  _TestDriveUploadPlatform(MethodChannel channel)
+    : super(methodChannel: channel);
+
+  @override
+  bool get isSupported => true;
+}
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('暫存通道只接受有值的絕對路徑', () async {
+    const channel = MethodChannel('test/drive_staging');
+    final messenger = binding.defaultBinaryMessenger;
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final platform = _TestDriveUploadPlatform(channel);
+
+    final valid = File('backup.zip').absolute.path;
+    for (final result in <Object?>[
+      null,
+      1,
+      '',
+      '  ',
+      'relative/backup.zip',
+      ' $valid',
+    ]) {
+      messenger.setMockMethodCallHandler(channel, (_) async => result);
+      await expectLater(
+        platform.prepareStagingPath(fileName: 'backup.zip'),
+        throwsA(
+          isA<GoogleDriveException>().having(
+            (error) => error.code,
+            'code',
+            GoogleDriveErrorCode.prepareUploadFailed,
+          ),
+        ),
+      );
+    }
+
+    final exactPath = '$valid ';
+    messenger.setMockMethodCallHandler(channel, (_) async => exactPath);
+    expect(
+      await platform.prepareStagingPath(fileName: 'backup.zip'),
+      exactPath,
+    );
+  });
+
   group('DriveUploadJobSnapshot', () {
-    test('解析進行中上傳並阻擋衝突操作', () {
+    test('解析進行中上傳的位置與進度', () {
       final DriveUploadJobSnapshot job = DriveUploadJobSnapshot.fromMap(
         <Object?, Object?>{
           'jobId': '11111111-1111-1111-1111-111111111111',
@@ -23,7 +74,6 @@ void main() {
 
       expect(job.phase, DriveUploadPhase.uploading);
       expect(job.progressFraction, closeTo(0.4, 0.001));
-      expect(job.blocksConflictingDriveActions, isTrue);
       expect(job.needsCompletionHandling, isFalse);
     });
 
@@ -112,7 +162,6 @@ void main() {
       expect(job.phase, DriveUploadPhase.cancelCleanupPending);
       expect(job.isCancelCleanupPending, isTrue);
       expect(job.needsCancelCleanupAccountRecovery, isFalse);
-      expect(job.blocksConflictingDriveActions, isTrue);
       expect(job.needsStatusRecording, isFalse);
       expect(job.needsCompletionHandling, isFalse);
     });

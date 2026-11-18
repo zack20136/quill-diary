@@ -10,7 +10,7 @@ Drive API 只要求 `https://www.googleapis.com/auth/drive.appdata`，不存取�
 |------|------|
 | Android OAuth client | 套件名稱 `zack20136.com.quill_diary` 加上實際安裝版本的簽章 SHA-1 |
 | Web OAuth client | 提供 Android Google Sign-In 的 server client ID |
-| `oauth_request_id_token` | [`oauth_config.xml`](../../../android/app/src/main/res/values/oauth_config.xml) 中的 **Web client ID**，不可填 Android client ID |
+| `google_drive_web_client_id` | [`oauth_config.xml`](../../../android/app/src/main/res/values/oauth_config.xml) 中的 **Web client ID**，不可填 Android client ID |
 | 建置覆寫 | `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` 優先於原生 channel 回傳的 XML 設定 |
 
 [`google_drive_oauth_errors.dart`](../../../lib/infrastructure/drive/google_drive_oauth_errors.dart) 維護的指紋：
@@ -51,7 +51,7 @@ try {
 
 ## 登入、授權與連線快照
 
-Dart 端以 `google_sign_in` 取得帳戶，再用 `authorizationForScopes()`／`authorizeScopes()` 取得 Drive access token；REST 不使用 ID token。Android 互動連線先嘗試 [`MainActivity.kt`](../../../android/app/src/main/kotlin/zack20136/com/quill_diary/MainActivity.kt) 的原生後備（要求 email／ID token），成功後回 Dart 取得 Drive 授權。
+Dart 端以 `google_sign_in` 取得帳戶，再用 `authorizationForScopes()`／`authorizeScopes()` 取得 Drive access token；REST 不使用 ID token。Android 互動連線先嘗試 [`DriveSignInChannel.kt`](../../../android/app/src/main/kotlin/zack20136/com/quill_diary/drive/DriveSignInChannel.kt) 的原生後備（要求 email／ID token），成功後回 Dart 取得 Drive 授權。
 
 非互動快照要求 `getLastSignedInAccount()` 與 `hasPermissions(...drive.appdata)` 同時成立；實際 I/O 仍須取得有效授權。套件使用 Credential Manager，專案另保留 `play-services-auth` legacy 後備；移除時同步更新原生登入、快照、錯誤映射與測試。
 
@@ -59,10 +59,11 @@ Dart 端以 `google_sign_in` 取得帳戶，再用 `authorizationForScopes()`／
 
 | 訊息 | 排查方向 |
 |------|------|
-| `access_denied` | 使用者／組織政策拒絕、consent screen、Drive API 或 scope 設定 |
+| `access_denied` | 歸類為設定錯誤；多為 consent screen、測試使用者、Drive API 或 scope 設定問題 |
+| `admin_policy_enforced` | 組織政策阻擋授權 |
 | `No credential` | Web client ID、Android 套件／SHA-1、裝置憑證狀態 |
 | `[10] Developer error` | Android OAuth client 與套件／簽章不一致，或誤填 Android client ID |
-| `[12500] Sign in failed` | 原生後備的泛用錯誤；核對 OAuth 設定、Google Play services 與帳戶 |
+| `[12500] Sign in failed` | 原生後備回報 `google_drive_auth_unavailable`（UI 不可用）；核對 OAuth 設定、Google Play services 與帳戶 |
 | `[16] Account reauth failed` | 帳戶重新驗證；只在 Play 版發生時先核對 App Signing SHA-1 |
 | `canceled` | 可能是使用者取消，也可能是底層設定錯誤被包裝；反覆出現時核對上述識別與設定 |
 

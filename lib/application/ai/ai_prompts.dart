@@ -1,3 +1,4 @@
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
@@ -17,7 +18,7 @@ String resolveChatDiaryPrompt(
   AppLanguage language,
   ChatDiaryPromptSettings settings,
 ) {
-  final l10n = lookupAppLocalizations(language.materialLocale);
+  final l10n = localizationsFor(language);
   final conversationRules =
       '${l10n.chatDiaryConversationRoleLine}\n\n'
       '${l10n.chatDiaryConversationRules}';
@@ -45,7 +46,7 @@ String resolveDiaryOrganizationPrompt({
   required AppLanguage language,
   required DiaryOrganizationPromptSettings settings,
 }) {
-  final l10n = lookupAppLocalizations(language.materialLocale);
+  final l10n = localizationsFor(language);
   if (generate) {
     return settings.generationOverride ?? l10n.organizationGenerationPrompt;
   }
@@ -57,7 +58,7 @@ String resolveDiaryOrganizationInstructions({
   required AppLanguage language,
   required DiaryOrganizationPromptSettings settings,
 }) {
-  final l10n = lookupAppLocalizations(language.materialLocale);
+  final l10n = localizationsFor(language);
   final stage = generate
       ? l10n.organizationGenerationLabel
       : l10n.organizationConversationLabel;

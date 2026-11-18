@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Quill Diary</string>
-    <string name="user_export_subfolder">quill-diary</string>
+    <string name="app_name" translatable="false">Quill Diary</string>
+    <string name="user_export_subfolder" translatable="false">quill-diary</string>
     <string name="drive_upload_notification_channel_name">Google Drive 備份</string>
     <string name="drive_upload_notification_channel_description">顯示 Google Drive 備份狀態</string>
     <string name="drive_upload_notification_title">Google Drive 備份</string>

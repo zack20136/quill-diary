@@ -1,16 +1,16 @@
-package zack20136.com.quill_diary.drive
+package zack20136.com.quill_diary
 
 import android.content.Context
 import android.content.res.Configuration
 import androidx.annotation.StringRes
 import java.util.Locale
 
-/** Drive 背景服務使用的 App 語言；不依賴 FlutterEngine 或系統語言。 */
-object DriveUploadLocalization {
+/** 在 Flutter 尚未啟動時，原生通知仍使用 App 已選擇的語言。 */
+internal object AndroidAppStrings {
     private const val PREFERENCES_NAME = "drive_upload_localization"
     private const val LANGUAGE_CODE_KEY = "language_code"
-    const val LANGUAGE_ZH = "zh"
-    const val LANGUAGE_EN = "en"
+    private const val LANGUAGE_ZH = "zh"
+    private const val LANGUAGE_EN = "en"
 
     fun setLanguageCode(context: Context, rawLanguageCode: String?): String {
         val languageCode = normalizeLanguageCode(rawLanguageCode)
@@ -22,7 +22,7 @@ object DriveUploadLocalization {
         return languageCode
     }
 
-    fun languageCode(context: Context): String {
+    private fun languageCode(context: Context): String {
         val stored =
             context.applicationContext
                 .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -47,10 +47,9 @@ object DriveUploadLocalization {
         vararg arguments: Any,
     ): String = localizedContext(context).getString(resourceId, *arguments)
 
-    fun normalizeLanguageCode(rawLanguageCode: String?): String =
+    private fun normalizeLanguageCode(rawLanguageCode: String?): String =
         when (rawLanguageCode?.trim()?.lowercase(Locale.ROOT)) {
             LANGUAGE_EN -> LANGUAGE_EN
-            LANGUAGE_ZH -> LANGUAGE_ZH
             else -> LANGUAGE_ZH
         }
 }

@@ -215,7 +215,7 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
         theme: buildAppTheme(brightness: Brightness.light),
         darkTheme: buildAppTheme(brightness: Brightness.dark),
         themeMode: themeMode,
-        locale: locale.materialLocale,
+        locale: locale.flutterLocale,
         supportedLocales: appSupportedLocales,
         localizationsDelegates: appLocalizationsDelegates,
         routerConfig: _router,

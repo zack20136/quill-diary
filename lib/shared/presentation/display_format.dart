@@ -79,12 +79,20 @@ abstract final class DisplayFormat {
     DateTime? now,
   }) {
     final DateOnly today = DateOnly.fromDateTime(now ?? DateTime.now());
-    final int daysAgo = today.toDateTime().difference(date.toDateTime()).inDays;
+    final int daysAgo = _utcCalendarDay(today)
+        .difference(_utcCalendarDay(date))
+        .inDays;
     return switch (daysAgo) {
       0 => l10n.commonRelativeToday,
       1 => l10n.commonRelativeYesterday,
-      _ => l10n.commonRelativeDaysAgo(daysAgo.abs()),
+      < 0 => l10n.commonRelativeDaysFromNow(-daysAgo),
+      _ => l10n.commonRelativeDaysAgo(daysAgo),
     };
+  }
+
+  static DateTime _utcCalendarDay(DateOnly date) {
+    final day = date.toDateTime();
+    return DateTime.utc(day.year, day.month, day.day);
   }
 
   static DateTime combineEntryDateTime(
@@ -115,10 +123,10 @@ abstract final class DisplayFormat {
 
   static String formatDateTime(AppLocalizations l10n, DateTime local) {
     final DateTime value = local.toLocal();
-    if (isEnglishL10n(l10n)) {
-      return '${_formatNumericDate(value)} ${formatTime24h(value)} · ${_englishWeekdayShort[value.weekday - 1]}';
-    }
-    return '${value.year}年${value.month}月${value.day}日 ${formatTime24h(value)} · ${_zhTwWeekdayLong[value.weekday - 1]}';
+    final weekday = isEnglishL10n(l10n)
+        ? _englishWeekdayShort[value.weekday - 1]
+        : _zhTwWeekdayLong[value.weekday - 1];
+    return '${formatDateTimeWithoutWeekday(l10n, value)} · $weekday';
   }
 
   /// 日期時間，不含星期（備份狀態等簡短摘要用）。

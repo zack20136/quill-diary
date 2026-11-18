@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:android_file_picker/android_file_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:quill_diary/infrastructure/storage/shared/android_content_uri_import.dart';
-import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
-import 'package:quill_diary/infrastructure/storage/shared/portable_import_result.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+import 'package:quill_diary/shared/app_identifiers.dart';
 
 typedef ReadPlatformFileBytes = Future<Uint8List?> Function(PlatformFile file);
 
@@ -16,57 +16,47 @@ typedef CopyAndroidUriToPath = Future<void> Function({
   required File destinationFile,
 });
 
-/// 僅測試用 bytes 保底上限；非產品檔案大小限制。
-///
-/// Android 匯入／還原應走本機檔案路徑或 content:// URI 串流複製。
+/// 測試用整檔讀取上限。實際選檔使用檔案或 URI 串流。
 @visibleForTesting
 const int kPickedFileBytesFallbackMaxBytes = 64 * 1024 * 1024;
-
-enum PickedFileSourceKind { localPath, androidContentUri, bytesFallback }
 
 enum PickedFileMaterializationFailure { unreadable, tooLargeForBytesFallback }
 
 final class PickedFileMaterializationException implements Exception {
-  const PickedFileMaterializationException(this.failure);
+  const PickedFileMaterializationException(this.failure, {this.cause});
 
   final PickedFileMaterializationFailure failure;
+  final Object? cause;
 }
 
 final class MaterializedPickedFile {
   const MaterializedPickedFile({
     required this.file,
     required this.shouldDeleteAfterUse,
-    required this.sourceKind,
   });
 
   final File file;
   final bool shouldDeleteAfterUse;
-  final PickedFileSourceKind sourceKind;
 }
 
-PortableImportResult importResultForMaterializationFailure(
-  PickedFileMaterializationFailure _,
-) {
-  return const PortableImportResult(
-    importedEntries: 0,
-    skippedFiles: 0,
-    failureCode: PortableImportFailureCode.selectedFilesUnreadable,
-  );
-}
-
-/// 將 file_picker 回傳的 [PlatformFile] 物化為可讀的本機 [File]。
 class PickedFileMaterializer {
   PickedFileMaterializer({
     CopyAndroidUriToPath? copyAndroidUriToPath,
     ReadPlatformFileBytes? readPlatformFileBytes,
     this.allowBytesFallback = false,
-  }) : _copyAndroidUriToPathOverride = copyAndroidUriToPath,
+    this._pathStrategy = const VaultPathStrategy(),
+  }) : _copyUri = copyAndroidUriToPath ?? _copyAndroidUriToPath,
        _readPlatformFileBytesOverride = readPlatformFileBytes;
 
   final bool allowBytesFallback;
 
-  final CopyAndroidUriToPath? _copyAndroidUriToPathOverride;
+  static const MethodChannel _contentUriChannel = MethodChannel(
+    AppIdentifiers.contentUriImportChannel,
+  );
+
+  final CopyAndroidUriToPath _copyUri;
   final ReadPlatformFileBytes? _readPlatformFileBytesOverride;
+  final VaultPathStrategy _pathStrategy;
 
   Future<MaterializedPickedFile> materialize(
     PlatformFile file, {
@@ -74,44 +64,35 @@ class PickedFileMaterializer {
     required bool alwaysCopyToTemp,
     File? importDestination,
   }) async {
-    if (_isCachedLocalPath(file)) {
-      final File sourceFile = File(file.path!);
+    final File? localFile = _cachedLocalFile(file);
+    if (localFile != null) {
       if (!alwaysCopyToTemp) {
         return MaterializedPickedFile(
-          file: sourceFile,
+          file: localFile,
           shouldDeleteAfterUse: false,
-          sourceKind: PickedFileSourceKind.localPath,
         );
       }
-
-      final File destination =
-          importDestination ?? await _createTempFile(fallbackBaseName);
-      await copyFileToPath(sourceFile, destination.path);
-      return MaterializedPickedFile(
-        file: destination,
-        shouldDeleteAfterUse: true,
-        sourceKind: PickedFileSourceKind.localPath,
+      return _writeTemporary(
+        importDestination ?? await _createTempFile(fallbackBaseName),
+        (File destination) => copyFileToPath(localFile, destination.path),
       );
     }
 
     final String? contentUri = _resolveContentUri(file);
     if (contentUri != null) {
-      final File destination =
-          importDestination ?? await _createTempFile(fallbackBaseName);
       try {
-        await _copyAndroidUriToPath(
-          sourceUri: contentUri,
-          destinationFile: destination,
+        return await _writeTemporary(
+          importDestination ?? await _createTempFile(fallbackBaseName),
+          (File destination) =>
+              _copyUri(sourceUri: contentUri, destinationFile: destination),
         );
-        return MaterializedPickedFile(
-          file: destination,
-          shouldDeleteAfterUse: true,
-          sourceKind: PickedFileSourceKind.androidContentUri,
-        );
-      } on Object {
-        await _deleteIfExists(destination);
-        throw const PickedFileMaterializationException(
-          PickedFileMaterializationFailure.unreadable,
+      } on Object catch (error, stackTrace) {
+        Error.throwWithStackTrace(
+          PickedFileMaterializationException(
+            PickedFileMaterializationFailure.unreadable,
+            cause: error,
+          ),
+          stackTrace,
         );
       } finally {
         if (file is AndroidPlatformFile) {
@@ -149,25 +130,47 @@ class PickedFileMaterializer {
       );
     }
 
-    final File destination =
-        importDestination ?? await _createTempFile(fallbackBaseName);
-    await destination.writeAsBytes(bytes, flush: true);
-    return MaterializedPickedFile(
-      file: destination,
-      shouldDeleteAfterUse: true,
-      sourceKind: PickedFileSourceKind.bytesFallback,
+    if (bytes.length > kPickedFileBytesFallbackMaxBytes) {
+      throw const PickedFileMaterializationException(
+        PickedFileMaterializationFailure.tooLargeForBytesFallback,
+      );
+    }
+    return _writeTemporary(
+      importDestination ?? await _createTempFile(fallbackBaseName),
+      (File destination) => destination.writeAsBytes(bytes, flush: true),
     );
   }
 
-  bool _isCachedLocalPath(PlatformFile file) {
-    final String? path = file.path;
-    if (path == null || path.isEmpty) {
-      return false;
-    }
+  Future<MaterializedPickedFile> _writeTemporary(
+    File destination,
+    Future<void> Function(File destination) write,
+  ) async {
+    // 先取得暫存檔所有權，避免失敗時清除既有檔案。
+    await destination.create(recursive: true, exclusive: true);
     try {
-      return File(path).existsSync();
+      await write(destination);
     } on Object {
-      return false;
+      try {
+        await destination.delete();
+      } on FileSystemException {
+        // 清理失敗不能蓋掉原始錯誤。
+      }
+      rethrow;
+    }
+    return MaterializedPickedFile(
+      file: destination,
+      shouldDeleteAfterUse: true,
+    );
+  }
+
+  File? _cachedLocalFile(PlatformFile file) {
+    final String? path = file.path;
+    if (path == null || path.isEmpty) return null;
+    try {
+      final File candidate = File(path);
+      return candidate.existsSync() ? candidate : null;
+    } on FileSystemException {
+      return null;
     }
   }
 
@@ -184,20 +187,13 @@ class PickedFileMaterializer {
     return null;
   }
 
-  Future<void> _copyAndroidUriToPath({
+  static Future<void> _copyAndroidUriToPath({
     required String sourceUri,
     required File destinationFile,
-  }) async {
-    final CopyAndroidUriToPath? override = _copyAndroidUriToPathOverride;
-    if (override != null) {
-      await override(sourceUri: sourceUri, destinationFile: destinationFile);
-      return;
-    }
-    await AndroidContentUriImport.copyUriToPath(
-      sourceUri: sourceUri,
-      destinationFile: destinationFile,
-    );
-  }
+  }) => _contentUriChannel.invokeMethod<void>('copyUriToPath', <String, String>{
+    'sourceUri': sourceUri,
+    'destinationPath': destinationFile.absolute.path,
+  });
 
   Future<Uint8List?> _readPlatformFileBytes(PlatformFile file) async {
     final ReadPlatformFileBytes? override = _readPlatformFileBytesOverride;
@@ -217,18 +213,12 @@ class PickedFileMaterializer {
   }
 
   Future<File> _createTempFile(String fileName) async {
-    final Directory tempDirectory = await getTemporaryDirectory();
+    final Directory tempDirectory = await _pathStrategy.transferWorkDirectory();
     return File(
       p.join(
         tempDirectory.path,
-        '${DateTime.now().microsecondsSinceEpoch}_$fileName',
+        '${DateTime.now().microsecondsSinceEpoch}_${p.posix.basename(fileName.replaceAll('\\', '/'))}',
       ),
     );
-  }
-
-  Future<void> _deleteIfExists(File file) async {
-    if (file.existsSync()) {
-      await file.delete();
-    }
   }
 }

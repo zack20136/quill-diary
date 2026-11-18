@@ -15,7 +15,6 @@ import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/storage/fake_platform_file.dart';
-import '../../helpers/storage/path_provider_test_binding.dart';
 import '../../helpers/vault/vault_test_harness.dart';
 
 void main() {
@@ -34,6 +33,7 @@ void main() {
       allowBytesFallback: allowBytesFallback,
       copyAndroidUriToPath: copyAndroidUriToPath,
       readPlatformFileBytes: readPlatformFileBytes,
+      pathStrategy: harness.pathStrategy,
     );
   }
 
@@ -50,21 +50,18 @@ void main() {
       copyAndroidUriToPath: copyAndroidUriToPath,
       pickPortableFiles: pickPortableFiles,
       pickedFileMaterializer: pickedFileMaterializer,
+      pathStrategy: harness.pathStrategy,
     );
   }
 
   setUp(() async {
     harness = await VaultTestHarness.create();
-    workDir = await Directory.systemTemp.createTemp('qld_materialize_test_');
-    installPathProviderTestBinding(workDir);
+    workDir = await harness.pathStrategy.transferWorkDirectory();
+    await workDir.create(recursive: true);
     materializer = createMaterializer();
   });
 
   tearDown(() async {
-    clearPathProviderTestBinding();
-    if (workDir.existsSync()) {
-      await workDir.delete(recursive: true);
-    }
     await harness.dispose();
   });
 
@@ -96,7 +93,6 @@ void main() {
         alwaysCopyToTemp: false,
       );
 
-      expect(result.sourceKind, PickedFileSourceKind.localPath);
       expect(
         FileSystemEntity.identicalSync(result.file.path, source.path),
         isTrue,
@@ -159,7 +155,6 @@ void main() {
         copiedUri,
         'content://com.android.providers.downloads.documents/document/123',
       );
-      expect(result.sourceKind, PickedFileSourceKind.androidContentUri);
       expect(result.file.existsSync(), isTrue);
       expect(result.shouldDeleteAfterUse, isTrue);
       await result.file.delete();
@@ -186,7 +181,6 @@ void main() {
       );
 
       expect(copiedUri, 'content://com.google.android.apps.docs/document/abc');
-      expect(result.sourceKind, PickedFileSourceKind.androidContentUri);
       expect(result.file.existsSync(), isTrue);
       expect(result.shouldDeleteAfterUse, isTrue);
       await result.file.delete();
@@ -213,7 +207,6 @@ void main() {
       );
 
       expect(uriCalled, isTrue);
-      expect(result.sourceKind, PickedFileSourceKind.androidContentUri);
       await result.file.delete();
     });
 
@@ -266,16 +259,38 @@ void main() {
         alwaysCopyToTemp: true,
       );
 
-      expect(result.sourceKind, PickedFileSourceKind.androidContentUri);
       await result.file.delete();
     });
 
-    test('URI 複製失敗時刪除 destination 暫存檔', () async {
+    test('拒絕覆寫已有的暫存目的地並保留來源', () async {
+      final source = await File('${workDir.path}/source.zip')
+          .writeAsString('source');
+      final destination = await File('${workDir.path}/existing.zip')
+          .writeAsString('existing');
+      await expectLater(
+        materializer.materialize(
+          FakePlatformFile.local(
+            name: 'source.zip',
+            path: source.path,
+            reportedLength: 6,
+          ),
+          fallbackBaseName: 'source.zip',
+          alwaysCopyToTemp: true,
+          importDestination: destination,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(await source.readAsString(), 'source');
+      expect(await destination.readAsString(), 'existing');
+    });
+
+    test('URI 複製失敗時清除私有暫存並保留原始錯誤', () async {
+      final copyError = StateError('複製失敗');
       materializer = createMaterializer(
         copyAndroidUriToPath:
             ({required sourceUri, required destinationFile}) async {
               await destinationFile.writeAsBytes(<int>[1]);
-              throw StateError('複製失敗');
+              throw copyError;
             },
       );
 
@@ -289,7 +304,13 @@ void main() {
           fallbackBaseName: 'bad.zip',
           alwaysCopyToTemp: true,
         ),
-        throwsA(isA<PickedFileMaterializationException>()),
+        throwsA(
+          isA<PickedFileMaterializationException>().having(
+            (error) => error.cause,
+            'cause',
+            same(copyError),
+          ),
+        ),
       );
 
       final List<FileSystemEntity> leftovers = workDir.listSync();
@@ -344,7 +365,6 @@ void main() {
         alwaysCopyToTemp: true,
       );
 
-      expect(result.sourceKind, PickedFileSourceKind.bytesFallback);
       expect(
         await result.file.readAsBytes(),
         Uint8List.fromList(<int>[1, 2, 3, 4]),

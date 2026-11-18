@@ -9,10 +9,10 @@ import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
-import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
+import 'package:quill_diary/infrastructure/storage/tag_catalog_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_people_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
@@ -1845,7 +1845,7 @@ missing asset
     expect(File(canonicalPath).existsSync(), isTrue);
   });
 
-  test('修復會補齊無效 tag_styles.json 後的標籤目錄', () async {
+  test('修復保留損壞標籤目錄並重建正文索引', () async {
     final RecoverySetupResult setup = await harness.repository
         .setupRecoveryKey();
     await harness.repository.saveEntry(
@@ -1861,21 +1861,29 @@ missing asset
       ),
     );
 
-    final File tagStylesFile = File(
+    final File tagCatalogFile = File(
       p.join(
         (await harness.pathStrategy.vaultRootDirectory()).path,
         'tag_styles.json',
       ),
     );
-    await tagStylesFile.writeAsString(
+    await tagCatalogFile.writeAsString(
       jsonEncode(<String, Object?>{'tags': <Object?>[]}),
     );
 
     await harness.repository.repairVaultWithReport(setup.session);
 
-    final List<TagCatalogItem> catalog = await harness.repository
-        .listTagCatalog();
-    expect(catalog.any((TagCatalogItem item) => item.label == '修復標籤'), isTrue);
+    await expectLater(
+      harness.repository.listTagCatalog(),
+      throwsA(isA<TagCatalogException>()),
+    );
+    expect(jsonDecode(await tagCatalogFile.readAsString()), {
+      'tags': <Object?>[],
+    });
+    expect(
+      (await harness.repository.listEntries()).single.tags,
+      contains('修復標籤'),
+    );
   });
 
   test('修復後索引篇數與日記一致', () async {
@@ -1889,6 +1897,21 @@ missing asset
 
     expect(report.entryCount, 2);
     expect((await harness.repository.listEntries()).length, 2);
+  });
+
+  test('檢查保留前次程序的暫存，確認修復後才清理', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    final workDir = await harness.pathStrategy.transferWorkDirectory();
+    final abandoned = File(
+      p.join(workDir.parent.path, 'old_run', 'backup.zip'),
+    );
+    await abandoned.create(recursive: true);
+
+    await harness.repository.inspectVaultWithReport(setup.session);
+    expect(abandoned.existsSync(), isTrue);
+
+    await harness.repository.repairVaultWithReport(setup.session);
+    expect(abandoned.existsSync(), isFalse);
   });
 
   test('修復會同步重建人物分析', () async {

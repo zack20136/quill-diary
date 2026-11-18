@@ -73,7 +73,7 @@ SecurityOverviewItem settingsDriveBackupSecurityOverview(
   DateTime now, {
   DriveUploadJobSnapshot? uploadJob,
 }) {
-  if (uploadJob != null && uploadJob.blocksConflictingDriveActions) {
+  if (uploadJob != null) {
     final String message = switch (uploadJob.phase) {
       DriveUploadPhase.waitingForNetwork =>
         l10n.settingsSecurityOverviewDriveUploadPending,

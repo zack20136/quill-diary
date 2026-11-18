@@ -3,7 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/settings/settings_text.dart';
+import 'package:quill_diary/application/tag/tag_providers.dart';
+import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
@@ -407,6 +410,8 @@ class SettingsSecurityOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AppLocalizations l10n = context.l10n;
     final DateTime now = DateTime.now();
+    final backupRequirement = ref.watch(recoveryBackupRequiredProvider);
+    final needsBackup = backupRequirement.value ?? false;
     final SecurityOverviewItem localBackupItem =
         settingsLocalBackupSecurityOverview(l10n, backupStatus, now);
     final SecurityOverviewItem driveBackupItem =
@@ -420,12 +425,16 @@ class SettingsSecurityOverview extends ConsumerWidget {
       SecurityOverviewItem(
         icon: Icons.key_outlined,
         title: l10n.settingsSecurityOverviewRecoveryKeyTitle,
-        message: hasRecoveryKey
+        message: backupRequirement.hasError
+            ? l10n.settingsBackupStatusReadFailed
+            : needsBackup
+            ? l10n.settingsRecoveryKeyBackupRequired
+            : hasRecoveryKey
             ? l10n.settingsSecurityOverviewRecoveryKeyReady
             : l10n.settingsSecurityOverviewRecoveryKeyMissing,
         subtitle: hasRecoveryKey ? l10n.settingsRecoveryKeyHintPrefix : null,
         subtitleCode: hasRecoveryKey ? (recoveryKeyHint ?? '----') : null,
-        level: hasRecoveryKey
+        level: hasRecoveryKey && !needsBackup && !backupRequirement.hasError
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
       ),
@@ -476,8 +485,8 @@ class SettingsSecurityOverview extends ConsumerWidget {
           actions: <Widget>[
             AppActionButton(
               label: hasRecoveryKey
-                  ? l10n.settingsSecurityOverviewRotateRecoveryKeyButton
-                  : l10n.settingsSecurityOverviewCreateRecoveryKeyButton,
+                  ? l10n.settingsRecoveryKeyRotateButton
+                  : l10n.settingsRecoveryKeyCreateButton,
               icon: hasRecoveryKey
                   ? Icons.lock_reset_outlined
                   : Icons.key_outlined,
@@ -504,6 +513,45 @@ class SettingsSecurityOverview extends ConsumerWidget {
                 onPressed: busy ? null : onRetryTrustedUnlock,
               ),
           ],
+        ),
+        if (backupRequirement.hasError)
+          TextButton(
+            onPressed: busy ? null : () => ref.invalidate(backupStatusProvider),
+            child: Text(l10n.commonActionRetry),
+          ),
+        ValueListenableBuilder<bool>(
+          valueListenable: ref
+              .watch(vaultRepositoryProvider)
+              .tagCatalogNeedsRetry,
+          builder: (context, needsRetry, _) => !needsRetry
+              ? const SizedBox.shrink()
+              : Row(
+                  children: [
+                    Expanded(child: Text(l10n.tagCatalogUnavailable)),
+                    TextButton(
+                      onPressed: busy || !hasUnlockedSession
+                          ? null
+                          : () async {
+                              try {
+                                await ref
+                                    .read(vaultRepositoryProvider)
+                                    .retryTagCatalog();
+                                ref.invalidate(tagCatalogProvider);
+                                ref.invalidate(tagAccentArgbMapProvider);
+                              } on Object {
+                                if (context.mounted) {
+                                  showAppFeedbackToast(
+                                    context,
+                                    l10n.tagCatalogUnavailable,
+                                    tone: AppFeedbackTone.error,
+                                  );
+                                }
+                              }
+                            },
+                      child: Text(l10n.tagCatalogRetry),
+                    ),
+                  ],
+                ),
         ),
         if (lockPanel != null) ...<Widget>[
           const SizedBox(height: 14),
@@ -614,12 +662,11 @@ class _SecurityOverviewTile extends StatelessWidget {
                             if (item.subtitleCode != null)
                               TextSpan(
                                 text: item.subtitleCode,
-                                style: AppTypography.mono(
-                                  const TextStyle(),
-                                ).copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.6,
-                                ),
+                                style: AppTypography.mono(const TextStyle())
+                                    .copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.6,
+                                    ),
                               ),
                           ],
                         ),

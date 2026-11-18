@@ -1,41 +1,22 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/sensitive_clipboard.dart';
 
 /// 把復原金鑰整理成每四碼一組。橫線由欄位補上，貼上已有的橫線也收成同一格式。
 class RecoveryKeyInputFormatter extends TextInputFormatter {
   const RecoveryKeyInputFormatter();
 
-  static const int payloadLength = 24;
-  static const int groupSize = 4;
-
-  static final RegExp _nonPayload = RegExp('[^A-Z0-9]');
-
-  static String _payloadOf(String text) {
-    final String upper = text.toUpperCase().replaceAll(_nonPayload, '');
-    if (upper.length <= payloadLength) return upper;
-    return upper.substring(0, payloadLength);
-  }
-
-  static String _formatPayload(String payload) {
-    final StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < payload.length; i++) {
-      if (i > 0 && i % groupSize == 0) buffer.write('-');
-      buffer.write(payload[i]);
-    }
-    return buffer.toString();
-  }
-
   static int _payloadCountBefore(String text, int offset) {
     final int end = offset < 0 ? text.length : offset.clamp(0, text.length);
-    return _payloadOf(text.substring(0, end)).length;
+    return RecoveryKey.payloadOf(text.substring(0, end)).length;
   }
 
   static int _formattedOffset(int payloadCount) {
     if (payloadCount <= 0) return 0;
-    final int count = payloadCount.clamp(0, payloadLength);
-    return count + ((count - 1) ~/ groupSize);
+    final int count = payloadCount.clamp(0, RecoveryKey.symbolCount);
+    return count + ((count - 1) ~/ RecoveryKey.groupSize);
   }
 
   @override
@@ -43,8 +24,12 @@ class RecoveryKeyInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    final String oldPayload = _payloadOf(oldValue.text);
-    String payload = _payloadOf(newValue.text);
+    if (newValue.composing.isValid && !newValue.composing.isCollapsed ||
+        !RecoveryKey.isValidPartial(newValue.text)) {
+      return newValue;
+    }
+    final String oldPayload = RecoveryKey.payloadOf(oldValue.text);
+    String payload = RecoveryKey.payloadOf(newValue.text);
     final bool collapsed = newValue.selection.isCollapsed;
     int cursor = _payloadCountBefore(
       newValue.text,
@@ -66,7 +51,7 @@ class RecoveryKeyInputFormatter extends TextInputFormatter {
     }
 
     return TextEditingValue(
-      text: _formatPayload(payload),
+      text: RecoveryKey.format(payload),
       selection: TextSelection(
         baseOffset: _formattedOffset(base),
         extentOffset: _formattedOffset(cursor),
@@ -96,6 +81,7 @@ class RecoveryKeyTextField extends StatefulWidget {
 
 class _RecoveryKeyTextFieldState extends State<RecoveryKeyTextField> {
   bool _obscured = false;
+  bool _submittedInvalid = false;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +90,7 @@ class _RecoveryKeyTextFieldState extends State<RecoveryKeyTextField> {
 
     return TextField(
       controller: widget.controller,
+      contextMenuBuilder: SensitiveClipboard.contextMenu,
       autofocus: widget.autofocus,
       autocorrect: false,
       enableSuggestions: false,
@@ -119,7 +106,11 @@ class _RecoveryKeyTextFieldState extends State<RecoveryKeyTextField> {
       decoration: InputDecoration(
         labelText: l10n.settingsRecoveryKeyFieldLabel,
         hintText: l10n.settingsRecoveryKeyFieldHint,
-        errorText: widget.errorText,
+        errorText:
+            _submittedInvalid ||
+                !RecoveryKey.isValidPartial(widget.controller.text)
+            ? l10n.recoveryKeyInvalidInput
+            : widget.errorText,
         suffixIcon: IconButton(
           tooltip: _obscured
               ? l10n.settingsRecoveryKeyShowTooltip
@@ -132,7 +123,14 @@ class _RecoveryKeyTextFieldState extends State<RecoveryKeyTextField> {
           ),
         ),
       ),
-      onSubmitted: widget.onSubmitted,
+      onSubmitted: (value) {
+        try {
+          widget.onSubmitted?.call(RecoveryKey.normalize(value));
+        } on RecoveryKeyFormatException {
+          setState(() => _submittedInvalid = true);
+        }
+      },
+      onChanged: (_) => setState(() => _submittedInvalid = false),
     );
   }
 }

@@ -12,7 +12,7 @@ void main() {
   });
 
   test('可用 Recovery Key 加解密 markdown，並寫入 recovery slot KDF', () async {
-    const String recoveryKey = 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX';
+    const String recoveryKey = '0123-4567-89AB-CDEF-GHJK-MNPQ';
     const String vaultId = 'vlt_TEST01';
     final KdfDescriptor kdf = KdfDescriptor.argon2idRecovery(
       saltBytes: List<int>.filled(16, 7),
@@ -62,7 +62,7 @@ void main() {
       saltBytes: List<int>.filled(16, 8),
     );
     final List<int> wrapKey = await crypto.deriveRecoveryWrapKey(
-      recoveryKey: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
+      recoveryKey: '0123-4567-89AB-CDEF-GHJK-MNPQ',
       kdf: kdf,
     );
     final List<int> plaintext = utf8.encode('{"schema":1}');
@@ -109,11 +109,11 @@ void main() {
       saltBytes: List<int>.filled(16, 9),
     );
     final List<int> goodWrapKey = await crypto.deriveRecoveryWrapKey(
-      recoveryKey: 'GOOD-KEY1-GOOD-KEY2-GOOD-KEY3',
+      recoveryKey: '0123-4567-89AB-CDEF-GHJK-MNPQ',
       kdf: kdf,
     );
     final List<int> badWrapKey = await crypto.deriveRecoveryWrapKey(
-      recoveryKey: 'BADD-KEY1-BADD-KEY2-BADD-KEY3',
+      recoveryKey: '1123-4567-89AB-CDEF-GHJK-MNPQ',
       kdf: kdf,
     );
 
@@ -150,7 +150,7 @@ void main() {
       saltBytes: List<int>.filled(16, 3),
     );
     final List<int> wrapKey = await crypto.deriveRecoveryWrapKey(
-      recoveryKey: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
+      recoveryKey: '0123-4567-89AB-CDEF-GHJK-MNPQ',
       kdf: kdf,
     );
     final EncryptionResult result = await crypto.encryptMarkdown(
@@ -203,7 +203,7 @@ void main() {
       saltBytes: List<int>.filled(16, 5),
     );
     final List<int> wrapKey = await crypto.deriveRecoveryWrapKey(
-      recoveryKey: 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX',
+      recoveryKey: '0123-4567-89AB-CDEF-GHJK-MNPQ',
       kdf: kdf,
     );
     final EncryptionResult result = await crypto.encryptMarkdown(

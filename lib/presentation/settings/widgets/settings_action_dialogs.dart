@@ -381,7 +381,7 @@ Future<bool?> showInspectVaultResultDialog(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Text(
-              l10n.settingsInspectVaultResultCheckedEntries(report.entryCount),
+              l10n.settingsVaultMaintenanceCheckedEntries(report.entryCount),
             ),
             if (groups.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
@@ -560,7 +560,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
                   : l10n.settingsRepairVaultResultWarning(_groups.length),
             ),
             Text(
-              l10n.settingsRepairVaultResultCheckedEntries(
+              l10n.settingsVaultMaintenanceCheckedEntries(
                 widget.report.entryCount,
               ),
             ),
@@ -753,18 +753,6 @@ Future<bool> showAbandonCancelCleanupDialog(BuildContext context) async {
     cancelLabel: l10n.commonActionCancel,
     confirmLabel: l10n.driveUploadAbandonCancelCleanupButton,
     confirmStyle: AppConfirmStyle.destructive,
-  );
-}
-
-Future<bool> showRotateRecoveryKeyDialog(BuildContext context) async {
-  final AppLocalizations l10n = context.l10n;
-  return showAppConfirmDialog(
-    context: context,
-    size: AppDialogSize.standard,
-    title: l10n.settingsRecoveryKeyRotateDialogTitle,
-    content: Text(l10n.settingsRecoveryKeyRotateDialogBody),
-    cancelLabel: l10n.commonActionCancel,
-    confirmLabel: l10n.settingsActionUpdate,
   );
 }
 

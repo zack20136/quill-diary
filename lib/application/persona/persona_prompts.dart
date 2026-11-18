@@ -1,3 +1,4 @@
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_privacy_processor.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/persona/persona.dart';

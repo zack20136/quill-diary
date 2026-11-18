@@ -15,15 +15,13 @@ class BackupRecoveryPreview {
 class RestorePrecheck {
   const RestorePrecheck({
     required this.preview,
-    this.localVaultId,
-    this.localRecoverySaltBase64,
+    this.localMetadata,
     required this.localHasTrustedDevice,
     required this.willOverwriteLocalVault,
   });
 
   final BackupRecoveryPreview preview;
-  final String? localVaultId;
-  final String? localRecoverySaltBase64;
+  final RecoveryMetadata? localMetadata;
   final bool localHasTrustedDevice;
   final bool willOverwriteLocalVault;
 
@@ -31,21 +29,16 @@ class RestorePrecheck {
 
   String get backupRecoveryHint => preview.metadata.recoveryKeyHint;
 
-  bool get sameVaultId => localVaultId != null && backupVaultId == localVaultId;
-
-  String get backupRecoverySaltBase64 => preview.metadata.kdf.saltBase64;
-
-  /// 備份與本機目前的復原金鑰為同一代（未輪替過）。
-  bool get sameRecoveryGeneration =>
-      localRecoverySaltBase64 != null &&
-      backupRecoverySaltBase64 == localRecoverySaltBase64;
+  bool get sameVaultId => backupVaultId == localMetadata?.vaultId;
 
   /// 同一日記庫但本機曾更新過復原金鑰（舊備份需舊金鑰）。
   bool get recoveryKeyRotatedSinceBackup =>
-      sameVaultId && localRecoverySaltBase64 != null && !sameRecoveryGeneration;
+      sameVaultId &&
+      localMetadata?.hasSameRecoveryGenerationAs(preview.metadata) == false;
 
   bool get expectsTrustedUnlockAfterRestore =>
-      sameVaultId && localHasTrustedDevice && sameRecoveryGeneration;
+      localHasTrustedDevice &&
+      localMetadata?.hasSameRecoveryGenerationAs(preview.metadata) == true;
 
   bool get expectsRecoveryKeyAfterRestore => !expectsTrustedUnlockAfterRestore;
 

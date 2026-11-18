@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
+import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/application/diary_organization/diary_organization_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
@@ -13,7 +14,6 @@ import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/diary_organization/failing_organization_store.dart';
 import '../../helpers/diary_organization/organization_test_scope.dart';

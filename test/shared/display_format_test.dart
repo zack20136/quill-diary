@@ -54,25 +54,23 @@ void main() {
     );
   });
 
-  test('上次提及日期晚於今天時仍顯示為幾天前', () {
+  test('未來日期使用對應語系的未來天數', () {
+    final now = DateTime(2026, 8, 12);
     expect(
       DisplayFormat.formatRelativeDayDistance(
         testZhL10n,
         const DateOnly('2026-08-15'),
-        now: DateTime(2026, 8, 12),
+        now: now,
       ),
-      '3 天前',
+      testZhL10n.commonRelativeDaysFromNow(3),
     );
-  });
-
-  test('英文上次提及相差一天時使用單數 day', () {
     expect(
       DisplayFormat.formatRelativeDayDistance(
         testEnL10n,
         const DateOnly('2026-08-13'),
-        now: DateTime(2026, 8, 12),
+        now: now,
       ),
-      '1 day ago',
+      testEnL10n.commonRelativeDaysFromNow(1),
     );
   });
 }

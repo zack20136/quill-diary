@@ -90,6 +90,13 @@ class VaultTestHarness {
     );
   }
 
+  Future<RecoverySetupResult> rotateRecoveryKey(
+    UnlockedVaultSession session,
+  ) async {
+    final prepared = await repository.prepareRecoveryKeyRotation(session);
+    return repository.rotateRecoveryKey(session, prepared);
+  }
+
   Future<String> saveSimpleEntry(
     RecoverySetupResult setup, {
     String? id,

@@ -9,7 +9,7 @@ class KdfDescriptor {
     required this.parallelism,
     required this.iterations,
     required this.hashLength,
-  }) : assert(name == kAlgorithmName, 'Only argon2id is supported');
+  });
 
   static const String kAlgorithmName = 'argon2id';
 
@@ -29,12 +29,38 @@ class KdfDescriptor {
   final int iterations;
   final int hashLength;
 
+  bool hasSameParametersAs(KdfDescriptor other) =>
+      name == other.name &&
+      memory == other.memory &&
+      parallelism == other.parallelism &&
+      iterations == other.iterations &&
+      hashLength == other.hashLength &&
+      base64Encode(validate()) == base64Encode(other.validate());
+
+  List<int> validate() {
+    if (name != kAlgorithmName ||
+        parallelism != 1 ||
+        memory < 8 * parallelism ||
+        memory > 32768 ||
+        iterations < 1 ||
+        iterations > 6 ||
+        hashLength != 32 ||
+        saltBase64.length > 88) {
+      throw const FormatException('不支援或超出安全範圍的 KDF 參數');
+    }
+    final salt = base64Decode(saltBase64);
+    if (salt.length < 16 || salt.length > 64) {
+      throw const FormatException('KDF Salt 長度不正確');
+    }
+    return salt;
+  }
+
   factory KdfDescriptor.argon2idRecovery({required List<int> saltBytes}) {
-    if (saltBytes.length < 16) {
+    if (saltBytes.length < 16 || saltBytes.length > 64) {
       throw ArgumentError.value(
         saltBytes.length,
         'saltBytes',
-        'Salt must be at least 16 bytes.',
+        'Salt 必須為 16～64 bytes。',
       );
     }
     return KdfDescriptor(
@@ -59,35 +85,16 @@ class KdfDescriptor {
   }
 
   factory KdfDescriptor.fromJson(Map<String, Object?> json) {
-    final String nameParsed = (json['name'] ?? '').toString();
-    if (nameParsed != kAlgorithmName) {
-      throw FormatException(
-        'Unsupported KDF: $nameParsed (expected $kAlgorithmName).',
-      );
-    }
-    final String salt = (json['salt'] ?? '').toString();
-    if (salt.isEmpty) {
-      throw const FormatException('KDF salt is missing.');
-    }
-    final List<int> saltBytes = base64Decode(salt);
-    if (saltBytes.length < 16) {
-      throw const FormatException('KDF salt is too short.');
-    }
-    return KdfDescriptor(
-      name: kAlgorithmName,
-      saltBase64: salt,
+    final descriptor = KdfDescriptor(
+      name: (json['name'] ?? '').toString(),
+      saltBase64: (json['salt'] ?? '').toString(),
       memory: _reqInt(json, 'memory'),
       parallelism: _reqInt(json, 'parallelism'),
       iterations: _reqInt(json, 'iterations'),
       hashLength: _reqInt(json, 'hash_length'),
     );
-  }
-
-  /// 從復原中繼資料讀取 KDF 子區段（忽略 `purpose`）。
-  static KdfDescriptor fromRecoveryMetadataKdf(Map<String, Object?> json) {
-    final Map<String, Object?> clone = Map<String, Object?>.from(json)
-      ..remove('purpose');
-    return KdfDescriptor.fromJson(clone);
+    descriptor.validate();
+    return descriptor;
   }
 
   static int _reqInt(Map<String, Object?> json, String key) {

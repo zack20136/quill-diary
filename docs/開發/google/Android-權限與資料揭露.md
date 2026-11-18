@@ -27,7 +27,7 @@
 
 生物辨識由系統驗證，App 不取得指紋／臉部影像。`drive.appdata` 是獨立 OAuth scope，只授權 App 專用 Drive 空間，不授予整個 Drive、通訊錄或裝置儲存權限。
 
-URI grant 僅涵蓋選定項目；content URI 複製分支會嘗試釋放 `AndroidPlatformFile.safHandle`，外部寫入 tree URI 不取得永久授權。材料化及暫檔規則見[備份與還原](../功能/備份與還原.md#外部選檔與-materialize)；升級套件須實機驗證挑選、Activity 重建與取消清理。
+URI grant 僅涵蓋選定項目；content URI 複製分支會嘗試釋放 `AndroidPlatformFile.safHandle`，外部寫入 tree URI 不取得永久授權。選檔及暫存規則見[備份與還原](../功能/備份與還原.md#外部選檔與暫存)。升級套件須實機驗證挑選、Activity 重建與取消清理。
 
 Android 13+ 拒絕通知仍可啟動前景服務；須建立通知，但通知抽屜不顯示，Task Manager 仍有提示。App 也檢查全 App／上傳頻道通知；不可見時可在設定頁 Google Drive 區塊查看進度並停止可取消的上傳。見[通知規則](https://developer.android.com/develop/ui/compose/notifications/notification-permission)與[備份驗收](../功能/備份與還原.md#背景上傳生命週期)。
 
@@ -37,7 +37,7 @@ Android 13+ 拒絕通知仍可啟動前景服務；須建立通知，但通知�
 
 `<queries>` 只控制套件可見性，不授予存取權限；涉及 PROCESS_TEXT、HTTP／HTTPS VIEW、GET_CONTENT 及 Billing service，以 merged manifest 核對。
 
-`android:allowBackup="false"` 關閉雲端 Auto Backup，但 Android 12+ 部分廠牌仍可能允許裝置移轉。主 Manifest 未引用 `res/xml/backup_rules.xml` 或 `res/xml/data_extraction_rules.xml`，這些排除規則未生效。
+`android:allowBackup="false"` 關閉雲端 Auto Backup，但 Android 12+ 部分廠牌仍可能允許裝置移轉。主 Manifest 已引用 `res/xml/backup_rules.xml` 與 `res/xml/data_extraction_rules.xml`，排除 file、database、sharedpref、root、external 及對應 device-protected 領域。前者供 Android 11 以下使用，後者分別設定 Android 12+ 的雲端備份與裝置移轉；兩種 XML 結構不同，須各自保留。系統備份與裝置移轉仍需在實機驗證。復原金鑰的複製按鈕及選取選單都由原生剪貼簿附加敏感標記。
 
 ## 網路傳輸
 
@@ -58,7 +58,7 @@ target SDK 沿用 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter �
 | 本機日記、人物與索引 | 預設本機加密；人物名冊納入正式備份，分析 SQLite 為衍生快取 |
 | AI | 分支對話、提示詞、圖片及認證資訊直接送指定服務；分身另含選取日記、匯入聊天、目前記憶／風格、中間證據與試聊 |
 | AI 隱私與備份 | 代號不保證匿名，不遮蔽照片；完成聊天全分支與正式分身納入加密備份，分身草稿／匯入材料排除。遠端暫存清理不等於刪除全部紀錄 |
-| Drive | ZIP 經 HTTPS 寫入 `appDataFolder`；外層未加密，含明文復原 metadata、標籤與釘選 ID，不能整份視為端對端加密豁免 |
+| Drive | ZIP 經 HTTPS 寫入 `appDataFolder`；外層未加密，含明文復原 metadata 與釘選 ID，歷史 ZIP 可能另含明文標籤，不能整份視為端對端加密豁免 |
 | 生物辨識 | 系統驗證結果，不取得生物特徵原始資料 |
 | 付款 | Play 處理付款；App 啟動即查詢 Billing 可用性與未完成交易，回呼含商品與交易識別，不保存永久權益 |
 | HTTP 自訂服務 | 區網 HTTP 的文字、照片與憑證未加密，須納入傳輸加密判斷 |
@@ -87,7 +87,7 @@ target SDK 沿用 [Gradle](../../../android/app/build.gradle.kts) 的 Flutter �
 
 | 可能對應的 Console 類型 | 實際資料與核對範圍 |
 |------|------|
-| 其他使用者產生內容 | 上表 AI 文字與分身材料、Drive 明文標籤等 metadata |
+| 其他使用者產生內容 | 上表 AI 文字與分身材料、Drive 備份內容與歷史 ZIP 的明文標籤等 metadata |
 | 相片 | 送至 AI 的附圖；原圖留本機，傳送副本清理 metadata，但不遮蔽影像 |
 | 檔案與文件 | Drive ZIP、交付外部的 Markdown／HTML／附件，按收件端與操作判斷 collection／sharing |
 | 姓名、電子郵件地址、使用者 ID | Google 顯示名稱、Email、SDK 帳戶識別及文字中的身分資訊；代號不保證匿名 |

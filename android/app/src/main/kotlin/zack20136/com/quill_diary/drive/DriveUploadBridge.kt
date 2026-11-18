@@ -1,7 +1,6 @@
 package zack20136.com.quill_diary.drive
 
 import android.Manifest
-import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -21,13 +20,14 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
 import zack20136.com.quill_diary.MainActivity
+import zack20136.com.quill_diary.AndroidAppStrings
 import zack20136.com.quill_diary.R
 
 /**
  * Dart ↔ 原生背景上傳橋接。
  * 重 I/O 走單一背景執行緒；通知權限維持主執行緒。
  */
-object DriveUploadBridge {
+internal object DriveUploadBridge {
     private const val TAG = "DriveUploadBridge"
     const val METHOD_CHANNEL = "quill_diary/drive_upload"
     const val EVENT_CHANNEL = "quill_diary/drive_upload_events"
@@ -37,14 +37,14 @@ object DriveUploadBridge {
     private val pendingNotificationResult = AtomicReference<MethodChannel.Result?>(null)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val ioExecutor = Executors.newSingleThreadExecutor()
-    private var activityRef: WeakReference<Activity>? = null
+    private var activityRef: WeakReference<MainActivity>? = null
     private var appContextRef: WeakReference<Context>? = null
 
-    fun attachActivity(activity: Activity) {
+    fun attachActivity(activity: MainActivity) {
         activityRef = WeakReference(activity)
     }
 
-    fun detachActivity(activity: Activity) {
+    fun detachActivity(activity: MainActivity) {
         val current = activityRef?.get()
         if (current === activity || current == null) {
             activityRef = null
@@ -52,13 +52,11 @@ object DriveUploadBridge {
         }
     }
 
-    fun register(flutterEngine: FlutterEngine, context: Context) {
+    fun register(flutterEngine: FlutterEngine, activity: MainActivity) {
         listeners.clear()
-        val appContext = context.applicationContext
+        val appContext = activity.applicationContext
         appContextRef = WeakReference(appContext)
-        if (context is Activity) {
-            attachActivity(context)
-        }
+        attachActivity(activity)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             METHOD_CHANNEL,
@@ -127,11 +125,7 @@ object DriveUploadBridge {
         }
     }
 
-    /**
-     * 系統逾時／服務銷毀後、上傳 worker 已不在時立刻對帳。
-     * 走 [ioExecutor]，不阻塞系統 callback；對帳後再 emit。
-     * 若 worker 仍活著則只 emit，留給 worker finally 收尾。
-     */
+    /** 系統中止時在背景對帳，仍在執行的 worker 自行收尾。 */
     fun scheduleCancelCleanupReconcile(context: Context) {
         val appContext = context.applicationContext
         if (appContextRef?.get() == null) {
@@ -152,7 +146,7 @@ object DriveUploadBridge {
         pending.success(granted)
     }
 
-    fun clearPendingNotificationPermission() {
+    private fun clearPendingNotificationPermission() {
         val pending = pendingNotificationResult.getAndSet(null) ?: return
         runCatching { pending.success(false) }
     }
@@ -163,14 +157,11 @@ object DriveUploadBridge {
         return DriveUploadJobStore.get(context).getStateEnvelope()
     }
 
-    /**
-     * 服務／worker 皆空閒（或僅要求 worker 空閒）時，對未遠端提交的 job 做取消對帳。
-     */
     private fun reconcileUncommittedIfIdle(
         context: Context,
         requireServiceIdle: Boolean,
     ) {
-        if (BackupUploadForegroundService.isUploadWorkerAlive()) {
+        if (BackupUploadForegroundService.hasLiveUploadWorker()) {
             return
         }
         if (requireServiceIdle && BackupUploadForegroundService.isActiveOrStarting()) {
@@ -192,7 +183,7 @@ object DriveUploadBridge {
         when (call.method) {
             "setLocale" -> {
                 val languageCode =
-                    DriveUploadLocalization.setLanguageCode(
+                    AndroidAppStrings.setLanguageCode(
                         context,
                         call.argument<String>("languageCode"),
                     )
@@ -205,6 +196,14 @@ object DriveUploadBridge {
                 }
             }
             "prepareStagingPath" -> prepareStagingPath(context, jobStore, call, result)
+            "cleanupAbandonedUploadFiles" -> ioExecutor.execute {
+                try {
+                    jobStore.cleanupAbandonedUploadFiles()
+                    replySuccess(result, null)
+                } catch (_: Exception) {
+                    replyError(result, "drive_upload_error", localizedString(context, R.string.drive_upload_error_unexpected))
+                }
+            }
             "startUpload" -> startUpload(context, jobStore, call, result)
             "cancelUpload" -> cancelUpload(context, jobStore, result)
             "abandonCancelCleanup" -> abandonCancelCleanup(context, jobStore, call, result)
@@ -240,7 +239,7 @@ object DriveUploadBridge {
                 requestNotificationPermission(context, result)
             }
             "consumeOpenDriveBackup" -> {
-                val activity = activityRef?.get() as? MainActivity
+                val activity = activityRef?.get()
                 result.success(activity?.consumeOpenDriveBackupRequest() == true)
             }
             else -> result.notImplemented()
@@ -265,9 +264,8 @@ object DriveUploadBridge {
         }
         ioExecutor.execute {
             try {
-                jobStore.cleanupOrphanStaging()
                 val root = jobStore.stagingRoot()
-                val staging = File(root, "${System.currentTimeMillis()}_$fileName")
+                val staging = File(root, "${DriveUploadJobStore.newJobId()}_$fileName")
                 val canonical = staging.canonicalFile
                 if (!jobStore.isInsideStagingRoot(canonical.path)) {
                     replyError(
@@ -339,7 +337,7 @@ object DriveUploadBridge {
                     return@execute
                 }
                 val account =
-                    DriveAccessTokenProvider(context).currentAccountSnapshot()
+                    DriveAccessTokenProvider(context).currentAccountIdentity()
                         ?: run {
                             replyError(
                                 result,
@@ -355,9 +353,11 @@ object DriveUploadBridge {
                 val job =
                     DriveUploadJob(
                         jobId = DriveUploadJobStore.newJobId(),
+                        backupIdentity = call.argument<Map<String, String>>("backupIdentity"),
+                        backupPurpose = call.argument<String>("backupPurpose"),
                         phase = DriveUploadPhase.STAGED,
-                        accountId = account.first,
-                        accountEmail = account.second,
+                        accountId = account.id,
+                        accountEmail = account.email,
                         stagingPath = canonical.path,
                         fileName = fileName,
                         sizeBytes = sizeBytes,
@@ -379,7 +379,7 @@ object DriveUploadBridge {
                 createdJobId = saved.jobId
                 // 先標記／啟動 FGS，再 emit／回傳，縮短 createJob 與 pendingStart 之間的空窗。
                 val started =
-                    BackupUploadForegroundService.startOrMarkInterrupted(context, saved.jobId)
+                    BackupUploadForegroundService.startOrRecordFailure(context, saved.jobId)
                 if (!started) {
                     createdJobId = null
                     val envelope = jobStore.getStateEnvelope()
@@ -401,7 +401,7 @@ object DriveUploadBridge {
                 Log.e(TAG, "Starting the Drive upload failed.", error)
                 val jobId = createdJobId
                 if (jobId != null) {
-                    jobStore.failAndCleanup(
+                    jobStore.recordUploadFailure(
                         jobId,
                         errorCode = "start_failed",
                         message =
@@ -437,10 +437,10 @@ object DriveUploadBridge {
                     return@execute
                 }
                 if (job != null && job.isCancelCleanupPhase()) {
-                    if (!BackupUploadForegroundService.isUploadWorkerAlive()) {
+                    if (!BackupUploadForegroundService.hasLiveUploadWorker()) {
                         reconcileUncommittedJob(context, jobStore, job)
                     }
-                    // AwaitWorker 時 FGS 可能仍在，補 stop 以免殘留前景服務。
+                    // 等待 worker 退出時 FGS 可能仍在，補 stop 以免殘留前景服務。
                     if (BackupUploadForegroundService.isRunning()) {
                         BackupUploadForegroundService.stop(context)
                     }
@@ -507,7 +507,7 @@ object DriveUploadBridge {
                     )
                     return@execute
                 }
-                if (BackupUploadForegroundService.isUploadWorkerAlive()) {
+                if (BackupUploadForegroundService.hasLiveUploadWorker()) {
                     replyError(
                         result,
                         "abandon_not_allowed",
@@ -537,7 +537,6 @@ object DriveUploadBridge {
         }
     }
 
-    /** Service 未在跑時：標記後查詢／刪遠端殘檔再清 job，或升 STATUS_PENDING。 */
     private fun reconcileUncommittedJob(
         context: Context,
         jobStore: DriveUploadJobStore,
@@ -555,7 +554,7 @@ object DriveUploadBridge {
             jobStore = jobStore,
             tokenProvider = DriveAccessTokenProvider(context.applicationContext),
             job = current,
-            workerAlive = BackupUploadForegroundService.isUploadWorkerAlive(),
+            workerAlive = BackupUploadForegroundService.hasLiveUploadWorker(),
         )
     }
 
@@ -571,7 +570,7 @@ object DriveUploadBridge {
             result.success(true)
             return
         }
-        val activity = activityRef?.get() as? MainActivity
+        val activity = activityRef?.get()
         if (activity == null) {
             result.success(false)
             return
@@ -626,5 +625,5 @@ object DriveUploadBridge {
     }
 
     private fun localizedString(context: Context, resourceId: Int, vararg arguments: Any): String =
-        DriveUploadLocalization.string(context, resourceId, *arguments)
+        AndroidAppStrings.string(context, resourceId, *arguments)
 }

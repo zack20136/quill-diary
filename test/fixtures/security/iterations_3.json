@@ -1,0 +1,26 @@
+{
+  "source_revision": "efbd929230cc25cd1fbeba0a3864fdd356f36b50",
+  "generator": "修改前 VaultRepository._generateRecoveryKey 與 LocalCryptoService",
+  "recovery_key": "01M7-MBFR-MGGX-57K6-6VF4-A47D",
+  "metadata": {
+    "schema_version": 1,
+    "vault_id": "vlt_01M7MBFRX66006189WFWZ9KS3M",
+    "recovery_enabled": true,
+    "recovery_key_version": 1,
+    "recovery_key_hint": "A47D",
+    "created_at": "2026-05-24T00:00:00.000Z",
+    "kdf": {
+      "name": "argon2id",
+      "salt": "AwQFBgcICQoLDA0ODxAREg==",
+      "memory": 19456,
+      "parallelism": 1,
+      "iterations": 3,
+      "hash_length": 32,
+      "purpose": "recovery_wrapping"
+    }
+  },
+  "derived_wrap_key_base64": "g6IxF9khAX5/XTOzwbxYtNIZvBPoUAFvVqFmaiafSgQ=",
+  "plaintext": "{\"vault_name\":\"歷史相容性樣本\"}",
+  "ldj2_sha256": "738980a0e3e9890b5feb977d5aac1f1fd60c68546aa702452bb1fb250c547c2a",
+  "zip_sha256": "00a7b025ec6a79441edb21ac3dd0aeae36735a041586b8c49ce8f3cf996cb735"
+}

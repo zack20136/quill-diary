@@ -28,7 +28,18 @@ void main() {
           encryptionKeyBytes: goodKey,
         ),
       );
-      await opened.customStatement('SELECT 1');
+      await opened.customStatement(
+        'CREATE TABLE cipher_probe (value TEXT NOT NULL)',
+      );
+      await opened.customStatement('INSERT INTO cipher_probe VALUES (?)', [
+        '索引加密驗證',
+      ]);
+      expect(
+        (await opened.customSelect('SELECT value FROM cipher_probe').get())
+            .single
+            .read<String>('value'),
+        '索引加密驗證',
+      );
       await opened.close();
     } finally {
       if (dir.existsSync()) {
@@ -54,7 +65,18 @@ void main() {
           encryptionKeyBytes: goodKey,
         ),
       );
-      await opened.customStatement('SELECT 1');
+      await opened.customStatement(
+        'CREATE TABLE cipher_probe (value TEXT NOT NULL)',
+      );
+      await opened.customStatement('INSERT INTO cipher_probe VALUES (?)', [
+        '索引加密驗證',
+      ]);
+      expect(
+        (await opened.customSelect('SELECT value FROM cipher_probe').get())
+            .single
+            .read<String>('value'),
+        '索引加密驗證',
+      );
       await opened.close();
 
       final IndexDatabase replay = IndexDatabase(
@@ -122,6 +144,33 @@ void main() {
         await dir.delete(recursive: true);
       }
     }
+  });
+
+  test('索引主檔不存在時清掉前一份索引的附屬檔', () async {
+    final Directory dir = await Directory.systemTemp.createTemp(
+      'qld_idx_sidecars',
+    );
+    addTearDown(() => dir.delete(recursive: true));
+    final paths = TestVaultPathStrategy(dir);
+    final manager = IndexDatabaseManager(paths);
+    addTearDown(manager.close);
+    final String indexPath = await paths.indexDatabasePath();
+    final sidecars = [
+      for (final suffix in ['-wal', '-shm', '-journal'])
+        File('$indexPath$suffix'),
+    ];
+    for (final file in sidecars) {
+      await file.create(recursive: true);
+      await file.writeAsString('前一份索引留下的內容');
+    }
+    await manager.openForSession(
+      UnlockedVaultSession(
+        vaultId: 'vlt_index',
+        trustedDevice: true,
+        recoveryWrapKey: List<int>.filled(32, 1),
+      ),
+    );
+    expect(sidecars.any((file) => file.existsSync()), isFalse);
   });
 
   test('IndexDatabaseManager 會升級 1.0.0+14 索引且保留既有資料', () async {

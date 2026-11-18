@@ -11,16 +11,13 @@ import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
-import 'package:quill_diary/l10n/l10n.dart';
 
 class RestoreBackupFlow {
   RestoreBackupFlow(this.ref);
 
   final Ref ref;
 
-  Future<VaultTransferCapabilities> _loadTransferCapabilities(
-    AppLocalizations l10n,
-  ) async {
+  Future<void> ensureRestoreAllowed() async {
     final AppSessionState sessionState = await ref.read(
       effectiveAppSessionProvider.future,
     );
@@ -28,18 +25,11 @@ class RestoreBackupFlow {
         sessionState.isUnlocked && sessionState.session != null;
     final bool hasRecoveryKey =
         await ref.read(vaultRepositoryProvider).readRecoveryMetadata() != null;
-    return VaultTransferCapabilities.fromSessionContext(
+    VaultTransferCapabilities.fromSessionContext(
       hasUnlockedSession: hasUnlockedSession,
       hasRecoveryKey: hasRecoveryKey,
       lockStatus: sessionState.status,
-    );
-  }
-
-  Future<void> ensureRestoreAllowed(AppLocalizations l10n) async {
-    final VaultTransferCapabilities access = await _loadTransferCapabilities(
-      l10n,
-    );
-    access.ensureCanRestore();
+    ).ensureCanRestore();
   }
 
   Future<void> verifyBackupRecoveryKey(

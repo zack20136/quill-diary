@@ -52,8 +52,6 @@ extension GoogleDriveErrorPresentation on GoogleDriveException {
       failedCount ?? 0,
       totalCount ?? 0,
     ),
-    GoogleDriveErrorCode.invalidDownloadPath =>
-      l10n.driveErrorInvalidDownloadPath,
     GoogleDriveErrorCode.prepareUploadFailed =>
       l10n.driveErrorPrepareUploadFailed,
     GoogleDriveErrorCode.startUploadFailed => l10n.driveErrorStartUploadFailed,

@@ -63,7 +63,15 @@
   "commonRelativeToday": "今天",
   "commonRelativeYesterday": "昨天",
   "commonRelativeDaysAgo": "{count, plural, =1 {1 天前} other {{count} 天前}}",
+  "commonRelativeDaysFromNow": "{count} 天後",
   "@commonRelativeDaysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@commonRelativeDaysFromNow": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -91,6 +99,7 @@
   },
   "commonActionCopy": "複製",
   "commonCopiedToClipboard": "已複製到剪貼簿",
+  "commonClipboardWriteFailed": "無法複製，請稍後再試。",
   "commonActionRetry": "重試",
   "datePickerChooseDate": "選擇日期",
   "datePickerChooseYearMonth": "選擇年月",
@@ -552,6 +561,8 @@
   "tagSaveButton": "儲存",
   "tagNameHint": "標籤名稱",
   "tagNameRequiredMessage": "請輸入標籤名稱",
+  "tagCatalogUnavailable": "標籤設定暫時無法使用，原始資料已保留。請重試。",
+  "tagCatalogRetry": "重新讀取標籤設定",
   "tagUnnamedPreview": "未命名標籤",
   "tagDefaultColorLabel": "預設色",
   "tagCustomColorLabel": "自訂顏色",
@@ -1388,7 +1399,6 @@
       "totalCount": {"type": "int"}
     }
   },
-  "driveErrorInvalidDownloadPath": "Google Drive 備份下載路徑無效。",
   "driveErrorPrepareUploadFailed": "無法準備 Google Drive 上傳暫存路徑。",
   "driveErrorStartUploadFailed": "無法建立 Google Drive 背景上傳工作。",
   "driveErrorBackgroundStartNotAllowed": "無法在背景啟動上傳。請保持 App 顯示在畫面上後再試。",
@@ -1522,10 +1532,11 @@
     }
   },
   "settingsActionConfirm": "確認還原",
-  "settingsActionUpdate": "更新",
   "settingsActionVerifyAndRestore": "驗證並還原",
   "settingsRecoveryKeyFieldLabel": "復原金鑰",
-  "settingsRecoveryKeyFieldHint": "ABCD-EFGH-IJKL-MNOP-QRST-UVWX",
+  "settingsRecoveryKeyFieldHint": "0123-4567-89AB-CDEF-GHJK-MNPQ",
+  "recoveryKeyInvalidInput": "請確認復原金鑰為 24 碼，且沒有多餘字元。",
+  "recoveryKeyRotationNeedsUnlock": "前次金鑰更新尚未恢復，請先重新解鎖再更新金鑰。",
   "settingsRecoveryKeyShowTooltip": "顯示復原金鑰",
   "settingsRecoveryKeyHideTooltip": "隱藏復原金鑰",
   "settingsRecoveryKeyHintPrefix": "末四碼：",
@@ -1544,6 +1555,7 @@
   "settingsSecurityLockRetryVerificationButton": "重新驗證",
   "settingsRecoveryKeyNotSetupBanner": "尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，以便換機、還原或裝置失效時使用。",
   "settingsRecoveryKeySetupBanner": "復原金鑰已建立，請確認已妥善保存。",
+  "settingsRecoveryKeyBackupRequired": "復原金鑰已更新，請重新建立備份。",
   "settingsRecoveryKeyCreateButton": "建立復原金鑰",
   "settingsRecoveryKeyRotateButton": "更新復原金鑰",
   "settingsRecoveryKeyFactVaultLabel": "日記庫",
@@ -1552,11 +1564,16 @@
   "settingsRecoveryKeySaveDialogTitle": "請保存復原金鑰",
   "settingsRecoveryKeySaveNewDialogTitle": "請保存新的復原金鑰",
   "settingsRecoveryKeySaveDialogHint": "請立即保存。關閉此畫面後不會再次顯示。",
-  "settingsRecoveryKeyRotateDialogTitle": "更新復原金鑰？",
-  "settingsRecoveryKeyRotateDialogBody": "將產生全新的復原金鑰，請立即保存。\n\n既有本機或 Google Drive 備份仍須使用舊金鑰還原；更新後請重新建立備份。",
+  "settingsRecoveryKeySaveBeforeUpdateHint": "先將新金鑰存入密碼管理工具，或抄寫後妥善收存。確認保存後才會開始更新。",
+  "settingsRecoveryKeyKeepOldBackupKey": "舊備份仍需舊金鑰。",
+  "settingsRecoveryKeySavedCheckbox": "已保存新金鑰",
+  "settingsRecoveryKeyStartUpdate": "開始更新",
+  "settingsRecoveryKeyUpdateInProgress": "正在更新復原金鑰…",
+  "recoveryKeyRotationDraftExpired": "金鑰世代已變更，請重新開啟更新畫面。",
   "settingsSecurityOverviewSectionTitle": "安全狀態",
   "settingsSecurityOverviewSectionDescription": "查看復原金鑰、解鎖方式、搜尋索引與備份狀態是否正常。",
   "settingsSecurityOverviewRecoveryKeyTitle": "復原金鑰",
+  "settingsBackupStatusReadFailed": "無法讀取備份提醒狀態，請重試。",
   "settingsSecurityOverviewRecoveryKeyReady": "已建立，可用於換機與還原。",
   "settingsSecurityOverviewRecoveryKeyMissing": "尚未建立，請先建立後再備份或匯出。",
   "settingsSecurityOverviewUnlockModeTitle": "解鎖方式",
@@ -1573,8 +1590,7 @@
     }
   },
   "settingsSecurityOverviewIndexTitle": "日記庫",
-  "settingsSecurityOverviewCreateRecoveryKeyButton": "建立復原金鑰",
-  "settingsSecurityOverviewRotateRecoveryKeyButton": "更新復原金鑰",
+  "indexCipherUnavailable": "目前無法使用加密索引，日記與附件已保留。",
   "settingsSecurityOverviewInspectVaultButton": "檢查日記庫",
   "settingsSecurityOverviewHealthLevelOk": "正常",
   "settingsSecurityOverviewHealthLevelWarning": "需注意",
@@ -1721,7 +1737,7 @@
   "settingsLocalBackupImportFromExternalButton": "匯入外部備份",
   "settingsLocalBackupPickDialogTitle": "選擇本機備份",
   "settingsLocalBackupNoBackups": "目前沒有本機備份。",
-  "settingsLocalBackupDeleteBackupTooltip": "刪除備份",
+  "settingsBackupDeleteTooltip": "刪除備份",
   "settingsLocalBackupDeleteConfirmTitle": "刪除本機備份？",
   "settingsLocalBackupBackupSuccessInApp": "已建立本機備份：{fileName}",
   "@settingsLocalBackupBackupSuccessInApp": {
@@ -1756,8 +1772,8 @@
       }
     }
   },
-  "settingsLocalBackupDeleteConfirmBody": "將刪除 {fileName}。此動作不會影響目前日記庫。",
-  "@settingsLocalBackupDeleteConfirmBody": {
+  "settingsBackupDeleteConfirmBody": "將刪除 {fileName}。此動作不會影響目前日記庫。",
+  "@settingsBackupDeleteConfirmBody": {
     "placeholders": {
       "fileName": {
         "type": "String"
@@ -1823,18 +1839,9 @@
   "settingsDriveBackupNoBackups": "Google Drive 目前沒有可用備份，請先建立一份。",
   "settingsDriveBackupPickDialogTitle": "選擇 Google Drive 備份",
   "settingsDriveBackupUnknownCreatedTime": "無建立時間",
-  "settingsDriveBackupDeleteBackupTooltip": "刪除備份",
   "settingsDriveBackupDeleteConfirmTitle": "刪除 Google Drive 備份？",
   "settingsDriveBackupDeleteBackupSuccess": "已從 Google Drive 刪除：{fileName}",
   "@settingsDriveBackupDeleteBackupSuccess": {
-    "placeholders": {
-      "fileName": {
-        "type": "String"
-      }
-    }
-  },
-  "settingsDriveBackupDeleteConfirmBody": "將刪除 {fileName}。此動作不會影響目前日記庫。",
-  "@settingsDriveBackupDeleteConfirmBody": {
     "placeholders": {
       "fileName": {
         "type": "String"
@@ -1941,8 +1948,8 @@
   "settingsInspectVaultResultClean": "目前狀態良好。",
   "settingsInspectVaultResultWarning": "發現 {count} 篇日記需要處理。修復會先建立並驗證本機備份，再整理可修復的項目。",
   "@settingsInspectVaultResultWarning": {"placeholders": {"count": {"type": "int"}}},
-  "settingsInspectVaultResultCheckedEntries": "已檢查 {entryCount} 篇日記。",
-  "@settingsInspectVaultResultCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
+  "settingsVaultMaintenanceCheckedEntries": "已檢查 {entryCount} 篇日記。",
+  "@settingsVaultMaintenanceCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
   "settingsInspectVaultResultMore": "另有 {count} 項未列出",
   "@settingsInspectVaultResultMore": {"placeholders": {"count": {"type": "int"}}},
   "settingsInspectVaultHandleLaterButton": "稍後處理",
@@ -1963,8 +1970,6 @@
   "settingsRepairVaultResultClean": "日記庫已修復完成，目前狀態良好。",
   "settingsRepairVaultResultWarning": "修復已完成，但有 {count} 篇日記尚未解決。可手動修復可讀內容，或永久刪除無法復原的檔案。",
   "@settingsRepairVaultResultWarning": {"placeholders": {"count": {"type": "int"}}},
-  "settingsRepairVaultResultCheckedEntries": "已檢查 {entryCount} 篇日記。",
-  "@settingsRepairVaultResultCheckedEntries": {"placeholders": {"entryCount": {"type": "int"}}},
   "settingsRepairVaultResultMissingAttachment": "附件已遺失",
   "settingsRepairVaultResultSalvageButton": "手動修復",
   "settingsRepairVaultResultSalvageFailed": "無法取出可讀內容，請改用永久刪除或從備份還原。",
@@ -2120,7 +2125,7 @@
   "aboutTabIntroSection0Title": "為什麼適合拿來寫日記",
   "aboutTabIntroSection0Subtitle": "從資料保存方式到日常操作，都以個人記錄與隱私為核心。",
   "aboutTabIntroSection0Item0Title": "本機加密保存",
-  "aboutTabIntroSection0Item0Body": "日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定、標籤目錄與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。",
+  "aboutTabIntroSection0Item0Body": "日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。",
   "aboutTabIntroSection0Item1Title": "不用註冊就能開始",
   "aboutTabIntroSection0Item1Body": "不需建立 Quill Diary 帳戶。第一次使用時設定復原金鑰，即可開始讀寫日記；使用 Google Drive 備份與還原時，才需在 App 內連結 Google 帳戶。",
   "aboutTabIntroSection0Item2Title": "少收集、少干擾",
@@ -2208,7 +2213,7 @@
   "aboutTabEncryptionSection1Item2Title": "先確認日記庫，再解開各檔",
   "aboutTabEncryptionSection1Item2Body": "App 會先確認您能正確進入日記庫，再開啟其中的檔案，避免把金鑰錯誤誤判為資料損壞。",
   "aboutTabEncryptionSection2Title": "使用前要知道的邊界",
-  "aboutTabEncryptionSection2Subtitle": "內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如標籤目錄與釘選項目 ID。明文匯出與解鎖後的使用也需留意。",
+  "aboutTabEncryptionSection2Subtitle": "內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如釘選項目 ID。明文匯出與解鎖後的使用也需留意。",
   "aboutTabEncryptionSection2Item0Title": "匯出後不再是同一層保護",
   "aboutTabEncryptionSection2Item0Body": "只要您把內容匯出成 Markdown 或 HTML，之後的存放與分享風險便不再由 App 內的加密機制保護。",
   "aboutTabEncryptionSection2Item1Title": "復原金鑰要自己保管",
@@ -2333,7 +2338,7 @@
   "aboutTabBackupRestoreSection1Title": "完整備份適合什麼情境",
   "aboutTabBackupRestoreSection1Subtitle": "如果您想保留整個正式日記庫，之後能原樣還原，請使用完整備份。",
   "aboutTabBackupRestoreSection1Item0Title": "保存完整日記庫",
-  "aboutTabBackupRestoreSection1Item0Body": "完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。內容檔案維持加密，但 ZIP 外層、復原設定，以及存在時的標籤目錄與釘選項目 ID 不另行加密。",
+  "aboutTabBackupRestoreSection1Item0Body": "完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。新備份的標籤目錄也會加密；ZIP 外層、復原設定與釘選項目 ID 為明文。歷史 ZIP 可能仍含明文標籤目錄。",
   "aboutTabBackupRestoreSection1Item1Title": "建立後會先檢查",
   "aboutTabBackupRestoreSection1Item1Body": "完整備份會先經過結構檢查，確認基本結構符合完整備份格式後，才交付到本機、外部資料夾或 Google Drive。",
   "aboutTabBackupRestoreSection1Item2Title": "保留份數",

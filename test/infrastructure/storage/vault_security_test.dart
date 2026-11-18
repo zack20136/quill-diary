@@ -4,11 +4,14 @@ import 'dart:io';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
+import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
 
@@ -56,7 +59,7 @@ void main() {
     final setup = await harness.repository.setupRecoveryKey();
     final before = (await harness.repository.readRecoveryMetadata())!.toJson();
     await expectLater(
-      harness.repository.rotateRecoveryKey(
+      harness.rotateRecoveryKey(
         setup.session.copyWith(recoveryWrapKey: List.filled(32, 0)),
       ),
       throwsA(isA<SecretBoxAuthenticationError>()),
@@ -252,6 +255,42 @@ void main() {
   });
 
   group('rotateRecoveryKey', () {
+    test('預覽新金鑰只準備草稿，確認後才使用該把金鑰輪替', () async {
+      final setup = await harness.repository.setupRecoveryKey();
+      final metadata = (await harness.repository.readRecoveryMetadata())!;
+      final pending = File(
+        await harness.pathStrategy.recoveryRotationPendingPath(),
+      );
+      final prepared = await harness.repository.prepareRecoveryKeyRotation(
+        setup.session,
+      );
+      final stale = await harness.repository.prepareRecoveryKeyRotation(
+        setup.session,
+      );
+
+      expect(await harness.repository.readRecoveryMetadata(), same(metadata));
+      expect(pending.existsSync(), isFalse);
+      expect(
+        (await BackupStatusStore(
+          pathStrategy: harness.pathStrategy,
+        ).read()).pendingRecoveryRotation,
+        isNull,
+      );
+
+      final updated = await harness.repository.rotateRecoveryKey(
+        setup.session,
+        prepared,
+      );
+      expect(updated.recoveryKey, prepared.recoveryKey);
+      final current = await harness.repository.readRecoveryMetadata();
+      await expectLater(
+        harness.repository.rotateRecoveryKey(updated.session, stale),
+        throwsA(isA<RecoveryKeyRotationDraftExpiredException>()),
+      );
+      expect(await harness.repository.readRecoveryMetadata(), same(current));
+      expect(pending.existsSync(), isFalse);
+    });
+
     test('會產生新金鑰並更新 metadata，trusted 仍可解鎖', () async {
       final RecoverySetupResult setup = await harness.repository
           .setupRecoveryKey();
@@ -271,8 +310,13 @@ void main() {
         ),
       );
 
-      final RecoverySetupResult rotated = await harness.repository
-          .rotateRecoveryKey(session);
+      await harness.indexDatabaseManager.requireOpen().setAppValue(
+        'rotation_test_marker',
+        'preserved',
+      );
+      final RecoverySetupResult rotated = await harness.rotateRecoveryKey(
+        session,
+      );
       expect(rotated.recoveryKey, isNot(equals(oldKey)));
 
       final RecoveryMetadata? metadata = await harness.repository
@@ -284,6 +328,14 @@ void main() {
       expect(
         rotated.session.recoveryWrapKey,
         isNot(setup.session.recoveryWrapKey),
+      );
+      await harness.repository.closeUnlockedResources();
+      await harness.repository.openTrustedSession();
+      expect(
+        await harness.indexDatabaseManager.requireOpen().getAppValue(
+          'rotation_test_marker',
+        ),
+        'preserved',
       );
     });
 
@@ -297,12 +349,34 @@ void main() {
         setup,
         title: '輪替中斷',
       );
+      await harness.repository.upsertTagCatalogItem(
+        '輪替前標籤',
+        accentArgb: 0xFF123456,
+      );
+      final backupStatus = BackupStatusStore(
+        pathStrategy: harness.pathStrategy,
+      );
+      final previousIdentity = await RecoveryKeyIdentity.fromMetadata(
+        (await harness.repository.readRecoveryMetadata())!,
+      );
+      await backupStatus.setBackupRequirement(previousIdentity);
 
       crypto.failRotationAfterEncryptedFiles = 1;
       await expectLater(
-        harness.repository.rotateRecoveryKey(setup.session),
+        harness.rotateRecoveryKey(setup.session),
         throwsStateError,
       );
+
+      final pending = File(
+        await harness.pathStrategy.recoveryRotationPendingPath(),
+      );
+      final temporaryPending = await pending.rename('${pending.path}.tmp');
+      final originalPending = await temporaryPending.readAsBytes();
+      await expectLater(
+        harness.rotateRecoveryKey(setup.session),
+        throwsA(isA<RecoveryKeyRotationPendingException>()),
+      );
+      expect(await temporaryPending.readAsBytes(), originalPending);
 
       crypto.failRotationAfterEncryptedFiles = null;
       await expectLater(
@@ -314,6 +388,15 @@ void main() {
       await harness.repository.closeUnlockedResources();
       final UnlockedVaultSession recovered = await harness.repository
           .openTrustedSession();
+      expect(temporaryPending.existsSync(), isFalse);
+
+      expect(
+        (await backupStatus.read()).requiredBackupIdentity,
+        previousIdentity,
+      );
+      final tag = (await harness.repository.listTagCatalog()).single;
+      expect(tag.label, '輪替前標籤');
+      expect(tag.accentArgb, 0xFF123456);
 
       expect(
         (await harness.repository.loadEntry(recovered, entryId))?.title,
@@ -340,7 +423,7 @@ void main() {
 
       deviceKeyManager.cancelWrap = true;
       await expectLater(
-        harness.repository.rotateRecoveryKey(setup.session),
+        harness.rotateRecoveryKey(setup.session),
         throwsStateError,
       );
 
@@ -364,5 +447,23 @@ void main() {
         setup.recoveryKey.substring(setup.recoveryKey.length - 4),
       );
     });
+  });
+
+  test('啟動讀取復原資料時先恢復遭中斷的替換副本', () async {
+    await harness.repository.setupRecoveryKey();
+    final File primary = File(
+      await harness.pathStrategy.recoveryMetadataPath(),
+    );
+    final original = await primary.readAsBytes();
+    final File previous = await primary.rename('${primary.path}.previous');
+    final File partial = File('${primary.path}.tmp');
+    await partial.writeAsString('{');
+    harness.repository.clearRecoveryMetadataCache();
+
+    await harness.repository.initialize();
+
+    expect(await primary.readAsBytes(), original);
+    expect(previous.existsSync(), isFalse);
+    expect(partial.existsSync(), isFalse);
   });
 }

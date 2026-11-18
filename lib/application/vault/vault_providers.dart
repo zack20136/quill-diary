@@ -74,6 +74,7 @@ final vaultRepositoryProvider = Provider<VaultRepository>((Ref ref) {
     indexDatabaseManager: ref.watch(indexDatabaseManagerProvider),
     deviceKeyManager: ref.watch(deviceKeyManagerProvider),
     appLockService: ref.watch(appLockServiceProvider),
+    backupStatusStore: ref.watch(backupStatusStoreProvider),
   );
 });
 
@@ -99,5 +100,6 @@ final portableTransferServiceProvider = Provider<PortableTransferService>((
     exportIo: ref.watch(portableExportIoProvider),
     importIo: ref.watch(portableImportIoProvider),
     externalDirectoryStore: ref.watch(externalDirectoryStoreProvider),
+    pathStrategy: ref.watch(vaultPathStrategyProvider),
   );
 });

@@ -172,12 +172,15 @@ class PreparedRestoreRequest {
   final String? driveBackupName;
   final File? tempFileToDelete;
 
-  Future<void> dispose() async {
-    final File? tempFile = tempFileToDelete;
-    if (tempFile == null || !tempFile.existsSync()) {
-      return;
-    }
-    await tempFile.delete();
+  Future<void> dispose() => _deleteRestoreTemporaryFile(tempFileToDelete);
+}
+
+Future<void> _deleteRestoreTemporaryFile(File? file) async {
+  if (file == null) return;
+  try {
+    await file.delete();
+  } on FileSystemException {
+    // 清理失敗不能使已完成的還原變成失敗。
   }
 }
 
@@ -297,7 +300,7 @@ class SettingsFlowController {
     if (backup == null) {
       return null;
     }
-    return prepareRestoreFile(File(backup.path));
+    return _prepareRestoreFile(File(backup.path));
   }
 
   Future<PreparedRestoreRequest?> prepareExternalRestore(
@@ -309,68 +312,49 @@ class SettingsFlowController {
     if (backup == null) {
       return null;
     }
-    return prepareRestoreFile(
+    return _prepareRestoreFile(
       backup.file,
       tempFileToDelete: backup.shouldDeleteAfterUse ? backup.file : null,
     );
   }
 
-  Future<PreparedRestoreRequest?> prepareDriveRestore({
-    required Future<DriveBackupFile?> Function(List<DriveBackupFile> backups)
-    pickBackup,
+  Future<PreparedRestoreRequest> prepareDriveRestore(
+    DriveBackupFile backup, {
     BackupTaskProgressListener? onProgress,
   }) async {
-    final List<DriveBackupFile> backups = await _ref
-        .read(vaultBackupServiceProvider)
-        .listDriveBackups();
-    final DriveBackupFile? backup = await pickBackup(backups);
-    if (backup == null) {
-      return null;
-    }
     final File tempBackup = await _ref
         .read(vaultRestoreServiceProvider)
         .downloadDriveBackupToTempFile(backup, onProgress: onProgress);
-    try {
-      return await prepareRestoreFile(
-        tempBackup,
-        driveBackupName: backup.name,
-        tempFileToDelete: tempBackup,
-      );
-    } on Object {
-      if (tempBackup.existsSync()) {
-        await tempBackup.delete();
-      }
-      rethrow;
-    }
+    return _prepareRestoreFile(
+      tempBackup,
+      driveBackupName: backup.name,
+      tempFileToDelete: tempBackup,
+    );
   }
 
   Future<List<DriveBackupFile>> listDriveBackups() {
     return _ref.read(vaultBackupServiceProvider).listDriveBackups();
   }
 
-  Future<File> downloadDriveBackupToTempFile(
-    DriveBackupFile backup, {
-    BackupTaskProgressListener? onProgress,
-  }) {
-    return _ref
-        .read(vaultRestoreServiceProvider)
-        .downloadDriveBackupToTempFile(backup, onProgress: onProgress);
-  }
-
-  Future<PreparedRestoreRequest> prepareRestoreFile(
+  Future<PreparedRestoreRequest> _prepareRestoreFile(
     File backupFile, {
     String? driveBackupName,
     File? tempFileToDelete,
   }) async {
-    final RestorePrecheck precheck = await _ref
-        .read(vaultRestoreServiceProvider)
-        .precheckRestore(backupFile);
-    return PreparedRestoreRequest(
-      backupFile: backupFile,
-      precheck: precheck,
-      driveBackupName: driveBackupName,
-      tempFileToDelete: tempFileToDelete,
-    );
+    try {
+      final RestorePrecheck precheck = await _ref
+          .read(vaultRestoreServiceProvider)
+          .precheckRestore(backupFile);
+      return PreparedRestoreRequest(
+        backupFile: backupFile,
+        precheck: precheck,
+        driveBackupName: driveBackupName,
+        tempFileToDelete: tempFileToDelete,
+      );
+    } on Object {
+      await _deleteRestoreTemporaryFile(tempFileToDelete);
+      rethrow;
+    }
   }
 
   Future<SettingsFlowFeedback> linkGoogleDrive(AppLocalizations l10n) async {
@@ -458,6 +442,13 @@ class SettingsFlowController {
                 },
               );
         });
+    try {
+      await _ref
+          .read(driveUploadCoordinatorProvider.notifier)
+          .cleanupAbandonedUploadFiles();
+    } on Exception {
+      // 本機修復已完成，原生暫存留待下次修復清理。
+    }
     await _ref.read(backupStatusStoreProvider).recordLocalBackupSuccess();
     _ref.invalidate(backupStatusProvider);
     _refreshVaultMaintenanceCaches();
@@ -557,15 +548,22 @@ class SettingsFlowController {
     );
   }
 
-  Future<SettingsRecoveryKeyResult> rotateRecoveryKey(
+  Future<PreparedRecoveryKeyRotation> prepareRecoveryKeyRotation() => _ref
+      .read(appSessionProvider.notifier)
+      .runSensitiveTask(
+        _ref.read(vaultRepositoryProvider).prepareRecoveryKeyRotation,
+      );
+
+  Future<SettingsFlowFeedback> rotateRecoveryKey(
     AppLocalizations l10n,
+    PreparedRecoveryKeyRotation prepared,
   ) async {
     return _ref.read(appSessionProvider.notifier).runSensitiveTask((
       UnlockedVaultSession session,
     ) async {
       final RecoverySetupResult result = await _ref
           .read(vaultRepositoryProvider)
-          .rotateRecoveryKey(session);
+          .rotateRecoveryKey(session, prepared);
       _ref
           .read(appSessionProvider.notifier)
           .activateSession(
@@ -573,13 +571,11 @@ class SettingsFlowController {
             message: l10n.sessionRecoveryKeyRotatedMessage,
           );
       _ref.invalidate(recoveryMetadataProvider);
+      _ref.invalidate(backupStatusProvider);
       _refreshCaches();
-      return SettingsRecoveryKeyResult(
-        recoveryKey: result.recoveryKey,
-        feedback: SettingsFlowFeedback(
-          l10n.sessionRecoveryKeyRotatedMessage,
-          tone: SettingsFlowFeedbackTone.success,
-        ),
+      return SettingsFlowFeedback(
+        l10n.sessionRecoveryKeyRotatedMessage,
+        tone: SettingsFlowFeedbackTone.success,
       );
     });
   }
@@ -627,7 +623,7 @@ class SettingsFlowController {
   }) async {
     try {
       final RestoreBackupFlow flow = RestoreBackupFlow(_ref);
-      await flow.ensureRestoreAllowed(l10n);
+      await flow.ensureRestoreAllowed();
       final String? trimmedKey = backupRecoveryKey?.trim();
       if (!recoveryKeyAlreadyVerified &&
           trimmedKey != null &&
@@ -651,7 +647,6 @@ class SettingsFlowController {
         driveBackupName: request.driveBackupName,
       );
     } finally {
-      await request.dispose();
       _ref.invalidate(trustedDeviceAccessProvider);
     }
   }
@@ -669,13 +664,21 @@ class SettingsFlowController {
       case BackupPersistStatus.success:
         switch (action) {
           case BackupStatusAction.localBackup:
-            await store.recordLocalBackupSuccess();
+            await store.recordLocalBackupSuccess(
+              identity: result.identity,
+              purpose: result.purpose,
+            );
             break;
           case BackupStatusAction.externalExport:
-            await store.recordExternalExportSuccess();
+            await store.recordExternalExportSuccess(
+              identity: result.identity,
+              purpose: result.purpose,
+            );
             break;
           case BackupStatusAction.driveUpload:
             await store.recordDriveUploadSuccess(
+              identity: result.identity,
+              purpose: result.purpose,
               accountLabel: driveAccountLabel,
             );
             break;
