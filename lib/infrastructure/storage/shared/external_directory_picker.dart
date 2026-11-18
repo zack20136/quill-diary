@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 
 /// 跨平台選擇外部資料夾；Android 走原生 SAF tree picker。
 abstract final class ExternalDirectoryPicker {
@@ -21,10 +22,18 @@ abstract final class ExternalDirectoryPicker {
     if (Platform.isAndroid && writableOnAndroid) {
       return _pickOnAndroid(prompt: prompt);
     }
-    return FilePicker.getDirectoryPath(
+    final Uri? directory = await FilePicker.pickDirectory(
       dialogTitle: prompt,
       initialDirectory: initialDirectory,
     );
+    if (directory == null) {
+      return null;
+    }
+    // 桌面回傳 file URI，匯入與上次目錄仍使用檔案路徑；Android 維持 content URI。
+    if (directory.scheme == 'file') {
+      return p.normalize(directory.toFilePath());
+    }
+    return directory.toString();
   }
 
   static Future<String?> _pickOnAndroid({required String prompt}) async {
