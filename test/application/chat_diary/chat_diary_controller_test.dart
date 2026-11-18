@@ -374,7 +374,7 @@ void main() {
         await started.future;
         subscription.close();
         await container.pump();
-        expect(container.exists(chatDiaryControllerProvider(chat.id)), isTrue);
+        expect(container.read(chatDiaryControllerProvider(chat.id).exists), isTrue);
         expect(client.closed, isFalse);
         expect(
           await controller.load(chat.id, setup.session),
@@ -389,7 +389,7 @@ void main() {
         await stream.close();
         await sending;
         await container.pump();
-        expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+        expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
         expect(client.calls, hasLength(1));
         final stored = (await store.load(chat.id, setup.session))!;
         expect(
@@ -420,13 +420,13 @@ void main() {
       await store.saveStarted!.future;
       await container.pump();
       expect(controller.busy, isTrue);
-      expect(container.exists(chatDiaryControllerProvider(chat.id)), isTrue);
+      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isTrue);
       store.saveGate = null;
       store.saveStarted = null;
       saved.complete();
       await sending;
       await container.pump();
-      expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
       expect(
         (await store.load(chat.id, setup.session))!.messages.last.status,
         ChatDiaryMessageStatus.complete,
@@ -484,12 +484,12 @@ void main() {
       await started.future;
       subscription.close();
       await container.pump();
-      expect(container.exists(chatDiaryControllerProvider(chat.id)), isTrue);
+      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isTrue);
       stream.add('# 合成日記\n\n保留這段內容');
       await stream.close();
       expect(await generation, ChatDiaryGenerationResult.generated);
       await container.pump();
-      expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
       final stored = (await store.load(chat.id, setup.session))!;
       expect(stored.generatedEntryId, isNotNull);
       expect(stored.generatedFromMessageId, stored.activeMessages.last.id);
@@ -539,7 +539,7 @@ void main() {
       await firstStream.close();
       await firstSending;
       await container.pump();
-      expect(container.exists(chatDiaryControllerProvider(chat.id)), isFalse);
+      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
       expect(second.busy, isTrue);
       expect(secondClient.closed, isFalse);
       secondStream.add('第二個獨立回覆');
@@ -547,7 +547,7 @@ void main() {
       await secondSending;
       await container.pump();
       expect(
-        container.exists(chatDiaryControllerProvider(secondChat.id)),
+        container.read(chatDiaryControllerProvider(secondChat.id).exists),
         isFalse,
       );
       expect(

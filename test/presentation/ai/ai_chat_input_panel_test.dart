@@ -121,7 +121,7 @@ void main() {
     addTearDown(container.dispose);
     final input = await _pumpInput(tester, container);
     expect(reads, 0);
-    expect(container.exists(peopleMentionStatsMapProvider), isFalse);
+    expect(container.read(peopleMentionStatsMapProvider.exists), isFalse);
     await tester.tap(find.byKey(_field));
     input.composer.setDocument('秘密 @小 尾巴', const [
       PrivateTextRange(0, 2),
@@ -143,7 +143,7 @@ void main() {
     expect(input.focus.hasFocus, isTrue);
     expect(find.byType(PersonSuggestionPanel), findsNothing);
     expect(disposals, 1);
-    expect(container.exists(peopleMentionStatsMapProvider), isFalse);
+    expect(container.read(peopleMentionStatsMapProvider.exists), isFalse);
   });
 
   testWidgets('全形 ＠ 支援方向鍵與 Enter 選取，Esc 關閉建議', (tester) async {

@@ -272,7 +272,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(client.calls.single.messages.last.text, isNot(contains('阿明')));
       expect(client.calls.single.messages.last.text, contains('{{PER'));
-      expect(container.exists(peopleMentionStatsMapProvider), isFalse);
+      expect(container.read(peopleMentionStatsMapProvider.exists), isFalse);
       await tester.pumpWidget(const SizedBox());
     });
     testWidgets('長對話只建立可見訊息，輸入及捲動不建立全部泡泡', (tester) async {

@@ -111,7 +111,7 @@ class _AiChatInputPanelState extends ConsumerState<AiChatInputPanel>
   List<PersonSuggestion> _suggestions({List<Person>? catalog}) {
     if (widget.isBusy || !_foreground || !_mention.isActive) return const [];
     // 沿用已載入的統計排序，不因輸入 @ 啟動全庫人物分析。
-    final stats = ref.exists(peopleMentionStatsMapProvider)
+    final stats = ref.read(peopleMentionStatsMapProvider.exists)
         ? ref.read(peopleMentionStatsMapProvider).asData?.value
         : null;
     return filterPersonSuggestions(

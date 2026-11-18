@@ -201,7 +201,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   Map<PersonId, int>? _mentionedEntryCountByIdHint() {
     // 勿用 read 啟動尚未建立的 FutureProvider，以免首次 @ 觸發全庫重建。
-    if (!ref.exists(peopleMentionStatsMapProvider)) {
+    if (!ref.read(peopleMentionStatsMapProvider.exists)) {
       return null;
     }
     final Map<PersonId, PersonMentionStats>? stats = ref
