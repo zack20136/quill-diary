@@ -1442,6 +1442,36 @@ abstract class AppLocalizations {
   /// **'新增'**
   String get editorAttachmentPendingLabel;
 
+  /// No description provided for @editorAddingAttachments.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加入附件…'**
+  String get editorAddingAttachments;
+
+  /// No description provided for @editorAttachmentFormatMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{fileName}」的內容與副檔名不符，請確認檔案格式。'**
+  String editorAttachmentFormatMismatch(String fileName);
+
+  /// No description provided for @attachmentTooLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{fileName}」超過 {maxMb} MB，無法加入。'**
+  String attachmentTooLarge(String fileName, int maxMb);
+
+  /// No description provided for @editorAttachmentReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取這個附件，請重新選取。'**
+  String get editorAttachmentReadFailed;
+
+  /// No description provided for @editorSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'無法儲存日記，請再試一次。'**
+  String get editorSaveFailed;
+
   /// No description provided for @editorAttachmentDragTooltip.
   ///
   /// In zh, this message translates to:
@@ -5159,12 +5189,6 @@ abstract class AppLocalizations {
   /// **'已使用復原金鑰解鎖。'**
   String get sessionRecoveryUnlockSuccessMessage;
 
-  /// No description provided for @sessionRecoverySetupSuccessMessage.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰已建立，現在可以設定解鎖方式。'**
-  String get sessionRecoverySetupSuccessMessage;
-
   /// No description provided for @sessionAppLockedMessage.
   ///
   /// In zh, this message translates to:
@@ -5186,7 +5210,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionRecoveryKeyRotatedMessage.
   ///
   /// In zh, this message translates to:
-  /// **'復原金鑰已更新，請立即保存新金鑰。'**
+  /// **'復原金鑰已更新，請重新建立備份。'**
   String get sessionRecoveryKeyRotatedMessage;
 
   /// No description provided for @sessionRecoveryRequiredAfterRestoreMessage.
@@ -5562,7 +5586,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRecoveryKeySaveBeforeUpdateHint.
   ///
   /// In zh, this message translates to:
-  /// **'先將新金鑰存入密碼管理工具，或抄寫後妥善收存。確認保存後才會開始更新。'**
+  /// **'請先妥善保存新金鑰。'**
   String get settingsRecoveryKeySaveBeforeUpdateHint;
 
   /// No description provided for @settingsRecoveryKeyKeepOldBackupKey.
@@ -5636,6 +5660,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'解鎖方式'**
   String get settingsSecurityOverviewUnlockModeTitle;
+
+  /// No description provided for @settingsSecurityOverviewUnlockModeDisabledMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'未啟用 App 解鎖'**
+  String get settingsSecurityOverviewUnlockModeDisabledMessage;
+
+  /// No description provided for @settingsUnlockMethodConfigureButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'設定解鎖方式'**
+  String get settingsUnlockMethodConfigureButton;
+
+  /// No description provided for @settingsRecoveryKeyUpdateCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消更新，原復原金鑰仍可使用。'**
+  String get settingsRecoveryKeyUpdateCancelled;
 
   /// No description provided for @settingsSecurityOverviewTrustedDeviceTitle.
   ///
@@ -6399,7 +6441,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRestoreDialogRecoveryKeyVerifyNote.
   ///
   /// In zh, this message translates to:
-  /// **'金鑰正確才會開始還原；錯誤則不會覆寫本機資料。'**
+  /// **'金鑰正確才會開始還原。'**
   String get settingsRestoreDialogRecoveryKeyVerifyNote;
 
   /// No description provided for @settingsRestoreDialogSubtitleRotatedBackup.

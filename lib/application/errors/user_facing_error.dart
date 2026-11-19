@@ -1,5 +1,6 @@
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/transfer/transfer_feedback.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/drive/google_drive_error.dart';
@@ -14,6 +15,12 @@ String userFacingErrorMessage(
   String? fallback,
 }) {
   if (error is TagCatalogException) return l10n.tagCatalogUnavailable;
+  if (error is AttachmentFormatMismatchException) {
+    return l10n.editorAttachmentFormatMismatch(error.fileName);
+  }
+  if (error is AttachmentTooLargeException) {
+    return l10n.attachmentTooLarge(error.fileName, error.limit.megabytes);
+  }
   if (error is RecoveryKeyFormatException) return l10n.recoveryKeyInvalidInput;
   if (error is RecoveryKeyRotationPendingException) {
     return l10n.recoveryKeyRotationNeedsUnlock;

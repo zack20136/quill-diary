@@ -111,11 +111,9 @@ class AppSessionController extends Notifier<AppSessionState> {
         recoveryKey,
       );
       await _vault.ensureIndexReady(session);
-      final UnlockedVaultSession synced = await _vault
-          .ensureKeystoreMatchesUnlockMode(session);
       state = AppSessionState(
         status: AppLockStatus.unlocked,
-        session: synced,
+        session: session,
         message: l10n.sessionRecoveryUnlockSuccessMessage,
       );
       onSessionUnlocked();

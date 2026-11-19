@@ -34,13 +34,12 @@ abstract interface class EditorActionPort {
 
   Future<Set<String>> listDraftKeys();
 
-  Future<String> pendingRelativePath(String draftKey, String sourcePath);
-
   Future<String> pendingAbsolutePath(String draftKey, String relativePath);
 
-  Future<String> stagePendingFile(
+  Future<String> stagePendingBytes(
     String draftKey,
-    String sourcePath,
+    Uint8List bytes,
+    String fileName,
     UnlockedVaultSession session,
   );
 
@@ -50,24 +49,12 @@ abstract interface class EditorActionPort {
     UnlockedVaultSession session,
   );
 
-  Future<void> clearAllMaterializedPendingFiles();
-
-  Future<PendingAttachment?> stagePickedImage({
+  Future<PendingAttachment> stagePickedImage({
     required ImageCompressPreset preset,
     required String draftKey,
     required String sourcePath,
-    required String displayName,
     required UnlockedVaultSession session,
   });
-
-  Future<Uint8List?> readDecryptedAssetBytes(
-    UnlockedVaultSession session,
-    String encryptedPath,
-  );
-
-  Future<DiaryEntry?> loadEntry(UnlockedVaultSession session, EntryId entryId);
-
-  Future<List<AssetAttachment>> loadAttachments(EntryId entryId);
 
   Future<void> deleteEntry(UnlockedVaultSession session, EntryId entryId);
 
@@ -118,22 +105,18 @@ class EditorActions implements EditorActionPort {
   }
 
   @override
-  Future<String> pendingRelativePath(String draftKey, String sourcePath) {
-    return _draftStore.pendingRelativePath(draftKey, sourcePath);
-  }
-
-  @override
   Future<String> pendingAbsolutePath(String draftKey, String relativePath) {
     return _draftStore.pendingAbsolutePath(draftKey, relativePath);
   }
 
   @override
-  Future<String> stagePendingFile(
+  Future<String> stagePendingBytes(
     String draftKey,
-    String sourcePath,
+    Uint8List bytes,
+    String fileName,
     UnlockedVaultSession session,
   ) {
-    return _draftStore.stagePendingFile(draftKey, sourcePath, session);
+    return _draftStore.stagePendingBytes(draftKey, bytes, fileName, session);
   }
 
   @override
@@ -150,16 +133,10 @@ class EditorActions implements EditorActionPort {
   }
 
   @override
-  Future<void> clearAllMaterializedPendingFiles() {
-    return _draftStore.clearAllMaterializedPendingFiles();
-  }
-
-  @override
-  Future<PendingAttachment?> stagePickedImage({
+  Future<PendingAttachment> stagePickedImage({
     required ImageCompressPreset preset,
     required String draftKey,
     required String sourcePath,
-    required String displayName,
     required UnlockedVaultSession session,
   }) {
     return editor_image_staging.stagePickedImage(
@@ -167,29 +144,8 @@ class EditorActions implements EditorActionPort {
       preset: preset,
       draftKey: draftKey,
       sourcePath: sourcePath,
-      displayName: displayName,
       session: session,
     );
-  }
-
-  @override
-  Future<Uint8List?> readDecryptedAssetBytes(
-    UnlockedVaultSession session,
-    String encryptedPath,
-  ) {
-    return _ref
-        .read(vaultRepositoryProvider)
-        .readDecryptedAssetBytes(session, encryptedPath);
-  }
-
-  @override
-  Future<DiaryEntry?> loadEntry(UnlockedVaultSession session, EntryId entryId) {
-    return _ref.read(vaultRepositoryProvider).loadEntry(session, entryId);
-  }
-
-  @override
-  Future<List<AssetAttachment>> loadAttachments(EntryId entryId) {
-    return _ref.read(vaultRepositoryProvider).loadAttachments(entryId);
   }
 
   @override

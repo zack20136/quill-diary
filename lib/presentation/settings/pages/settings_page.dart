@@ -57,9 +57,9 @@ import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/utils/external_url.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
-  const SettingsPage({this.initialFocus, super.key});
+  const SettingsPage({this.entryAction, super.key});
 
-  final SettingsFocusTarget? initialFocus;
+  final SettingsEntryAction? entryAction;
 
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
@@ -68,16 +68,15 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _recoveryKeyInputController =
       TextEditingController();
-  final GlobalKey _recoveryKeySectionKey = GlobalKey();
+  final GlobalKey _unlockMethodSectionKey = GlobalKey();
   final GlobalKey _localBackupSectionKey = GlobalKey();
-  final FocusNode _recoveryKeyFocusNode = FocusNode();
   final FocusNode _localBackupFocusNode = FocusNode();
   final ScrollController _pageScrollController = ScrollController();
   bool _busy = false;
   bool _showBusyOverlay = true;
   String? _busyMessage;
   double? _busyProgress;
-  bool _initialFocusScheduled = false;
+  bool _entryActionScheduled = false;
 
   SettingsFlowController get _settingsFlow =>
       ref.read(settingsFlowControllerProvider);
@@ -94,72 +93,55 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
-  void _scheduleInitialFocusIfReady({required bool layoutReady}) {
-    final SettingsFocusTarget? focus = widget.initialFocus;
-    if (focus == null || _initialFocusScheduled || !layoutReady) {
+  void _scheduleEntryAction({required bool layoutReady}) {
+    final SettingsEntryAction? action = widget.entryAction;
+    if (_entryActionScheduled || action == null || !layoutReady) {
       return;
     }
-    _initialFocusScheduled = true;
+    _entryActionScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
         return;
       }
-      unawaited(_focusSection(focus));
+      switch (action) {
+        case SettingsEntryAction.focusUnlockMethod:
+          unawaited(_focusUnlockMethod());
+        case SettingsEntryAction.focusExternalRestore:
+          _focusExternalRestore();
+      }
     });
   }
 
-  Future<void> _focusSection(
-    SettingsFocusTarget focus, {
-    int attempt = 0,
-  }) async {
-    final GlobalKey key = switch (focus) {
-      SettingsFocusTarget.recoveryKey => _recoveryKeySectionKey,
-      SettingsFocusTarget.externalRestore => _localBackupSectionKey,
-    };
-    final FocusNode focusNode = switch (focus) {
-      SettingsFocusTarget.recoveryKey => _recoveryKeyFocusNode,
-      SettingsFocusTarget.externalRestore => _localBackupFocusNode,
-    };
-    final BuildContext? target = key.currentContext;
-    if (target == null && attempt < 5 && mounted) {
+  void _focusExternalRestore({int attempt = 0}) {
+    if (!mounted) {
+      return;
+    }
+    final BuildContext? target = _localBackupSectionKey.currentContext;
+    if (target == null) {
+      if (attempt >= 5) {
+        return;
+      }
       if (_pageScrollController.hasClients) {
         _pageScrollController.jumpTo(
           _pageScrollController.position.maxScrollExtent,
         );
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(_focusSection(focus, attempt: attempt + 1));
+        _focusExternalRestore(attempt: attempt + 1);
       });
       return;
     }
-    if (target == null || !mounted) {
+    final bool aligned = _jumpSectionToViewportTop(target);
+    // 等待下方的 Drive 區塊排版完成，避免捲動範圍不足。
+    if (attempt < 8 && (!aligned || attempt < 3)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusExternalRestore(attempt: attempt + 1);
+      });
       return;
     }
-    if (focus == SettingsFocusTarget.externalRestore) {
-      final bool aligned = _jumpSectionToViewportTop(target);
-      // 第一次進頁 maxScrollExtent 常還沒含下方 Drive，多對幾幀才穩。
-      if (attempt < 8 && (!aligned || attempt < 3) && mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          unawaited(_focusSection(focus, attempt: attempt + 1));
-        });
-        return;
-      }
-      focusNode.requestFocus();
-      return;
-    }
-    await Scrollable.ensureVisible(
-      target,
-      alignment: 0.08,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-    );
-    if (!mounted) {
-      return;
-    }
-    focusNode.requestFocus();
+    _localBackupFocusNode.requestFocus();
   }
 
-  /// 把區塊頂端對齊 ListView 可視區頂端。
   bool _jumpSectionToViewportTop(BuildContext target) {
     if (!_pageScrollController.hasClients) {
       return false;
@@ -194,7 +176,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void dispose() {
     _recoveryKeyInputController.dispose();
-    _recoveryKeyFocusNode.dispose();
     _localBackupFocusNode.dispose();
     _pageScrollController.dispose();
     super.dispose();
@@ -231,7 +212,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         );
     final VaultTransferCapabilities transferAccess =
         pageAccess.vaultTransferCapabilities;
-    _scheduleInitialFocusIfReady(
+    _scheduleEntryAction(
       layoutReady:
           !sessionAsync.isLoading &&
           !recoveryMetadataAsync.isLoading &&
@@ -260,11 +241,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: <Widget>[
                   const _SettingsTopNavSection(),
                   const SizedBox(height: 16),
-                  Focus(
-                    focusNode: _recoveryKeyFocusNode,
-                    child: KeyedSubtree(
-                      key: _recoveryKeySectionKey,
-                      child: _buildSecurityStatusSection(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      _buildSecurityStatusSection(
                         sessionAsync: sessionAsync,
                         recoveryMetadata: recoveryMetadata,
                         pageAccess: pageAccess,
@@ -273,34 +253,39 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         repairSummaryAsync: repairSummaryAsync,
                         inspectSummaryAsync: inspectSummaryAsync,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SettingsSectionCard(
-                    icon: Icons.phonelink_lock_outlined,
-                    title: l10n.settingsUnlockMethodSectionTitle,
-                    description: settingsUnlockMethodSectionDescription(
-                      l10n,
-                      watchPersonalizationPreferences(ref).sessionTimeout,
-                    ),
-                    child: unlockModeAsync.when(
-                      data: (AppUnlockMode unlockMode) =>
-                          UnlockMethodSectionBody(
-                            enabled:
-                                recoveryMetadataAsync.asData?.value != null,
-                            changeAllowed: pageAccess.hasUnlockedSession,
-                            busy: _busy,
-                            unlockMode: unlockMode,
-                            onModeSelected: (AppUnlockMode selected) =>
-                                _runBusy(() => _applyUnlockMode(selected)),
-                          ),
-                      loading: () => const AppLoadingState(),
-                      error: (Object error, StackTrace _) => AppFeedbackBanner(
-                        icon: Icons.error_outline_rounded,
-                        message: userFacingErrorMessage(error, l10n: l10n),
-                        tone: AppFeedbackTone.error,
+                      const SizedBox(height: 16),
+                      SettingsSectionCard(
+                        key: _unlockMethodSectionKey,
+                        icon: Icons.phonelink_lock_outlined,
+                        title: l10n.settingsUnlockMethodSectionTitle,
+                        description: settingsUnlockMethodSectionDescription(
+                          l10n,
+                          watchPersonalizationPreferences(ref).sessionTimeout,
+                        ),
+                        child: unlockModeAsync.when(
+                          data: (AppUnlockMode unlockMode) =>
+                              UnlockMethodSectionBody(
+                                enabled:
+                                    recoveryMetadataAsync.asData?.value != null,
+                                changeAllowed: pageAccess.hasUnlockedSession,
+                                busy: _busy,
+                                unlockMode: unlockMode,
+                                onModeSelected: (AppUnlockMode selected) =>
+                                    _runBusy(() => _applyUnlockMode(selected)),
+                              ),
+                          loading: () => const AppLoadingState(),
+                          error: (Object error, StackTrace _) =>
+                              AppFeedbackBanner(
+                                icon: Icons.error_outline_rounded,
+                                message: userFacingErrorMessage(
+                                  error,
+                                  l10n: l10n,
+                                ),
+                                tone: AppFeedbackTone.error,
+                              ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   SettingsSectionCard(
@@ -505,8 +490,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }) {
     final AppSessionState? sessionState = sessionAsync.asData?.value;
     final bool hasUnlockedSession = pageAccess.hasUnlockedSession;
-    final AppUnlockMode mode =
-        unlockModeAsync.asData?.value ?? AppUnlockMode.none;
     final AppLocalizations l10n = context.l10n;
     final VaultRepairSummary? repairSummary = repairSummaryAsync.asData?.value;
     final VaultInspectSummary? inspectSummary =
@@ -531,7 +514,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
                     hasUnlockedSession: hasUnlockedSession,
                     hasTrustedDevice: hasTrustedDevice,
-                    unlockModeLabel: mode.fullLabel(l10n),
+                    unlockMode: unlockModeAsync.asData?.value,
                     indexMessage: settingsIndexStatusMessage(
                       l10n,
                       sessionState: sessionState,
@@ -548,7 +531,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     backupStatus: backupStatus,
                     busy: _busy,
                     onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
-                        ? () => _runBusy(_createRecoveryKey)
+                        ? _createRecoveryKey
                         : null,
                     onRotateRecoveryKey:
                         recoveryMetadata != null &&
@@ -801,15 +784,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _createRecoveryKey() async {
-    final BuildContext context = this.context;
-    final AppLocalizations l10n = context.l10n;
-    final SettingsRecoveryKeyResult result = await _settingsFlow
-        .createRecoveryKey(l10n);
-    if (!context.mounted) {
-      return;
+    final bool configureUnlock = await showRecoveryKeyCreationDialog(
+      context,
+      createRecoveryKey: _settingsFlow.createRecoveryKey,
+      offerUnlockSetup:
+          ref.read(unlockModeProvider).value == AppUnlockMode.none,
+    );
+    if (configureUnlock && mounted) {
+      await _focusUnlockMethod();
     }
-    _showFeedback(result.feedback);
-    await showRecoveryKeySaveDialog(context, recoveryKey: result.recoveryKey);
+  }
+
+  Future<void> _focusUnlockMethod() async {
+    final BuildContext? unlockSection = _unlockMethodSectionKey.currentContext;
+    if (unlockSection != null) {
+      await Scrollable.ensureVisible(
+        unlockSection,
+        alignment: 0.08,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   Future<void> _createLocalBackup(
@@ -1300,9 +1295,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
     final route = appDialogRoute<bool>(
       context: context,
-      builder: (_) => RecoveryKeySaveDialog(
+      builder: (_) => RecoveryKeySaveDialog.confirmUpdate(
         recoveryKey: prepared.recoveryKey,
-        requireSavedConfirmation: true,
       ),
     );
     final subscription = ref.listenManual(appSessionProvider, (_, next) {
@@ -1327,9 +1321,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _showBusyOverlay = true;
       _busyMessage = l10n.settingsRecoveryKeyUpdateInProgress;
     });
-    _showFeedback(
-      await _settingsFlow.rotateRecoveryKey(l10n, prepared),
-    );
+    _showFeedback(await _settingsFlow.rotateRecoveryKey(l10n, prepared));
   }
 
   Future<void> _runBusy(

@@ -89,6 +89,9 @@ class _PickedImageFile implements File {
   String get path => 'image.png';
 
   @override
+  Future<int> length() async => testAiPng.length;
+
+  @override
   Future<Uint8List> readAsBytes() async => testAiPng;
 
   @override

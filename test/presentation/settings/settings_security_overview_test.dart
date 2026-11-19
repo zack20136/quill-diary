@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 
@@ -19,6 +20,7 @@ void main() {
     required SettingsHealthLevel indexHealthLevel,
     required String indexMessage,
     bool hasUnlockedSession = true,
+    AppUnlockMode unlockMode = AppUnlockMode.deviceLock,
     BackupStatusSnapshot backupStatus = const BackupStatusSnapshot(),
     bool needsBackup = false,
     Object? backupStatusError,
@@ -41,7 +43,7 @@ void main() {
           recoveryKeyHint: 'ABCD',
           hasUnlockedSession: hasUnlockedSession,
           hasTrustedDevice: true,
-          unlockModeLabel: testL10n.settingsUnlockModeFullNone,
+          unlockMode: unlockMode,
           indexMessage: indexMessage,
           indexHealthLevel: indexHealthLevel,
           backupStatus: backupStatus,
@@ -55,6 +57,32 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('未啟用 App 解鎖的安全狀態標為需注意', (tester) async {
+    await pumpOverview(
+      tester,
+      indexHealthLevel: SettingsHealthLevel.ok,
+      indexMessage: testL10n.settingsRepairVaultReadyMessage,
+      unlockMode: AppUnlockMode.none,
+    );
+    final tile = find
+        .ancestor(
+          of: find.text(
+            testL10n.settingsSecurityOverviewUnlockModeDisabledMessage,
+          ),
+          matching: find.byType(DecoratedBox),
+        )
+        .first;
+    expect(
+      find.descendant(
+        of: tile,
+        matching: find.text(
+          testL10n.settingsSecurityOverviewHealthLevelWarning,
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('更新金鑰後在既有安全卡顯示備份提醒，完成後恢復就緒', (tester) async {
     await pumpOverview(

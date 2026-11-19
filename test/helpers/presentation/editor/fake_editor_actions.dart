@@ -82,9 +82,6 @@ class FakeEditorActions implements EditorActionPort {
   }
 
   @override
-  Future<void> clearAllMaterializedPendingFiles() async {}
-
-  @override
   Future<void> deleteDraft(String draftKey) async {
     draft = null;
   }
@@ -98,11 +95,9 @@ class FakeEditorActions implements EditorActionPort {
   @override
   Future<Set<String>> listDraftKeys() async => <String>{};
 
-  @override
   Future<List<AssetAttachment>> loadAttachments(EntryId entryId) async =>
       attachments;
 
-  @override
   Future<DiaryEntry?> loadEntry(
     UnlockedVaultSession session,
     EntryId entryId,
@@ -125,18 +120,11 @@ class FakeEditorActions implements EditorActionPort {
   ) async => 'C:/drafts/$relativePath';
 
   @override
-  Future<String> pendingRelativePath(
-    String draftKey,
-    String sourcePath,
-  ) async => 'pending/file';
-
-  @override
   Future<EditorDraftRecord?> readDraft(
     String draftKey,
     UnlockedVaultSession session,
   ) async => draft;
 
-  @override
   Future<Uint8List?> readDecryptedAssetBytes(
     UnlockedVaultSession session,
     String encryptedPath,
@@ -155,20 +143,25 @@ class FakeEditorActions implements EditorActionPort {
   }
 
   @override
-  Future<PendingAttachment?> stagePickedImage({
+  Future<PendingAttachment> stagePickedImage({
     required ImageCompressPreset preset,
     required String draftKey,
     required String sourcePath,
-    required String displayName,
     required UnlockedVaultSession session,
-  }) async => null;
+  }) async => throw UnimplementedError();
 
   @override
-  Future<String> stagePendingFile(
+  Future<String> stagePendingBytes(
     String draftKey,
-    String sourcePath,
+    Uint8List bytes,
+    String fileName,
     UnlockedVaultSession session,
-  ) async => 'pending/file.enc';
+  ) async {
+    stagedFileNames.add(fileName);
+    return 'pending/file.enc';
+  }
+
+  final List<String> stagedFileNames = <String>[];
 
   @override
   Future<void> writeDraft(

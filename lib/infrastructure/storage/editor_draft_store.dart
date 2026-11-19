@@ -121,7 +121,7 @@ class EditorDraftStore {
     final file = File(p.join(directory.path, storedName));
     final now = DateTime.now();
     final encrypted = await _cryptoService.encryptBytes(
-      documentId: 'draft_pending_${draftKey}_$storedName',
+      documentId: draftAttachmentDocumentId(draftKey, storedName),
       vaultId: metadata.vaultId,
       plaintextBytes: bytes,
       contentType: mimeTypeFromFileName(filename),
@@ -143,16 +143,19 @@ class EditorDraftStore {
   Future<String> stagePendingFile(
     String draftKey,
     String sourcePath,
-    UnlockedVaultSession session,
-  ) async {
+    UnlockedVaultSession session, {
+    String? fileName,
+    bool isImage = false,
+  }) async {
     final trimmed = sourcePath.trim();
     if (trimmed.isEmpty) {
       throw ArgumentError.value(sourcePath, 'sourcePath', '來源檔案路徑不可為空。');
     }
+    final String name = fileName ?? p.basename(trimmed);
     return stagePendingBytes(
       draftKey,
-      await File(trimmed).readAsBytes(),
-      p.basename(trimmed),
+      await readPickedAttachmentFile(trimmed, fileName: name, isImage: isImage),
+      name,
       session,
     );
   }

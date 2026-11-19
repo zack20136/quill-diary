@@ -189,11 +189,12 @@ class EncryptionResult {
       ..setUint8(3, kEncryptedDocumentMagic.codeUnitAt(3))
       ..setUint32(4, headerBytes.lengthInBytes, Endian.big);
 
-    return Uint8List.fromList(<int>[
-      ...lengthBuffer.buffer.asUint8List(),
-      ...headerBytes,
-      ...ciphertextBytes,
-    ]);
+    final int headerEnd = 8 + headerBytes.length;
+    final int fileLength = headerEnd + ciphertextBytes.length;
+    return Uint8List(fileLength)
+      ..setRange(0, 8, lengthBuffer.buffer.asUint8List())
+      ..setRange(8, headerEnd, headerBytes)
+      ..setRange(headerEnd, fileLength, ciphertextBytes);
   }
 }
 
@@ -379,13 +380,14 @@ class LocalCryptoService implements CryptoService {
       aad: headerBytes,
     );
 
+    final int cipherLength = contentBox.cipherText.length;
+    final int sealedLength = cipherLength + contentBox.mac.bytes.length;
     return EncryptionResult(
       header: header,
       headerBytes: headerBytes,
-      ciphertextBytes: Uint8List.fromList(<int>[
-        ...contentBox.cipherText,
-        ...contentBox.mac.bytes,
-      ]),
+      ciphertextBytes: Uint8List(sealedLength)
+        ..setRange(0, cipherLength, contentBox.cipherText)
+        ..setRange(cipherLength, sealedLength, contentBox.mac.bytes),
     );
   }
 
@@ -487,10 +489,13 @@ class LocalCryptoService implements CryptoService {
     if (encryptedBytes.length < _gcmTagLength) {
       throw const FormatException('Ciphertext is too short.');
     }
+    final int tagOffset = encryptedBytes.length - _gcmTagLength;
     return SecretBox(
-      encryptedBytes.sublist(0, encryptedBytes.length - _gcmTagLength),
+      encryptedBytes is Uint8List
+          ? Uint8List.sublistView(encryptedBytes, 0, tagOffset)
+          : encryptedBytes.sublist(0, tagOffset),
       nonce: nonce,
-      mac: Mac(encryptedBytes.sublist(encryptedBytes.length - _gcmTagLength)),
+      mac: Mac(encryptedBytes.sublist(tagOffset)),
     );
   }
 

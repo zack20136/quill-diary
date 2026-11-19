@@ -21,7 +21,7 @@ Widget editorKeyboardChromeTransition(
     opacity: curved,
     child: SizeTransition(
       sizeFactor: curved,
-      alignment: Alignment.topCenter,
+      alignment: AlignmentDirectional.topStart,
       child: SlideTransition(
         position: Tween<Offset>(
           begin: const Offset(0, -0.14),

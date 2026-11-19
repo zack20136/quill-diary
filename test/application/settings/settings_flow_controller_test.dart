@@ -610,7 +610,7 @@ void main() {
     });
 
     group('createRecoveryKey', () {
-      test('建立復原金鑰成功時回傳金鑰與 success feedback', () async {
+      test('建立復原金鑰後回傳金鑰並啟用日記庫會話', () async {
         final _RecoverySessionVaultRepository repository =
             _RecoverySessionVaultRepository(
               setupRecoveryKeyResult: const RecoverySetupResult(
@@ -632,15 +632,7 @@ void main() {
           settingsFlowControllerProvider,
         );
 
-        final SettingsRecoveryKeyResult result = await controller
-            .createRecoveryKey(l10n);
-
-        expect(result.recoveryKey, 'setup-key');
-        expect(result.feedback.tone, SettingsFlowFeedbackTone.success);
-        expect(
-          result.feedback.message,
-          l10n.sessionRecoverySetupSuccessMessage,
-        );
+        expect(await controller.createRecoveryKey(), 'setup-key');
         expect(
           container.read(appSessionProvider).session,
           same(_kSyncedUnlockedSession),

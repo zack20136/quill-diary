@@ -567,24 +567,31 @@ class VaultRepository {
     await _validatePersonaReplacementState();
     await _openIndexForSession(session);
     await _readTagCatalog();
-    try {
-      final String recoveryKey = prepared.recoveryKey;
-      final KdfDescriptor newKdf = KdfDescriptor.argon2idRecovery(
-        saltBytes: List<int>.generate(16, (_) => Random.secure().nextInt(256)),
-      );
-      final List<int> newWrapKey = await _cryptoService.deriveRecoveryWrapKey(
-        recoveryKey: recoveryKey,
-        kdf: newKdf,
-      );
-      final RecoveryMetadata newMetadata = RecoveryMetadata(
-        vaultId: oldMetadata.vaultId,
-        recoveryEnabled: true,
-        recoveryKeyVersion: oldMetadata.recoveryKeyVersion,
-        recoveryKeyHint: recoveryKey.substring(recoveryKey.length - 4),
-        createdAt: DateTime.now(),
-        kdf: newKdf,
-      );
+    final String recoveryKey = prepared.recoveryKey;
+    final KdfDescriptor newKdf = KdfDescriptor.argon2idRecovery(
+      saltBytes: List<int>.generate(16, (_) => Random.secure().nextInt(256)),
+    );
+    final List<int> newWrapKey = await _cryptoService.deriveRecoveryWrapKey(
+      recoveryKey: recoveryKey,
+      kdf: newKdf,
+    );
+    final RecoveryMetadata newMetadata = RecoveryMetadata(
+      vaultId: oldMetadata.vaultId,
+      recoveryEnabled: true,
+      recoveryKeyVersion: oldMetadata.recoveryKeyVersion,
+      recoveryKeyHint: recoveryKey.substring(recoveryKey.length - 4),
+      createdAt: DateTime.now(),
+      kdf: newKdf,
+    );
+    // 先取得單次 Keystore 授權，取消時日記庫仍使用原金鑰。
+    final DeviceWrappedPayload devicePayload = await _deviceKeyManager
+        .wrapWithDeviceKey(
+          vaultId: oldMetadata.vaultId,
+          plaintextBytes: newWrapKey,
+          authKind: authKind,
+        );
 
+    try {
       final oldIdentity = await RecoveryKeyIdentity.fromMetadata(oldMetadata);
       final newIdentity = await RecoveryKeyIdentity.fromMetadata(newMetadata);
       await _backupStatus.reconcileRecoveryRotation(oldIdentity);
@@ -606,8 +613,10 @@ class VaultRepository {
         newRecoveryWrapKey: newWrapKey,
         newMetadata: newMetadata,
       );
-      UnlockedVaultSession updatedSession = session.copyWith(
+      final UnlockedVaultSession updatedSession = session.copyWith(
         recoveryWrapKey: newWrapKey,
+        trustedDevice: true,
+        deviceSlotId: devicePayload.slotId,
       );
       await _indexDatabaseManager.rekeyForSession(updatedSession);
       await _verifyRecoveryKey(newMetadata, newWrapKey);
@@ -619,12 +628,19 @@ class VaultRepository {
       _cachedRecoveryMetadata = newMetadata;
 
       await _repair.inspectVaultWithReport(updatedSession);
-      await _storeWrappedRecoveryKey(
-        vaultId: oldMetadata.vaultId,
-        recoveryWrapKey: newWrapKey,
+      await _deviceKeyManager.ensureDeviceKey(
+        oldMetadata.vaultId,
         authKind: authKind,
       );
-      updatedSession = await ensureKeystoreMatchesUnlockMode(updatedSession);
+      await _persistWrappedRecoveryKey(
+        vaultId: oldMetadata.vaultId,
+        payload: devicePayload,
+        authKind: authKind,
+      );
+      await _requireOpenIndex().setAppValue(
+        kKeystoreWrapModeKey,
+        authKind.storageSuffix,
+      );
       await _setRewrapState(inProgress: false);
       await _backupStatus.setBackupRequirement(newIdentity);
       await _deleteRecoveryRotationPending();
@@ -1351,7 +1367,7 @@ class VaultRepository {
     );
     await _writeEncryptedManifest(session, metadata);
     await _ensureTagCatalogLabels(normalized.tags);
-    await _deleteObsoleteFilesAfterSave(obsoletePathsAfterSave);
+    await _deleteFilesBestEffort(obsoletePathsAfterSave);
     return normalized;
   }
 
@@ -1697,59 +1713,96 @@ class VaultRepository {
     required String vaultId,
   }) async {
     final List<AssetAttachment> results = <AssetAttachment>[];
-    for (final PendingAttachment pending in pendingAttachments) {
-      final AssetId assetId = pending.assetId;
-      final String originalFilename = p.basename(
-        pending.originalFilename.trim(),
-      );
-      final String extension = p
-          .extension(originalFilename)
-          .replaceFirst('.', '');
-      final String safeFilename = originalFilename.isEmpty
-          ? (extension.isEmpty ? assetId : '$assetId.$extension')
-          : originalFilename;
-      final List<int> sourceBytes = pending.bytes != null
-          ? pending.bytes!
-          : await File(pending.sourcePath!).readAsBytes();
-      if (!contentTypeMatchesExtension(pending.mimeType, extension) ||
-          !attachmentContentMatchesMimeType(sourceBytes, pending.mimeType)) {
-        throw ArgumentError.value(
-          originalFilename,
-          'pendingAttachments',
-          '附件內容、MIME 與副檔名不一致。',
+    final List<String> createdPaths = <String>[];
+    final DecryptionContext decryptionContext = DecryptionContext.recovery(
+      vaultId: vaultId,
+      recoveryWrapKey: recoveryWrapKey,
+    );
+    try {
+      for (final PendingAttachment pending in pendingAttachments) {
+        final AssetId assetId = pending.assetId;
+        final String originalFilename = p.basename(
+          pending.originalFilename.trim(),
+        );
+        final String extension = p
+            .extension(originalFilename)
+            .replaceFirst('.', '');
+        final List<int> sourceBytes = await _readPendingAttachmentBytes(
+          pending,
+          decryptionContext,
+        );
+        await validateAttachmentFormat(
+          sourceBytes,
+          fileName: originalFilename,
+          mimeType: pending.mimeType,
+        );
+        final DateTime createdAt = DateTime.now();
+        final EncryptionResult encrypted = await _cryptoService.encryptBytes(
+          documentId: assetId,
+          vaultId: vaultId,
+          plaintextBytes: sourceBytes,
+          contentType: pending.mimeType,
+          recoveryWrapKey: recoveryWrapKey,
+          recoverySlotKdf: recoverySlotKdf,
+          createdAt: createdAt,
+          updatedAt: createdAt,
+        );
+        final String assetPath = await _pathStrategy.assetAbsolutePath(
+          date: entry.date,
+          assetId: assetId,
+          extension: extension.isEmpty ? 'bin' : extension,
+        );
+        final File assetFile = File(assetPath);
+        final bool isNewFile = !hasFileReplacementCandidates(assetFile);
+        await atomicWriteBytes(assetFile, encrypted.toFileBytes());
+        if (isNewFile) createdPaths.add(assetPath);
+        results.add(
+          AssetAttachment(
+            id: assetId,
+            entryId: entry.id,
+            mimeType: pending.mimeType,
+            originalFilename: originalFilename.isEmpty
+                ? null
+                : originalFilename,
+            safeFilename: originalFilename.isEmpty ? assetId : originalFilename,
+            byteSize: sourceBytes.length,
+            createdAt: createdAt,
+            sha256: await hashVaultBytes(sourceBytes),
+          ),
         );
       }
-      final DateTime createdAt = DateTime.now();
-      final EncryptionResult encrypted = await _cryptoService.encryptBytes(
-        documentId: assetId,
-        vaultId: vaultId,
-        plaintextBytes: sourceBytes,
-        contentType: pending.mimeType,
-        recoveryWrapKey: recoveryWrapKey,
-        recoverySlotKdf: recoverySlotKdf,
-        createdAt: createdAt,
-        updatedAt: createdAt,
-      );
-      final String assetPath = await _pathStrategy.assetAbsolutePath(
-        date: entry.date,
-        assetId: assetId,
-        extension: extension.isEmpty ? 'bin' : extension,
-      );
-      await atomicWriteBytes(File(assetPath), encrypted.toFileBytes());
-      results.add(
-        AssetAttachment(
-          id: assetId,
-          entryId: entry.id,
-          mimeType: pending.mimeType,
-          originalFilename: originalFilename.isEmpty ? null : originalFilename,
-          safeFilename: safeFilename,
-          byteSize: sourceBytes.length,
-          createdAt: createdAt,
-          sha256: await hashVaultBytes(sourceBytes),
-        ),
-      );
+    } on Object {
+      await _deleteFilesBestEffort(createdPaths);
+      rethrow;
     }
     return results;
+  }
+
+  Future<List<int>> _readPendingAttachmentBytes(
+    PendingAttachment attachment,
+    DecryptionContext context,
+  ) async {
+    final Uint8List? bytes = attachment.bytes;
+    if (bytes != null) return bytes;
+    final source = attachment.encryptedDraftSource;
+    if (source == null) return File(attachment.sourcePath!).readAsBytes();
+
+    final parsed = _cryptoService.parseFileBytes(
+      await File(source.path).readAsBytes(),
+    );
+    if (parsed.header.vaultId != context.vaultId ||
+        parsed.header.fileId !=
+            draftAttachmentDocumentId(
+              source.draftKey,
+              p.basename(source.path),
+            )) {
+      throw const FormatException('草稿附件身分不符。');
+    }
+    return _cryptoService.decryptBytes(
+      headerBytes: parsed.headerBytes,
+      ciphertextBytes: parsed.ciphertextBytes,
+      context: context,
+    );
   }
 
   Future<void> _writeRecoveryRotationPending({
@@ -2127,7 +2180,7 @@ class VaultRepository {
     throw authenticationError ?? StateError('找不到可用的 Recovery wrapping key。');
   }
 
-  Future<DeviceWrappedPayload> _storeWrappedRecoveryKey({
+  Future<void> _storeWrappedRecoveryKey({
     required VaultId vaultId,
     required List<int> recoveryWrapKey,
     required KeystoreAuthKind authKind,
@@ -2138,6 +2191,18 @@ class VaultRepository {
           plaintextBytes: recoveryWrapKey,
           authKind: authKind,
         );
+    await _persistWrappedRecoveryKey(
+      vaultId: vaultId,
+      payload: payload,
+      authKind: authKind,
+    );
+  }
+
+  Future<void> _persistWrappedRecoveryKey({
+    required VaultId vaultId,
+    required DeviceWrappedPayload payload,
+    required KeystoreAuthKind authKind,
+  }) async {
     await _deviceKeyManager.storeWrappedRecoveryKey(
       vaultId: vaultId,
       record: WrappedRecoveryKeyRecord(
@@ -2153,7 +2218,6 @@ class VaultRepository {
       vaultId,
       activeAuthKind: authKind,
     );
-    return payload;
   }
 
   Future<KeystoreAuthKind> _requireCurrentKeystoreAuthKind() async {
@@ -2294,8 +2358,7 @@ class VaultRepository {
     }
   }
 
-  Future<void> _deleteObsoleteFilesAfterSave(Iterable<String> paths) async {
-    // 儲存結果已可讀取後，舊檔清理失敗只會留下可修復的孤兒檔，不應把成功儲存回報為失敗。
+  Future<void> _deleteFilesBestEffort(Iterable<String> paths) async {
     for (final String path in paths) {
       try {
         await deleteFileIfExists(path);

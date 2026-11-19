@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -7,22 +9,44 @@ import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/home/widgets/home_circle_action_button.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_tab_stack.dart';
 import 'package:quill_diary/presentation/onboarding/first_launch_home_pane.dart';
+import 'package:quill_diary/presentation/settings/widgets/recovery_key_save_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/app_test_theme.dart';
+import '../../helpers/presentation/settings/settings_test_scope.dart';
+import '../../helpers/session/fake_session_vault_repository.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 class _CompletedOnboardingIntroController extends OnboardingIntroController {
   @override
   Future<bool> build() async => true;
+}
+
+class _CreatingVaultRepository extends FakeSessionVaultRepository {
+  final Completer<void> _creation = Completer<void>();
+  int creations = 0;
+
+  void completeCreation() => _creation.complete();
+
+  @override
+  Future<RecoverySetupResult> setupRecoveryKey() async {
+    creations++;
+    await _creation.future;
+    return const RecoverySetupResult(
+      recoveryKey: '0123-4567-89AB-CDEF-GHJK-MNPQ',
+      session: UnlockedVaultSession(vaultId: 'vault', trustedDevice: true),
+    );
+  }
 }
 
 class _PendingOnboardingIntroController extends OnboardingIntroController {
@@ -200,7 +224,9 @@ void main() {
     expect(find.byType(FirstLaunchHomePane), findsOneWidget);
   });
 
-  testWidgets('點操作卡會前往對應設定區塊', (WidgetTester tester) async {
+  testWidgets('首次建庫直接在首頁顯示金鑰，選擇設定解鎖才前往設定', (WidgetTester tester) async {
+    final _CreatingVaultRepository repository = _CreatingVaultRepository();
+    Object? settingsAction;
     final GoRouter router = GoRouter(
       initialLocation: AppRoutes.homeRoute,
       routes: <RouteBase>[
@@ -210,37 +236,71 @@ void main() {
         ),
         GoRoute(
           path: AppRoutes.settingsRoute,
-          builder: (_, _) => const Scaffold(body: SizedBox()),
+          builder: (_, GoRouterState state) {
+            settingsAction = state.extra;
+            return const Scaffold(body: SizedBox());
+          },
         ),
       ],
     );
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
-      MaterialApp.router(
-        theme: appTestTheme(),
-        locale: appZhLocale,
-        supportedLocales: appSupportedLocales,
-        localizationsDelegates: appLocalizationsDelegates,
-        routerConfig: router,
+      settingsTestScope(
+        repository: repository,
+        wrapMaterialApp: false,
+        child: MaterialApp.router(
+          theme: appTestTheme(),
+          locale: appZhLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
+          routerConfig: router,
+        ),
       ),
     );
     await tester.pump();
 
     await tester.tap(find.text(testL10n.firstLaunchCreateVaultTitle));
     await tester.pump();
-    expect(
-      router.state.uri.toString(),
-      AppRoutes.settingsLocation(focus: SettingsFocusTarget.recoveryKey),
-    );
+    await tester.pump(const Duration(milliseconds: 300));
+    final Finder dialog = find.byType(RecoveryKeySaveDialog);
+    expect(dialog, findsOneWidget);
+    expect(router.state.uri.path, AppRoutes.homeRoute);
+    expect(settingsAction, isNull);
 
-    router.go(AppRoutes.homeRoute);
-    await tester.pump();
-    await tester.tap(find.text(testL10n.firstLaunchTransferTitle));
-    await tester.pump();
-    expect(
-      router.state.uri.toString(),
-      AppRoutes.settingsLocation(focus: SettingsFocusTarget.externalRestore),
+    final Finder surface = find.descendant(
+      of: dialog,
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Material && widget.type == MaterialType.card,
+      ),
     );
+    final Finder unlockSetup = find.widgetWithText(
+      FilledButton,
+      testL10n.settingsUnlockMethodConfigureButton,
+    );
+    final Rect loadingRect = tester.getRect(surface);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(tester.widget<FilledButton>(unlockSetup).onPressed, isNull);
+    repository.completeCreation();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(surface), loadingRect);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(dialog, findsOneWidget);
+    expect(repository.creations, 1);
+
+    await tester.tap(unlockSetup);
+    await tester.pumpAndSettle();
+    expect(dialog, findsNothing);
+    expect(settingsAction, SettingsEntryAction.focusUnlockMethod);
+
+    router.pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(testL10n.firstLaunchTransferTitle));
+    await tester.pumpAndSettle();
+    expect(settingsAction, SettingsEntryAction.focusExternalRestore);
   });
 }

@@ -26,6 +26,7 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
   int rewrapTrustedRecoveryKeyCalls = 0;
   bool rejectStoredRecord = false;
   bool rejectStoredDeviceInfo = false;
+  bool failStoreWrappedRecoveryKey = false;
 
   void seedTrustedDevice({
     required String vaultId,
@@ -84,6 +85,7 @@ class RecordingDeviceKeyManager implements DeviceKeyManager {
     required String vaultId,
     required WrappedRecoveryKeyRecord record,
   }) async {
+    if (failStoreWrappedRecoveryKey) throw StateError('裝置包裝記錄寫入失敗');
     rejectStoredRecord = false;
     rejectStoredDeviceInfo = false;
     _wrappedRecords[vaultId] = record;

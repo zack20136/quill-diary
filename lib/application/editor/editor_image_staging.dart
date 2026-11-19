@@ -7,33 +7,26 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 
-typedef PreparedImageFile = ({String path, String mimeType, String fileName});
+typedef _PreparedImageFile = ({String path, String fileName});
 
-Future<PendingAttachment?> stagePickedImage({
+Future<PendingAttachment> stagePickedImage({
   required EditorDraftStore draftStore,
   required ImageCompressPreset preset,
   required String draftKey,
   required String sourcePath,
-  required String displayName,
   required UnlockedVaultSession session,
 }) async {
-  final String trimmed = sourcePath.trim();
-  if (trimmed.isEmpty) {
-    return null;
-  }
-
-  final PreparedImageFile prepared = await compressImageIfNeeded(
-    sourcePath: trimmed,
-    displayName: displayName,
-    preset: preset,
-  );
+  final _PreparedImageFile prepared = await _compressImage(sourcePath, preset);
 
   try {
     final String relativePath = await draftStore.stagePendingFile(
       draftKey,
       prepared.path,
       session,
+      fileName: prepared.fileName,
+      isImage: true,
     );
     final String previewPath = await draftStore
         .materializePendingFileForPreview(draftKey, relativePath, session);
@@ -41,11 +34,11 @@ Future<PendingAttachment?> stagePickedImage({
       assetId: generateAssetId(),
       sourcePath: previewPath,
       pendingRelativePath: relativePath,
-      mimeType: prepared.mimeType,
+      mimeType: mimeTypeFromFileName(prepared.fileName),
       originalFilename: prepared.fileName,
     );
   } finally {
-    if (prepared.path != trimmed) {
+    if (prepared.path != sourcePath) {
       final File tempFile = File(prepared.path);
       if (tempFile.existsSync()) {
         await tempFile.delete();
@@ -54,33 +47,20 @@ Future<PendingAttachment?> stagePickedImage({
   }
 }
 
-Future<PreparedImageFile> compressImageIfNeeded({
-  required String sourcePath,
-  required String displayName,
-  required ImageCompressPreset preset,
-}) async {
-  final String trimmedPath = sourcePath.trim();
-  final String trimmedName = displayName.trim().isEmpty
-      ? p.basename(trimmedPath)
-      : displayName.trim();
-
-  if (preset == ImageCompressPreset.original || await _isGifFile(trimmedPath)) {
-    return (
-      path: trimmedPath,
-      mimeType: _mimeTypeFromPath(trimmedPath),
-      fileName: trimmedName,
-    );
-  }
-
+Future<_PreparedImageFile> _compressImage(
+  String sourcePath,
+  ImageCompressPreset preset,
+) async {
+  final String name = p.basename(sourcePath);
+  final _PreparedImageFile original = (path: sourcePath, fileName: name);
   final int? quality = preset.quality;
   final int? minWidth = preset.minWidth;
   final int? minHeight = preset.minHeight;
-  if (quality == null || minWidth == null || minHeight == null) {
-    return (
-      path: trimmedPath,
-      mimeType: _mimeTypeFromPath(trimmedPath),
-      fileName: trimmedName,
-    );
+  if (quality == null ||
+      minWidth == null ||
+      minHeight == null ||
+      await _isGifFile(sourcePath)) {
+    return original;
   }
 
   final String tempPath = p.join(
@@ -90,37 +70,24 @@ Future<PreparedImageFile> compressImageIfNeeded({
 
   try {
     final XFile? compressed = await FlutterImageCompress.compressAndGetFile(
-      trimmedPath,
+      sourcePath,
       tempPath,
       minWidth: minWidth,
       minHeight: minHeight,
       quality: quality,
       format: CompressFormat.jpeg,
     );
-    if (compressed == null || !File(compressed.path).existsSync()) {
-      return (
-        path: trimmedPath,
-        mimeType: _mimeTypeFromPath(trimmedPath),
-        fileName: trimmedName,
-      );
+    if (compressed != null && await File(compressed.path).exists()) {
+      return (path: compressed.path, fileName: _jpegFileName(name));
     }
-
-    return (
-      path: compressed.path,
-      mimeType: 'image/jpeg',
-      fileName: _jpegFileName(trimmedName),
-    );
   } on Object {
-    final File fallbackTemp = File(tempPath);
-    if (fallbackTemp.existsSync()) {
-      await fallbackTemp.delete();
-    }
-    return (
-      path: trimmedPath,
-      mimeType: _mimeTypeFromPath(trimmedPath),
-      fileName: trimmedName,
-    );
+    // 轉檔失敗時使用原檔。
   }
+  final File temporaryOutput = File(tempPath);
+  if (await temporaryOutput.exists()) {
+    await temporaryOutput.delete();
+  }
+  return original;
 }
 
 Future<bool> _isGifFile(String path) async {
@@ -142,20 +109,4 @@ String _jpegFileName(String fileName) {
     return 'image.jpg';
   }
   return '$base.jpg';
-}
-
-String _mimeTypeFromPath(String pathValue) {
-  switch (p.extension(pathValue).toLowerCase()) {
-    case '.jpg':
-    case '.jpeg':
-      return 'image/jpeg';
-    case '.png':
-      return 'image/png';
-    case '.webp':
-      return 'image/webp';
-    case '.gif':
-      return 'image/gif';
-    default:
-      return 'application/octet-stream';
-  }
 }

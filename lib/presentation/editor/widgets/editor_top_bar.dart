@@ -18,6 +18,7 @@ class EditorTopBar extends StatelessWidget {
     super.key,
     required this.previewMode,
     required this.saving,
+    this.addingAttachments = false,
     required this.canSaveEntry,
     required this.canDelete,
     required this.timestampLabel,
@@ -32,6 +33,7 @@ class EditorTopBar extends StatelessWidget {
 
   final bool previewMode;
   final bool saving;
+  final bool addingAttachments;
   final bool canSaveEntry;
   final bool canDelete;
   final String timestampLabel;
@@ -48,6 +50,7 @@ class EditorTopBar extends StatelessWidget {
     final ThemeData barTheme = Theme.of(context);
     final AppLocalizations l10n = context.l10n;
     final ColorScheme cs = barTheme.colorScheme;
+    final bool busy = saving || addingAttachments;
 
     return SafeArea(
       bottom: false,
@@ -62,7 +65,7 @@ class EditorTopBar extends StatelessWidget {
                 _EditorChromeIconButton(
                   key: const Key('editor-top-bar-close'),
                   tooltip: l10n.editorTooltipCancel,
-                  onPressed: saving ? null : onClose,
+                  onPressed: busy ? null : onClose,
                   icon: Icons.close_rounded,
                 ),
                 Expanded(
@@ -88,7 +91,7 @@ class EditorTopBar extends StatelessWidget {
                   _EditorChromeIconButton(
                     key: const Key('editor-top-bar-edit'),
                     tooltip: l10n.editorTooltipEdit,
-                    onPressed: saving ? null : onEnterEditMode,
+                    onPressed: busy ? null : onEnterEditMode,
                     foregroundColor: cs.primary,
                     icon: Icons.edit_outlined,
                   ),
@@ -96,7 +99,7 @@ class EditorTopBar extends StatelessWidget {
                     _EditorChromeIconButton(
                       key: const Key('editor-top-bar-delete'),
                       tooltip: l10n.editorTooltipDelete,
-                      onPressed: saving ? null : onDelete,
+                      onPressed: busy ? null : onDelete,
                       foregroundColor: cs.error,
                       icon: Icons.delete_outline,
                     ),
@@ -106,7 +109,7 @@ class EditorTopBar extends StatelessWidget {
                     tooltip: canSaveEntry
                         ? l10n.editorTooltipSave
                         : l10n.editorTooltipSaveNeedsEntry,
-                    onPressed: saving
+                    onPressed: busy
                         ? null
                         : canSaveEntry
                         ? onSave
@@ -130,7 +133,7 @@ class EditorTopBar extends StatelessWidget {
                     _EditorChromeIconButton(
                       key: const Key('editor-top-bar-delete'),
                       tooltip: l10n.editorTooltipDelete,
-                      onPressed: saving ? null : onDelete,
+                      onPressed: busy ? null : onDelete,
                       foregroundColor: cs.error,
                       icon: Icons.delete_outline,
                     ),

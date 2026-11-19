@@ -817,6 +817,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorAttachmentPendingLabel => 'New';
 
   @override
+  String get editorAddingAttachments => 'Adding attachments…';
+
+  @override
+  String editorAttachmentFormatMismatch(String fileName) {
+    return 'The contents of “$fileName” do not match its extension. Check the file format.';
+  }
+
+  @override
+  String attachmentTooLarge(String fileName, int maxMb) {
+    return '“$fileName” exceeds the $maxMb MB limit.';
+  }
+
+  @override
+  String get editorAttachmentReadFailed =>
+      'Could not read this attachment. Select it again.';
+
+  @override
+  String get editorSaveFailed => 'Could not save the entry. Please try again.';
+
+  @override
   String get editorAttachmentDragTooltip => 'Long-press and drag to reorder';
 
   @override
@@ -3023,10 +3043,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Unlocked with the recovery key.';
 
   @override
-  String get sessionRecoverySetupSuccessMessage =>
-      'Recovery key created. You can now configure an unlock method.';
-
-  @override
   String get sessionAppLockedMessage => 'The app is locked.';
 
   @override
@@ -3039,7 +3055,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionRecoveryKeyRotatedMessage =>
-      'Recovery key updated. Save the new key now.';
+      'Recovery key updated. Create a new backup.';
 
   @override
   String get sessionRecoveryRequiredAfterRestoreMessage =>
@@ -3273,7 +3289,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRecoveryKeySaveBeforeUpdateHint =>
-      'Save the new key in a password manager or write it down and store it somewhere safe. The update starts after you confirm.';
+      'Save the new key somewhere safe before updating.';
 
   @override
   String get settingsRecoveryKeyKeepOldBackupKey =>
@@ -3316,6 +3332,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewUnlockModeTitle => 'Unlock Method';
+
+  @override
+  String get settingsSecurityOverviewUnlockModeDisabledMessage =>
+      'App unlock is off';
+
+  @override
+  String get settingsUnlockMethodConfigureButton => 'Set up unlock method';
+
+  @override
+  String get settingsRecoveryKeyUpdateCancelled =>
+      'Update canceled. Your current recovery key still works.';
 
   @override
   String get settingsSecurityOverviewTrustedDeviceTitle => 'Trusted Device';
@@ -3814,7 +3841,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreDialogRecoveryKeyVerifyNote =>
-      'Restore starts only if the key is correct; a wrong key will not overwrite local data.';
+      'Restore starts only if the key is correct.';
 
   @override
   String get settingsRestoreDialogSubtitleRotatedBackup =>

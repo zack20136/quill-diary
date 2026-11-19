@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 
 void main() {
@@ -48,6 +51,75 @@ void main() {
         3,
       ], 'application/octet-stream'),
       isTrue,
+    );
+  });
+
+  test('大型文字附件仍會檢查檔尾的 UTF-8', () async {
+    final Uint8List bytes = Uint8List((1 << 20) + 1)..last = 0xFF;
+    await expectLater(
+      validateAttachmentFormat(
+        bytes,
+        fileName: 'note.txt',
+        mimeType: 'text/plain',
+      ),
+      throwsA(isA<AttachmentFormatMismatchException>()),
+    );
+  });
+
+  test('一般附件允許 25 MB，大於上限才拒絕', () async {
+    final Directory directory = await Directory.systemTemp.createTemp();
+    addTearDown(() => directory.delete(recursive: true));
+    final File file = File('${directory.path}/file.bin');
+    final RandomAccessFile writer = await file.open(mode: FileMode.write);
+    await writer.truncate(25000000);
+    await writer.close();
+
+    expect(
+      (await readPickedAttachmentFile(file.path, fileName: 'file.bin')).length,
+      25000000,
+    );
+
+    final RandomAccessFile append = await file.open(mode: FileMode.append);
+    await append.writeByte(0);
+    await append.close();
+    await expectLater(
+      readPickedAttachmentFile(file.path, fileName: 'file.bin'),
+      throwsA(
+        isA<AttachmentTooLargeException>().having(
+          (error) => error.limit,
+          'limit',
+          AttachmentSizeLimit.file,
+        ),
+      ),
+    );
+  });
+
+  test('從檔案選取器加入的圖片仍採 10 MB 上限', () async {
+    final Directory directory = await Directory.systemTemp.createTemp();
+    addTearDown(() => directory.delete(recursive: true));
+    final File file = File('${directory.path}/picker-cache');
+    final RandomAccessFile writer = await file.open(mode: FileMode.write);
+    await writer.writeFrom([0xFF, 0xD8, 0xFF]);
+    await writer.truncate(10000000);
+    await writer.close();
+
+    expect(
+      (await readPickedAttachmentFile(file.path, fileName: 'photo.jpg')).length,
+      10000000,
+    );
+
+    final RandomAccessFile append = await file.open(mode: FileMode.append);
+    await append.writeByte(0);
+    await append.close();
+    await expectLater(
+      readPickedAttachmentFile(file.path, fileName: 'renamed.bin'),
+      throwsA(
+        isA<AttachmentTooLargeException>().having(
+          (error) => error.limit,
+          'limit',
+          AttachmentSizeLimit.image,
+        ),
+      ),
     );
   });
 

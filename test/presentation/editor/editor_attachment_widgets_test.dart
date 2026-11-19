@@ -18,6 +18,7 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/editor/pages/editor_page.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_attachment_strip.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_form_sections.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
 
 import '../../helpers/presentation/editor/editor_test_scope.dart';
@@ -138,6 +139,29 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('改標題後立即儲存會先保存最新草稿與附件', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
+    final Finder title = find.descendant(
+      of: find.byType(EditorTitleSection),
+      matching: find.byType(EditableText),
+    );
+    const String updatedTitle = '剛改完的標題';
+    await tester.enterText(title, updatedTitle);
+    await tester.tap(find.byKey(const Key('editor-top-bar-save')));
+    await tester.pumpAndSettle();
+
+    expect(actions.writtenDraft?.title, updatedTitle);
+    expect(
+      actions.writtenDraft?.pendingAttachments.single.assetId,
+      'pending-image',
+    );
+    expect(actions.savedEntryDraft?.title, updatedTitle);
+  });
+
   testWidgets('修改日記年份後既有圖片仍從已儲存日期載入', (tester) async {
     final FakeEditorActions actions = await pumpMixedAttachmentEditor(tester);
     expect(
@@ -236,6 +260,30 @@ void main() {
       'image-1',
       'file-1',
     ]);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('只剩一般附件時仍與日記標題靠左對齊', (tester) async {
+    await pumpMixedAttachmentEditor(tester);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('editor-image-delete-pending-image')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('editor-image-delete-image-1')),
+    );
+    await tester.pumpAndSettle();
+
+    final attachment = find.byKey(
+      const ValueKey<String>('editor-attachment-file-1'),
+    );
+    expect(
+      tester.getTopLeft(attachment).dx,
+      tester.getTopLeft(find.byType(EditorTitleSection)).dx,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

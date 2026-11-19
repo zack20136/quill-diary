@@ -1,6 +1,71 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
+
+Future<Uint8List> readPickedAttachmentFile(
+  String path, {
+  required String fileName,
+  bool isImage = false,
+}) async {
+  final RandomAccessFile input = await File(path).open();
+  try {
+    final int length = await input.length();
+    final bool image =
+        isImage ||
+        mimeTypeFromFileName(fileName).startsWith('image/') ||
+        _additionalImageExtensions.contains(
+          p.extension(fileName).toLowerCase(),
+        ) ||
+        sniffKnownMediaMimeType(await input.read(12))?.startsWith('image/') ==
+            true;
+    final AttachmentSizeLimit limit = image
+        ? AttachmentSizeLimit.image
+        : AttachmentSizeLimit.file;
+    limit.checkLength(length, fileName);
+    await input.setPosition(0);
+    final Uint8List bytes = await input.read(length + 1);
+    limit.checkLength(bytes.length, fileName);
+    if (bytes.length != length) {
+      throw FileSystemException('附件在讀取期間大小改變。', path);
+    }
+    return bytes;
+  } finally {
+    await input.close();
+  }
+}
+
+const Set<String> _additionalImageExtensions = {
+  '.avif',
+  '.dng',
+  '.ico',
+  '.tif',
+  '.tiff',
+};
+
+Future<void> validateAttachmentFormat(
+  List<int> bytes, {
+  required String fileName,
+  required String mimeType,
+}) async {
+  if (!contentTypeMatchesExtension(mimeType, p.extension(fileName))) {
+    throw AttachmentFormatMismatchException(fileName);
+  }
+  final String normalized = mimeType.trim().toLowerCase();
+  final bool scansEntireFile =
+      normalized.startsWith('text/') || normalized == 'image/svg+xml';
+  final bool matches = bytes.length >= 1 << 20 && scansEntireFile
+      ? await Isolate.run(
+          () => attachmentContentMatchesMimeType(bytes, normalized),
+        )
+      : attachmentContentMatchesMimeType(bytes, normalized);
+  if (!matches) {
+    throw AttachmentFormatMismatchException(fileName);
+  }
+}
 
 String mimeTypeFromFileName(String fileName) {
   return switch (p.extension(fileName).toLowerCase()) {

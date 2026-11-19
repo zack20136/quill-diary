@@ -378,7 +378,7 @@ class SettingsSecurityOverview extends ConsumerWidget {
     required this.recoveryKeyHint,
     required this.hasUnlockedSession,
     required this.hasTrustedDevice,
-    required this.unlockModeLabel,
+    required this.unlockMode,
     required this.indexMessage,
     required this.indexHealthLevel,
     required this.backupStatus,
@@ -395,7 +395,7 @@ class SettingsSecurityOverview extends ConsumerWidget {
   final String? recoveryKeyHint;
   final bool hasUnlockedSession;
   final bool hasTrustedDevice;
-  final String unlockModeLabel;
+  final AppUnlockMode? unlockMode;
   final String indexMessage;
   final SettingsHealthLevel indexHealthLevel;
   final BackupStatusSnapshot backupStatus;
@@ -441,12 +441,21 @@ class SettingsSecurityOverview extends ConsumerWidget {
       SecurityOverviewItem(
         icon: Icons.phonelink_lock_outlined,
         title: l10n.settingsSecurityOverviewUnlockModeTitle,
-        message: hasRecoveryKey
-            ? l10n.settingsSecurityOverviewUnlockModeProtectedMessage(
-                unlockModeLabel,
-              )
-            : l10n.settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage,
-        level: hasRecoveryKey
+        message: !hasRecoveryKey
+            ? l10n.settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage
+            : switch (unlockMode) {
+                null => l10n.settingsSecurityLockStatusPreparing,
+                AppUnlockMode.none =>
+                  l10n.settingsSecurityOverviewUnlockModeDisabledMessage,
+                final AppUnlockMode mode =>
+                  l10n.settingsSecurityOverviewUnlockModeProtectedMessage(
+                    mode.fullLabel(l10n),
+                  ),
+              },
+        level:
+            hasRecoveryKey &&
+                unlockMode != null &&
+                unlockMode != AppUnlockMode.none
             ? SettingsHealthLevel.ok
             : SettingsHealthLevel.warning,
       ),

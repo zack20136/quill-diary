@@ -8,6 +8,7 @@ import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
 import '../../helpers/vault/vault_test_harness.dart';
@@ -115,6 +116,88 @@ void main() {
     );
 
     expect(await harness.repository.loadAttachments('entry-1'), isEmpty);
+  });
+
+  test('附件格式檢查失敗會清除本次已寫入的附件', () async {
+    final entry = _entry(vaultId: setup.session.vaultId);
+    final validAssetPath = await harness.pathStrategy.assetAbsolutePath(
+      date: entry.date,
+      assetId: 'valid-image',
+      extension: 'jpg',
+    );
+
+    await expectLater(
+      harness.repository.saveEntry(
+        setup.session,
+        entry,
+        pendingAttachments: [
+          _pending('valid-image', 1),
+          PendingAttachment(
+            assetId: 'invalid-pdf',
+            bytes: Uint8List.fromList([1, 2, 3]),
+            mimeType: 'application/pdf',
+            originalFilename: 'document.pdf',
+          ),
+        ],
+      ),
+      throwsA(isA<AttachmentFormatMismatchException>()),
+    );
+
+    expect(File(validAssetPath).existsSync(), isFalse);
+    expect(await harness.repository.loadEntry(setup.session, entry.id), isNull);
+  });
+
+  test('加密草稿附件在儲存日記時保留原始位元組並驗證草稿身分', () async {
+    final EditorDraftStore drafts = EditorDraftStore(
+      pathStrategy: harness.pathStrategy,
+      cryptoService: cryptoService,
+    );
+    final String draftKey = 'chat_diary_${generateAssetId().split('_').last}';
+    final DiaryEntry entry = _entry(vaultId: setup.session.vaultId);
+    final Uint8List payload = Uint8List.fromList(<int>[0, 1, 2, 255]);
+    final String relativePath = await drafts.stagePendingBytes(
+      draftKey,
+      payload,
+      'archive.bin',
+      setup.session,
+    );
+    final String sourcePath = await drafts.pendingAbsolutePath(
+      draftKey,
+      relativePath,
+    );
+
+    Future<DiaryEntry> save(String expectedDraftKey) =>
+        harness.repository.saveEntry(
+          setup.session,
+          entry,
+          pendingAttachments: [
+            PendingAttachment(
+              assetId: 'draft-file',
+              encryptedDraftSource: (
+                draftKey: expectedDraftKey,
+                path: sourcePath,
+              ),
+              pendingRelativePath: relativePath,
+              mimeType: 'application/octet-stream',
+              originalFilename: 'archive.bin',
+            ),
+          ],
+        );
+
+    await expectLater(save('wrong-draft'), throwsFormatException);
+    await save(draftKey);
+    final String savedPath = await harness.pathStrategy.assetAbsolutePath(
+      date: entry.date,
+      assetId: 'draft-file',
+      extension: 'bin',
+    );
+    expect(
+      await harness.repository.readDecryptedAssetBytes(
+        setup.session,
+        savedPath,
+      ),
+      payload,
+    );
   });
 
   test('匯入未提供新附件順序時會依輸入順序附加', () async {

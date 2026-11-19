@@ -12,11 +12,13 @@ import 'package:quill_diary/application/chat_diary/chat_diary_controller.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_generations.dart';
 import 'package:quill_diary/application/chat_diary/chat_diary_providers.dart';
 import 'package:quill_diary/application/errors/ai_error_text.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
+import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_generation.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/people/person_name_matcher.dart';
@@ -296,16 +298,26 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       }
       if (!stillCurrent()) return;
       for (final file in files) {
+        AttachmentSizeLimit.image.checkLength(await file.length(), file.name);
+      }
+      for (final file in files) {
+        if (!stillCurrent()) return;
         final bytes = await file.readAsBytes();
         if (!stillCurrent()) return;
+        AttachmentSizeLimit.image.checkLength(bytes.length, file.name);
         await chatController.addImage(bytes);
         if (!stillCurrent()) return;
       }
-    } on Object {
+    } on Object catch (error) {
       if (mounted && stillCurrent()) {
+        final AppLocalizations l10n = context.l10n;
         showAppFeedbackToast(
           context,
-          context.l10n.aiErrorImage,
+          userFacingErrorMessage(
+            error,
+            l10n: l10n,
+            fallback: l10n.aiErrorImage,
+          ),
           tone: AppFeedbackTone.error,
         );
       }

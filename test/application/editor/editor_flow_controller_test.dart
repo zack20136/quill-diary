@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,43 @@ import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import '../../helpers/presentation/editor/fake_editor_actions.dart';
 
 void main() {
+  test('用附件原名辨識格式，並在加密暫存前拒絕不符的檔案', () async {
+    final directory = await Directory.systemTemp.createTemp();
+    addTearDown(() => directory.delete(recursive: true));
+    final file = await File('${directory.path}/picker-cache')
+        .writeAsString('測試文字');
+    final actions = FakeEditorActions();
+    final container = ProviderContainer(
+      overrides: [editorActionsProvider.overrideWithValue(actions)],
+    );
+    addTearDown(container.dispose);
+    final controller = container.read(editorFlowControllerProvider);
+    const session = UnlockedVaultSession(
+      vaultId: 'vault-1',
+      trustedDevice: true,
+    );
+
+    final attachment = await controller.stagePickedFile(
+      draftKey: 'draft-1',
+      path: file.path,
+      displayName: 'note.txt',
+      session: session,
+    );
+    expect(attachment.mimeType, 'text/plain');
+    expect(attachment.sourcePath, isNull);
+    expect(attachment.encryptedDraftSource?.path, 'C:/drafts/pending/file.enc');
+    await expectLater(
+      controller.stagePickedFile(
+        draftKey: 'draft-1',
+        path: file.path,
+        displayName: 'note.pdf',
+        session: session,
+      ),
+      throwsA(isA<AttachmentFormatMismatchException>()),
+    );
+    expect(actions.stagedFileNames, ['note.txt']);
+  });
+
   test('儲存日記前會正規化任務清單 markdown', () async {
     final FakeEditorActions actions = FakeEditorActions();
     final ProviderContainer container = ProviderContainer(

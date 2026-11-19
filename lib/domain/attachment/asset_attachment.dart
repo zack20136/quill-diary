@@ -2,6 +2,34 @@ import 'dart:typed_data';
 
 import 'package:quill_diary/domain/shared/value_objects.dart';
 
+final class AttachmentFormatMismatchException implements Exception {
+  const AttachmentFormatMismatchException(this.fileName);
+
+  final String fileName;
+}
+
+enum AttachmentSizeLimit {
+  file(25),
+  image(10);
+
+  const AttachmentSizeLimit(this.megabytes);
+
+  final int megabytes;
+
+  void checkLength(int bytes, String fileName) {
+    if (bytes > megabytes * 1000000) {
+      throw AttachmentTooLargeException(fileName, this);
+    }
+  }
+}
+
+final class AttachmentTooLargeException implements Exception {
+  const AttachmentTooLargeException(this.fileName, this.limit);
+
+  final String fileName;
+  final AttachmentSizeLimit limit;
+}
+
 /// 儲存在日記條目旁的加密附件中繼資料。
 ///
 /// 實際位元組位於日記庫 `assets/` 樹下；此模型為 UI、備份與還原流程
@@ -63,13 +91,15 @@ class PendingAttachment {
     required this.assetId,
     this.bytes,
     this.sourcePath,
+    this.encryptedDraftSource,
     this.pendingRelativePath,
     required this.mimeType,
     required this.originalFilename,
   }) : assert(
          (bytes != null && bytes.isNotEmpty) ||
-             (sourcePath != null && sourcePath.trim().isNotEmpty),
-         'PendingAttachment 需要 bytes 或 sourcePath',
+             (sourcePath != null && sourcePath.trim().isNotEmpty) ||
+             encryptedDraftSource != null,
+         'PendingAttachment 需要 bytes 或來源路徑',
        );
 
   final AssetId assetId;
@@ -79,6 +109,8 @@ class PendingAttachment {
 
   /// 暫時明文路徑（materialize 後供預覽與正式儲存讀取）。
   final String? sourcePath;
+
+  final ({String draftKey, String path})? encryptedDraftSource;
 
   /// 加密 pending 附件在草稿目錄下的相對路徑（例如 `pending/*.enc`）。
   final String? pendingRelativePath;

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
@@ -10,6 +11,9 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
+
+String draftAttachmentDocumentId(String draftKey, String encryptedFileName) =>
+    'draft_pending_${draftKey}_$encryptedFileName';
 
 /// 帶進度的複製會等待寫入端，以限制緩衝區。
 Future<void> copyFileToPath(
@@ -279,7 +283,11 @@ Future<String> hashVaultText(String value) async {
   return hashVaultBytes(utf8.encode(value));
 }
 
-Future<String> hashVaultBytes(List<int> bytes) async {
+Future<String> hashVaultBytes(List<int> bytes) => bytes.length >= 1 << 20
+    ? Isolate.run(() => _hashVaultBytes(bytes))
+    : _hashVaultBytes(bytes);
+
+Future<String> _hashVaultBytes(List<int> bytes) async {
   final Hash hash = await Sha256().hash(bytes);
   return hash.bytes
       .map((int byte) => byte.toRadixString(16).padLeft(2, '0'))

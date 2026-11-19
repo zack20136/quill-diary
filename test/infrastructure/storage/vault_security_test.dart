@@ -10,7 +10,9 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
+import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/infrastructure/storage/vault_state_keys.dart';
@@ -291,7 +293,8 @@ void main() {
       expect(pending.existsSync(), isFalse);
     });
 
-    test('會產生新金鑰並更新 metadata，trusted 仍可解鎖', () async {
+    test('換鑰只授權一次，更新後可信裝置仍可解鎖', () async {
+      await harness.appLockService.setUnlockMode(AppUnlockMode.biometric);
       final RecoverySetupResult setup = await harness.repository
           .setupRecoveryKey();
       final String oldKey = setup.recoveryKey;
@@ -314,8 +317,14 @@ void main() {
         'rotation_test_marker',
         'preserved',
       );
+      final wrapsBefore = harness.deviceKeyManager.wrapWithDeviceKeyCalls;
       final RecoverySetupResult rotated = await harness.rotateRecoveryKey(
         session,
+      );
+      expect(harness.deviceKeyManager.wrapWithDeviceKeyCalls, wrapsBefore + 1);
+      expect(
+        harness.deviceKeyManager.lastWrapAuthKind,
+        KeystoreAuthKind.biometric,
       );
       expect(rotated.recoveryKey, isNot(equals(oldKey)));
 
@@ -408,12 +417,40 @@ void main() {
       );
     });
 
-    test('metadata 已更新但裝置金鑰寫入失敗時會回復原 Recovery Key', () async {
+    test('取消換鑰驗證時保留原金鑰與備份狀態', () async {
       await harness.dispose();
       final deviceKeyManager = CancellingDeviceKeyManager();
       harness = await VaultTestHarness.create(
         deviceKeyManager: deviceKeyManager,
       );
+      await harness.appLockService.setUnlockMode(AppUnlockMode.biometric);
+      final setup = await harness.repository.setupRecoveryKey();
+      final oldMetadata = await harness.repository.readRecoveryMetadata();
+      final backupStatus = BackupStatusStore(
+        pathStrategy: harness.pathStrategy,
+      );
+      deviceKeyManager.cancelWrap = true;
+      await expectLater(
+        harness.rotateRecoveryKey(setup.session),
+        throwsA(isA<DeviceKeyUserCancelledException>()),
+      );
+
+      expect(
+        await harness.repository.readRecoveryMetadata(),
+        same(oldMetadata),
+      );
+      expect((await backupStatus.read()).pendingRecoveryRotation, isNull);
+      expect(
+        File(await harness.pathStrategy.recoveryRotationPendingPath())
+            .existsSync(),
+        isFalse,
+      );
+      await harness.repository.closeUnlockedResources();
+      final recovered = await harness.repository.openTrustedSession();
+      expect(recovered.recoveryWrapKey, setup.session.recoveryWrapKey);
+    });
+
+    test('metadata 已更新但裝置金鑰寫入失敗時會回復原 Recovery Key', () async {
       final RecoverySetupResult setup = await harness.repository
           .setupRecoveryKey();
       final String entryId = await harness.saveSimpleEntry(
@@ -421,13 +458,13 @@ void main() {
         title: 'metadata 已切換',
       );
 
-      deviceKeyManager.cancelWrap = true;
+      harness.deviceKeyManager.failStoreWrappedRecoveryKey = true;
       await expectLater(
         harness.rotateRecoveryKey(setup.session),
         throwsStateError,
       );
 
-      deviceKeyManager.cancelWrap = false;
+      harness.deviceKeyManager.failStoreWrappedRecoveryKey = false;
       await expectLater(
         harness.repository.unlockWithRecoveryKey(
           'WRON-KEY1-WRON-KEY2-WRON-KEY3',

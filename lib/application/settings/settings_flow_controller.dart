@@ -24,6 +24,7 @@ import 'package:quill_diary/domain/vault_maintenance_models.dart';
 import 'package:quill_diary/domain/vault_salvage_draft.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
+import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_change_service.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
@@ -62,16 +63,6 @@ class SettingsFlowFeedback {
 
   final String message;
   final SettingsFlowFeedbackTone tone;
-}
-
-class SettingsRecoveryKeyResult {
-  const SettingsRecoveryKeyResult({
-    required this.recoveryKey,
-    required this.feedback,
-  });
-
-  final String recoveryKey;
-  final SettingsFlowFeedback feedback;
 }
 
 enum SettingsRestorePrimaryAction { retryVerification, openSettingsRecovery }
@@ -249,27 +240,14 @@ class SettingsFlowController {
     );
   }
 
-  Future<SettingsRecoveryKeyResult> createRecoveryKey(
-    AppLocalizations l10n,
-  ) async {
+  Future<String> createRecoveryKey() async {
     final RecoverySetupResult result = await _ref
         .read(vaultRepositoryProvider)
         .setupRecoveryKey();
-    _ref
-        .read(appSessionProvider.notifier)
-        .activateSession(
-          result.session,
-          message: l10n.sessionRecoverySetupSuccessMessage,
-        );
+    _ref.read(appSessionProvider.notifier).activateSession(result.session);
     _ref.invalidate(recoveryMetadataProvider);
     _refreshCaches();
-    return SettingsRecoveryKeyResult(
-      recoveryKey: result.recoveryKey,
-      feedback: SettingsFlowFeedback(
-        l10n.sessionRecoverySetupSuccessMessage,
-        tone: SettingsFlowFeedbackTone.success,
-      ),
-    );
+    return result.recoveryKey;
   }
 
   Future<BackupPersistResult> createLocalBackup({
@@ -561,9 +539,19 @@ class SettingsFlowController {
     return _ref.read(appSessionProvider.notifier).runSensitiveTask((
       UnlockedVaultSession session,
     ) async {
-      final RecoverySetupResult result = await _ref
-          .read(vaultRepositoryProvider)
-          .rotateRecoveryKey(session, prepared);
+      final RecoverySetupResult result;
+      try {
+        result = await _ref
+            .read(vaultRepositoryProvider)
+            .rotateRecoveryKey(session, prepared);
+      } on DeviceKeyUserCancelledException {
+        return SettingsFlowFeedback(l10n.settingsRecoveryKeyUpdateCancelled);
+      } on DeviceKeyException catch (error) {
+        return SettingsFlowFeedback(
+          friendlySessionErrorMessage(l10n, error),
+          tone: SettingsFlowFeedbackTone.error,
+        );
+      }
       _ref
           .read(appSessionProvider.notifier)
           .activateSession(

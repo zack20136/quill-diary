@@ -7,6 +7,7 @@ import 'package:quill_diary/application/onboarding/onboarding_providers.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/infrastructure/preferences/user_preferences.dart';
+import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/onboarding/onboarding_intro_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -40,7 +41,10 @@ void main() {
     }
   });
 
-  Future<void> openDialog(WidgetTester tester) async {
+  Future<void> openDialog(
+    WidgetTester tester, {
+    Locale locale = appZhLocale,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -50,6 +54,7 @@ void main() {
           ),
         ],
         child: widgetTestApp(
+          locale: locale,
           child: Builder(
             builder: (BuildContext context) => FilledButton(
               onPressed: () => showOnboardingIntroDialog(context),
@@ -109,17 +114,33 @@ void main() {
     expect(find.text(testL10n.onboardingIntroPage1Title), findsOneWidget);
   });
 
-  testWidgets('換頁時對話框高度保持不變', (WidgetTester tester) async {
-    await openDialog(tester);
-
-    final double firstPageHeight = tester.getSize(find.byType(PageView)).height;
-
-    await tester.tap(find.text(testL10n.onboardingIntroNext));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(testL10n.onboardingIntroNext));
-    await tester.pumpAndSettle();
-
-    expect(tester.getSize(find.byType(PageView)).height, firstPageHeight);
+  testWidgets('窄螢幕上的中英文導覽翻到最後一頁時外框位置固定', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(352, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final Finder surface = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Material && widget.type == MaterialType.card,
+      ),
+    );
+    Rect? firstPage;
+    for (final (locale, l10n) in [
+      (appZhLocale, testL10n),
+      (appEnLocale, testEnL10n),
+    ]) {
+      await openDialog(tester, locale: locale);
+      firstPage ??= tester.getRect(surface);
+      expect(tester.getRect(surface), firstPage);
+      for (int page = 1; page < 5; page++) {
+        await tester.tap(find.text(l10n.onboardingIntroNext));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(surface), firstPage);
+      }
+      await tester.tap(find.text(l10n.onboardingIntroGetStarted));
+      await tester.pumpAndSettle();
+    }
   });
 
   testWidgets('切換英文後會寫入語系偏好', (WidgetTester tester) async {

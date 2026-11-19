@@ -775,6 +775,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorAttachmentPendingLabel => '新增';
 
   @override
+  String get editorAddingAttachments => '正在加入附件…';
+
+  @override
+  String editorAttachmentFormatMismatch(String fileName) {
+    return '「$fileName」的內容與副檔名不符，請確認檔案格式。';
+  }
+
+  @override
+  String attachmentTooLarge(String fileName, int maxMb) {
+    return '「$fileName」超過 $maxMb MB，無法加入。';
+  }
+
+  @override
+  String get editorAttachmentReadFailed => '無法讀取這個附件，請重新選取。';
+
+  @override
+  String get editorSaveFailed => '無法儲存日記，請再試一次。';
+
+  @override
   String get editorAttachmentDragTooltip => '長按拖曳以調整順序';
 
   @override
@@ -2821,9 +2840,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionRecoveryUnlockSuccessMessage => '已使用復原金鑰解鎖。';
 
   @override
-  String get sessionRecoverySetupSuccessMessage => '復原金鑰已建立，現在可以設定解鎖方式。';
-
-  @override
   String get sessionAppLockedMessage => 'App 已鎖定。';
 
   @override
@@ -2834,7 +2850,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '目前已鎖定。請重新完成裝置驗證，不必輸入復原金鑰。';
 
   @override
-  String get sessionRecoveryKeyRotatedMessage => '復原金鑰已更新，請立即保存新金鑰。';
+  String get sessionRecoveryKeyRotatedMessage => '復原金鑰已更新，請重新建立備份。';
 
   @override
   String get sessionRecoveryRequiredAfterRestoreMessage =>
@@ -3042,8 +3058,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRecoveryKeySaveDialogHint => '請立即保存。關閉此畫面後不會再次顯示。';
 
   @override
-  String get settingsRecoveryKeySaveBeforeUpdateHint =>
-      '先將新金鑰存入密碼管理工具，或抄寫後妥善收存。確認保存後才會開始更新。';
+  String get settingsRecoveryKeySaveBeforeUpdateHint => '請先妥善保存新金鑰。';
 
   @override
   String get settingsRecoveryKeyKeepOldBackupKey => '舊備份仍需舊金鑰。';
@@ -3081,6 +3096,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSecurityOverviewUnlockModeTitle => '解鎖方式';
+
+  @override
+  String get settingsSecurityOverviewUnlockModeDisabledMessage => '未啟用 App 解鎖';
+
+  @override
+  String get settingsUnlockMethodConfigureButton => '設定解鎖方式';
+
+  @override
+  String get settingsRecoveryKeyUpdateCancelled => '已取消更新，原復原金鑰仍可使用。';
 
   @override
   String get settingsSecurityOverviewTrustedDeviceTitle => '可信裝置';
@@ -3544,8 +3568,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreDialogRecoveryKeyEmptyError => '請輸入復原金鑰。';
 
   @override
-  String get settingsRestoreDialogRecoveryKeyVerifyNote =>
-      '金鑰正確才會開始還原；錯誤則不會覆寫本機資料。';
+  String get settingsRestoreDialogRecoveryKeyVerifyNote => '金鑰正確才會開始還原。';
 
   @override
   String get settingsRestoreDialogSubtitleRotatedBackup =>

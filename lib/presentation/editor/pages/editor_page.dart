@@ -58,6 +58,7 @@ import 'package:quill_diary/shared/presentation/time_picker/app_time_picker_dial
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 class EditorPage extends ConsumerStatefulWidget {
@@ -100,6 +101,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   TimeOfDay _entryTime = TimeOfDay.now();
   bool _didLoadExisting = false;
   bool _saving = false;
+  bool _addingAttachments = false;
   bool _showEntryRequiredHint = false;
   int? _draggingEditorImageIndex;
   bool _didOfferDraftRestore = false;
@@ -391,6 +393,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   bool get _canPersistDraft =>
       _isEditing &&
       !_saving &&
+      !_addingAttachments &&
       !_handlingDraftRestore &&
       _activeSession != null;
 
@@ -457,7 +460,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   }
 
   Future<void> _requestClose() async {
-    if (_saving) {
+    if (_saving || _addingAttachments) {
       return;
     }
     if (!_isEditing) {
@@ -771,6 +774,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                         EditorTopBar(
                           previewMode: _previewMode,
                           saving: _saving,
+                          addingAttachments: _addingAttachments,
                           canSaveEntry: _canSaveEntry,
                           canDelete: widget.entryId != null,
                           timestampLabel: _formattedTimestampLabel(context),
@@ -802,7 +806,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 ),
                           bottomToolbar: _isEditing
                               ? EditorActionToolbar(
-                                  saving: _saving,
+                                  saving: _saving || _addingAttachments,
                                   onPickDate: _pickEntryDate,
                                   onPickTime: _pickEntryTime,
                                   onEditTags: _showTagsEditorDialog,
@@ -812,6 +816,14 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 )
                               : null,
                         ),
+                        if (_addingAttachments)
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: AppProgressPanel(
+                              label: context.l10n.editorAddingAttachments,
+                              value: null,
+                            ),
+                          ),
                         Expanded(
                           child: Stack(
                             children: <Widget>[
@@ -1052,6 +1064,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                     );
                                   },
                                 ),
+                              if (_addingAttachments)
+                                const Positioned.fill(
+                                  child: ModalBarrier(dismissible: false),
+                                ),
                             ],
                           ),
                         ),
@@ -1278,26 +1294,24 @@ class _EditorPageState extends ConsumerState<EditorPage>
     UnlockedVaultSession session,
     DiaryEntry? entry,
   ) async {
-    if (_saving) {
+    if (_saving || _addingAttachments) {
       return;
     }
-    await _persistDraftNow();
-    if (!mounted ||
-        ref.read(effectiveAppSessionProvider).value?.session != session) {
-      return;
-    }
-    if (!_canSaveEntry) {
-      _notifyEntryRequired();
-      return;
-    }
-    _hybridBodyKey.currentState?.flushBodyToController();
-    _flowSession.reset();
     bool canUpdateUi() =>
         mounted &&
         ref.read(effectiveAppSessionProvider).value?.session == session;
 
+    _hybridBodyKey.currentState?.flushBodyToController();
+    final Future<void> draftWrite = _persistDraftNow();
     setState(() => _saving = true);
     try {
+      await draftWrite;
+      if (!canUpdateUi()) return;
+      if (!_canSaveEntry) {
+        _notifyEntryRequired();
+        return;
+      }
+      _flowSession.reset();
       final EditorSaveResult result = await _editorFlow.saveEntry(
         EditorSaveRequest(
           draftKey: _draftKey,
@@ -1353,6 +1367,19 @@ class _EditorPageState extends ConsumerState<EditorPage>
         context.pop(saved.id);
       } else if (widget.entryId == null && mounted) {
         context.pushReplacement(result.routeLocation);
+      }
+    } on Object catch (error) {
+      if (canUpdateUi()) {
+        final AppLocalizations l10n = context.l10n;
+        showAppFeedbackToast(
+          context,
+          userFacingErrorMessage(
+            error,
+            l10n: l10n,
+            fallback: l10n.editorSaveFailed,
+          ),
+          tone: AppFeedbackTone.error,
+        );
       }
     } finally {
       if (mounted) {
@@ -1477,72 +1504,75 @@ class _EditorPageState extends ConsumerState<EditorPage>
     );
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage() => _addAttachments((session) async {
     final files = await pickGalleryImages();
-    if (!mounted || files.isEmpty) return;
-
-    final UnlockedVaultSession? session = _activeSession;
-    if (session == null) {
-      return;
-    }
-
-    final List<PendingAttachment> staged = await _editorFlow.stagePickedImages(
+    if (files.isEmpty || !_canAcceptAttachments(session)) return [];
+    return _editorFlow.stagePickedImages(
       preset: watchPersonalizationPreferences(ref).imageCompressPreset,
       draftKey: _draftKey,
       sourcePaths: files.map((XFile file) => file.path),
       session: session,
     );
-    if (staged.isEmpty) {
-      return;
+  });
+
+  Future<void> _pickFile() => _addAttachments((session) async {
+    final PlatformFile? file = await FilePicker.pickFile(type: FileType.any);
+    if (file == null || !_canAcceptAttachments(session)) return [];
+    final String? path = file.path;
+    if (path == null || path.trim().isEmpty) {
+      throw StateError('找不到選取的附件');
     }
-
-    setState(() {
-      _pendingAttachments.addAll(staged);
-      _attachmentIds.addAll(
-        staged.map((PendingAttachment attachment) => attachment.assetId),
-      );
-    });
-    unawaited(_persistDraftInBackground());
-  }
-
-  Future<void> _pickFile() async {
-    final List<PlatformFile> result = await FilePicker.pickFiles(
-      type: FileType.any,
-    );
-    if (result.isEmpty) {
-      return;
-    }
-
-    final UnlockedVaultSession? session = _activeSession;
-    if (session == null) {
-      return;
-    }
-
-    final List<PendingAttachment> staged = <PendingAttachment>[];
-    for (final PlatformFile file in result) {
-      if (file.path == null || file.path!.trim().isEmpty) {
-        continue;
-      }
-      final PendingAttachment? attachment = await _editorFlow.stagePickedFile(
+    return [
+      await _editorFlow.stagePickedFile(
         draftKey: _draftKey,
-        path: file.path!,
+        path: path,
         displayName: file.name,
         session: session,
+      ),
+    ];
+  });
+
+  bool _canAcceptAttachments(UnlockedVaultSession session) =>
+      mounted &&
+      identical(_activeSession, session) &&
+      ref.read(effectiveAppSessionProvider).value?.session == session;
+
+  Future<void> _addAttachments(
+    Future<List<PendingAttachment>> Function(UnlockedVaultSession) pick,
+  ) async {
+    final UnlockedVaultSession? session = _activeSession;
+    if (session == null || _saving || _addingAttachments) return;
+    final BuildContext context = this.context;
+    final Future<void> draftWrite = _persistDraftNow();
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _addingAttachments = true);
+    try {
+      await draftWrite;
+      if (!_canAcceptAttachments(session)) return;
+      final List<PendingAttachment> staged = await pick(session);
+      if (staged.isEmpty || !_canAcceptAttachments(session)) return;
+      setState(() {
+        _pendingAttachments.addAll(staged);
+        _attachmentIds.addAll(staged.map((attachment) => attachment.assetId));
+      });
+    } on Object catch (error) {
+      if (!context.mounted || !_canAcceptAttachments(session)) return;
+      final AppLocalizations l10n = context.l10n;
+      showAppFeedbackToast(
+        context,
+        userFacingErrorMessage(
+          error,
+          l10n: l10n,
+          fallback: l10n.editorAttachmentReadFailed,
+        ),
+        tone: AppFeedbackTone.error,
       );
-      if (attachment != null) {
-        staged.add(attachment);
+    } finally {
+      if (mounted) {
+        setState(() => _addingAttachments = false);
+        unawaited(_persistDraftInBackground());
       }
     }
-    if (staged.isEmpty) {
-      return;
-    }
-    setState(() {
-      _pendingAttachments.addAll(staged);
-      _attachmentIds.addAll(
-        staged.map((PendingAttachment attachment) => attachment.assetId),
-      );
-    });
-    unawaited(_persistDraftInBackground());
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 
 class EditorDraftSnapshot {
   const EditorDraftSnapshot({
@@ -85,21 +86,34 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
   );
 }
 
-List<PendingAttachment> pendingAttachmentsFromDraftRecord(
+Future<List<PendingAttachment>> pendingAttachmentsFromDraftRecord(
   EditorDraftRecord record, {
-  required String Function(String relativePath) absolutePathBuilder,
-}) {
-  return record.pendingAttachments.map((
-    EditorDraftPendingAttachment attachment,
-  ) {
-    return PendingAttachment(
-      assetId: attachment.assetId,
-      sourcePath: absolutePathBuilder(attachment.relativePath),
-      pendingRelativePath: attachment.relativePath,
-      mimeType: attachment.mimeType,
-      originalFilename: attachment.originalFilename,
+  required String draftKey,
+  required Future<String> Function(String relativePath, bool forPreview)
+  resolvePath,
+}) async {
+  final List<PendingAttachment> pending = <PendingAttachment>[];
+  for (final EditorDraftPendingAttachment attachment
+      in record.pendingAttachments) {
+    final String mimeType = attachment.mimeType == 'application/octet-stream'
+        ? mimeTypeFromFileName(attachment.originalFilename)
+        : attachment.mimeType;
+    final bool forPreview = mimeType.startsWith('image/');
+    final String path = await resolvePath(attachment.relativePath, forPreview);
+    pending.add(
+      PendingAttachment(
+        assetId: attachment.assetId,
+        sourcePath: forPreview ? path : null,
+        encryptedDraftSource: forPreview
+            ? null
+            : (draftKey: draftKey, path: path),
+        pendingRelativePath: attachment.relativePath,
+        mimeType: mimeType,
+        originalFilename: attachment.originalFilename,
+      ),
     );
-  }).toList();
+  }
+  return pending;
 }
 
 bool editorDraftIsEmpty(

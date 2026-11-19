@@ -103,9 +103,10 @@ abstract final class AppRouter {
         GoRoute(
           path: AppRoutes.settingsRoute,
           builder: (_, GoRouterState state) => SettingsPage(
-            initialFocus: SettingsFocusTarget.tryParse(
-              state.uri.queryParameters[SettingsFocusTarget.queryKey],
-            ),
+            entryAction: switch (state.extra) {
+              final SettingsEntryAction action => action,
+              _ => null,
+            },
           ),
         ),
         GoRoute(

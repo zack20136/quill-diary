@@ -22,6 +22,7 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
+import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 
 final editorFlowControllerProvider = Provider<EditorFlowController>((Ref ref) {
   return EditorFlowController(ref);
@@ -234,22 +235,14 @@ class EditorFlowController {
       return const EditorDraftRestoreDecision.discarded();
     }
 
-    final Map<String, String> previewPaths = <String, String>{};
-    for (final EditorDraftPendingAttachment attachment
-        in record.pendingAttachments) {
-      previewPaths[attachment.relativePath] = await _actions
-          .materializePendingFileForPreview(
-            draftKey,
-            attachment.relativePath,
-            session,
-          );
-    }
     return EditorDraftRestoreDecision.restored(
       record: record,
-      pendingAttachments: pendingAttachmentsFromDraftRecord(
+      pendingAttachments: await pendingAttachmentsFromDraftRecord(
         record,
-        absolutePathBuilder: (String relativePath) =>
-            previewPaths[relativePath] ?? '',
+        draftKey: draftKey,
+        resolvePath: (String path, bool forPreview) => forPreview
+            ? _actions.materializePendingFileForPreview(draftKey, path, session)
+            : _actions.pendingAbsolutePath(draftKey, path),
       ),
       snapshot: snapshot,
     );
@@ -311,53 +304,72 @@ class EditorFlowController {
     required Iterable<String> sourcePaths,
     required UnlockedVaultSession session,
   }) async {
-    final Set<String> seenPaths = <String>{};
-    final List<PendingAttachment> staged = <PendingAttachment>[];
-    for (final String rawPath in sourcePaths) {
-      final String path = rawPath.trim();
-      if (path.isEmpty || !seenPaths.add(path)) {
-        continue;
-      }
-      final PendingAttachment? attachment = await _actions.stagePickedImage(
-        preset: preset,
-        draftKey: draftKey,
-        sourcePath: path,
-        displayName: p.basename(path),
-        session: session,
+    final Set<String> paths = sourcePaths.map((path) => path.trim()).toSet()
+      ..remove('');
+    for (final String path in paths) {
+      AttachmentSizeLimit.image.checkLength(
+        await File(path).length(),
+        p.basename(path),
       );
-      if (attachment != null) {
-        staged.add(attachment);
-      }
+    }
+    final List<PendingAttachment> staged = <PendingAttachment>[];
+    for (final String path in paths) {
+      staged.add(
+        await _actions.stagePickedImage(
+          preset: preset,
+          draftKey: draftKey,
+          sourcePath: path,
+          session: session,
+        ),
+      );
     }
     return staged;
   }
 
-  Future<PendingAttachment?> stagePickedFile({
+  Future<PendingAttachment> stagePickedFile({
     required String draftKey,
     required String path,
     required String displayName,
     required UnlockedVaultSession session,
   }) async {
-    final String trimmed = path.trim();
-    if (trimmed.isEmpty) {
-      return null;
-    }
-    final String relativePath = await _actions.stagePendingFile(
+    final String fileName = p.basename(
+      displayName.trim().isEmpty ? path : displayName.trim(),
+    );
+    final String mimeType = mimeTypeFromFileName(fileName);
+    final Uint8List bytes = await readPickedAttachmentFile(
+      path,
+      fileName: fileName,
+    );
+    await validateAttachmentFormat(
+      bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    final String relativePath = await _actions.stagePendingBytes(
       draftKey,
-      trimmed,
+      bytes,
+      fileName,
       session,
     );
-    final String previewPath = await _actions.materializePendingFileForPreview(
-      draftKey,
-      relativePath,
-      session,
-    );
+    final bool needsPreview = mimeType.startsWith('image/');
     return PendingAttachment(
       assetId: generateAssetId(),
-      sourcePath: previewPath,
+      sourcePath: needsPreview
+          ? await _actions.materializePendingFileForPreview(
+              draftKey,
+              relativePath,
+              session,
+            )
+          : null,
+      encryptedDraftSource: needsPreview
+          ? null
+          : (
+              draftKey: draftKey,
+              path: await _actions.pendingAbsolutePath(draftKey, relativePath),
+            ),
       pendingRelativePath: relativePath,
-      mimeType: _mimeTypeFromPath(trimmed),
-      originalFilename: displayName,
+      mimeType: mimeType,
+      originalFilename: fileName,
     );
   }
 
@@ -473,24 +485,6 @@ class EditorFlowController {
       now.millisecond,
       now.microsecond,
     );
-  }
-
-  String _mimeTypeFromPath(String pathValue) {
-    switch (p.extension(pathValue).toLowerCase()) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.png':
-        return 'image/png';
-      case '.webp':
-        return 'image/webp';
-      case '.gif':
-        return 'image/gif';
-      case '.md':
-        return 'text/markdown';
-      default:
-        return 'application/octet-stream';
-    }
   }
 
   void _refreshCaches({

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
+import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -9,26 +11,40 @@ import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/sensitive_clipboard.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
-Future<void> showRecoveryKeySaveDialog(
+Future<bool> showRecoveryKeyCreationDialog(
   BuildContext context, {
-  required String recoveryKey,
-}) {
-  return showAppDialog<void>(
+  required Future<String> Function() createRecoveryKey,
+  bool offerUnlockSetup = false,
+}) async {
+  if (ModalRoute.of(context)?.isCurrent != true) {
+    return false;
+  }
+  final bool? configureUnlock = await showAppDialog<bool>(
     context: context,
-    builder: (BuildContext dialogContext) =>
-        RecoveryKeySaveDialog(recoveryKey: recoveryKey),
+    barrierDismissible: false,
+    builder: (_) => RecoveryKeySaveDialog._create(
+      createRecoveryKey: createRecoveryKey,
+      offerUnlockSetup: offerUnlockSetup,
+    ),
   );
+  return configureUnlock == true;
 }
 
 class RecoveryKeySaveDialog extends StatefulWidget {
-  const RecoveryKeySaveDialog({
-    required this.recoveryKey,
-    this.requireSavedConfirmation = false,
+  const RecoveryKeySaveDialog.confirmUpdate({
+    required String this.recoveryKey,
     super.key,
-  });
+  }) : createRecoveryKey = null,
+       offerUnlockSetup = false;
 
-  final String recoveryKey;
-  final bool requireSavedConfirmation;
+  const RecoveryKeySaveDialog._create({
+    required Future<String> Function() this.createRecoveryKey,
+    required this.offerUnlockSetup,
+  }) : recoveryKey = null;
+
+  final String? recoveryKey;
+  final Future<String> Function()? createRecoveryKey;
+  final bool offerUnlockSetup;
 
   @override
   State<RecoveryKeySaveDialog> createState() => _RecoveryKeySaveDialogState();
@@ -36,36 +52,54 @@ class RecoveryKeySaveDialog extends StatefulWidget {
 
 class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
   static const double _copyButtonClearance = 48;
+  static final String _keyPlaceholder = RecoveryKey.format(
+    '0' * RecoveryKey.symbolCount,
+  );
+  late final Future<String>? _creation = widget.createRecoveryKey == null
+      ? null
+      : Future<String>.sync(widget.createRecoveryKey!);
 
   bool _saved = false;
 
   @override
   Widget build(BuildContext context) {
+    final Future<String>? creation = _creation;
+    if (creation == null) {
+      return _buildDialog(context, widget.recoveryKey);
+    }
+    return FutureBuilder<String>(
+      future: creation,
+      builder: (context, snapshot) {
+        final Object? error = snapshot.error;
+        return PopScope(
+          canPop: error != null,
+          child: error == null
+              ? _buildDialog(context, snapshot.data)
+              : AppDialogShell(
+                  title: context.l10n.settingsRecoveryKeyCreateButton,
+                  content: Text(
+                    userFacingErrorMessage(error, l10n: context.l10n),
+                  ),
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDialog(BuildContext context, String? recoveryKey) {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final ColorScheme colorScheme = theme.colorScheme;
-    final AppColors colors = context.appColors;
-    final bool confirming = widget.requireSavedConfirmation;
+    final bool confirming = widget.recoveryKey != null;
+    final bool creating = recoveryKey == null;
     final TextStyle keyStyle =
-        AppTypography.mono(
-          (confirming
-                  ? theme.textTheme.titleLarge
-                  : theme.textTheme.titleMedium) ??
-              const TextStyle(),
-        ).copyWith(
-          fontWeight: confirming ? FontWeight.w700 : FontWeight.w600,
-          letterSpacing: confirming ? 1.15 : 1.1,
-          height: 1.5,
-          color: confirming ? colorScheme.onPrimaryContainer : null,
-        );
-    Widget keyText(String value) => SelectableText(
-      value,
-      style: keyStyle,
-      textAlign: confirming ? TextAlign.center : null,
-      contextMenuBuilder: SensitiveClipboard.contextMenu,
-    );
-    Future<bool> copyKey() =>
-        SensitiveClipboard.copy(context, widget.recoveryKey, showSuccess: true);
+        AppTypography.mono(theme.textTheme.titleLarge ?? const TextStyle())
+            .copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.15,
+              height: 1.5,
+              color: colorScheme.onPrimaryContainer,
+            );
 
     return AppDialogShell(
       title: confirming
@@ -75,6 +109,7 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
           ? Icon(Icons.key_outlined, color: colorScheme.primary)
           : null,
       accent: confirming,
+      closeEnabled: !creating,
       content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,67 +149,81 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
               const SizedBox(height: 16),
             ],
             Material(
-              color: confirming
-                  ? colorScheme.primaryContainer
-                  : colors.sectionInset,
+              color: colorScheme.primaryContainer,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
-                side: colors.outlineBorder(),
+                side: context.appColors.outlineBorder(),
               ),
-              child: confirming
-                  ? LayoutBuilder(
-                      builder: (context, constraints) {
-                        final displayedKey = _wrapRecoveryKey(
-                          widget.recoveryKey,
-                          style: keyStyle,
-                          maxLineWidth:
-                              constraints.maxWidth - 2 * _copyButtonClearance,
-                          textDirection: Directionality.of(context),
-                          textScaler: MediaQuery.textScalerOf(context),
-                        );
-                        return Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: _copyButtonClearance,
-                                vertical: 24,
-                              ),
-                              child: keyText(displayedKey),
-                            ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.content_copy_rounded,
-                                  size: 20,
-                                ),
-                                tooltip: l10n.commonActionCopy,
-                                color: colorScheme.onPrimaryContainer,
-                                visualDensity: const VisualDensity(
-                                  horizontal: -1,
-                                  vertical: -1,
-                                ),
-                                style: IconButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                onPressed: copyKey,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 18,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final displayedKey = _wrapRecoveryKey(
+                    recoveryKey ?? _keyPlaceholder,
+                    style: keyStyle,
+                    maxLineWidth:
+                        constraints.maxWidth - 2 * _copyButtonClearance,
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                  );
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _copyButtonClearance,
+                          vertical: 24,
+                        ),
+                        child: Visibility(
+                          visible: !creating,
+                          maintainSize: true,
+                          maintainAnimation: true,
+                          maintainState: true,
+                          child: SelectableText(
+                            displayedKey,
+                            style: keyStyle,
+                            textAlign: TextAlign.center,
+                            contextMenuBuilder: SensitiveClipboard.contextMenu,
+                          ),
+                        ),
                       ),
-                      child: keyText(widget.recoveryKey),
-                    ),
+                      if (recoveryKey == null)
+                        SizedBox.square(
+                          dimension: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            semanticsLabel:
+                                l10n.settingsRecoveryKeyCreateButton,
+                          ),
+                        )
+                      else
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.content_copy_rounded,
+                              size: 20,
+                            ),
+                            tooltip: l10n.commonActionCopy,
+                            color: colorScheme.onPrimaryContainer,
+                            visualDensity: const VisualDensity(
+                              horizontal: -1,
+                              vertical: -1,
+                            ),
+                            style: IconButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () => SensitiveClipboard.copy(
+                              context,
+                              recoveryKey,
+                              showSuccess: true,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
             if (confirming) ...[
               const SizedBox(height: 12),
@@ -224,10 +273,8 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
         ),
       ),
       actions: <Widget>[
-        if (!confirming)
-          TextButton(onPressed: copyKey, child: Text(l10n.commonActionCopy)),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: creating ? null : () => Navigator.of(context).pop(),
           child: Text(
             confirming ? l10n.commonActionCancel : l10n.commonActionClose,
           ),
@@ -236,6 +283,11 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
           FilledButton(
             onPressed: _saved ? () => Navigator.of(context).pop(true) : null,
             child: Text(l10n.settingsRecoveryKeyStartUpdate),
+          )
+        else if (widget.offerUnlockSetup)
+          FilledButton(
+            onPressed: creating ? null : () => Navigator.of(context).pop(true),
+            child: Text(l10n.settingsUnlockMethodConfigureButton),
           ),
       ],
     );

@@ -89,9 +89,10 @@ class OnboardingIntroDialog extends ConsumerStatefulWidget {
 }
 
 class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
+  static const double _dialogHeight = 480;
+
   final PageController _pageController = PageController();
   int _page = 0;
-  bool _allowPop = false;
 
   @override
   void dispose() {
@@ -112,7 +113,6 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
     if (!mounted) {
       return;
     }
-    setState(() => _allowPop = true);
     Navigator.of(context).pop();
   }
 
@@ -122,101 +122,75 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
     final List<_IntroPage> pages = _onboardingIntroPages(l10n);
-    final int pageCount = pages.length;
-    final _IntroPage current = pages[_page];
-    final bool isLastPage = _page >= pageCount - 1;
+    final bool isLastPage = _page == pages.length - 1;
 
     return PopScope(
-      canPop: _allowPop,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop || _page == 0) {
           return;
         }
         unawaited(_goToPage(_page - 1));
       },
-      child: AppDialogShell(
-        title: current.title,
-        titleTrailing: const _OnboardingLanguageToggle(),
-        showClose: false,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Flexible(
-              child: Stack(
-                children: <Widget>[
-                  for (final _IntroPage page in pages)
-                    ExcludeSemantics(
-                      child: IgnorePointer(
-                        child: Opacity(
-                          opacity: 0,
-                          child: SingleChildScrollView(
-                            physics: const NeverScrollableScrollPhysics(),
-                            child: _OnboardingPagePanel(page: page),
+      child: SizedBox(
+        height: _dialogHeight,
+        child: AppDialogShell(
+          title: pages[_page].title,
+          titleTrailing: const _OnboardingLanguageToggle(),
+          showClose: false,
+          fillHeight: true,
+          content: Column(
+            children: <Widget>[
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: pages.length,
+                  onPageChanged: (int index) => setState(() => _page = index),
+                  itemBuilder: (BuildContext context, int index) =>
+                      LayoutBuilder(
+                        builder: (context, constraints) => AppScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: _OnboardingPagePanel(page: pages[index]),
                           ),
                         ),
                       ),
-                    ),
-                  Positioned.fill(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: pageCount,
-                      onPageChanged: (int index) =>
-                          setState(() => _page = index),
-                      itemBuilder: (BuildContext context, int index) =>
-                          LayoutBuilder(
-                            builder:
-                                (BuildContext context, BoxConstraints box) =>
-                                    AppScrollView(
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          minHeight: box.maxHeight,
-                                        ),
-                                        child: _OnboardingPagePanel(
-                                          page: pages[index],
-                                        ),
-                                      ),
-                                    ),
-                          ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            SmoothPageIndicator(
-              controller: _pageController,
-              count: pageCount,
-              effect: WormEffect(
-                dotHeight: 8,
-                dotWidth: 8,
-                spacing: 8,
-                activeDotColor: colors.primary,
-                dotColor: colors.outlineVariant,
+              const SizedBox(height: 16),
+              SmoothPageIndicator(
+                controller: _pageController,
+                count: pages.length,
+                effect: WormEffect(
+                  dotHeight: 8,
+                  dotWidth: 8,
+                  spacing: 8,
+                  activeDotColor: colors.primary,
+                  dotColor: colors.outlineVariant,
+                ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            if (_page > 0)
+              TextButton(
+                onPressed: () => unawaited(_goToPage(_page - 1)),
+                child: Text(l10n.onboardingIntroBack),
+              ),
+            FilledButton(
+              onPressed: isLastPage
+                  ? _complete
+                  : () => unawaited(_goToPage(_page + 1)),
+              child: Text(
+                isLastPage
+                    ? l10n.onboardingIntroGetStarted
+                    : l10n.onboardingIntroNext,
               ),
             ),
           ],
         ),
-        actions: <Widget>[
-          if (_page > 0)
-            TextButton(
-              onPressed: () => unawaited(_goToPage(_page - 1)),
-              child: Text(l10n.onboardingIntroBack),
-            ),
-          FilledButton(
-            onPressed: () {
-              if (isLastPage) {
-                unawaited(_complete());
-                return;
-              }
-              unawaited(_goToPage(_page + 1));
-            },
-            child: Text(
-              isLastPage
-                  ? l10n.onboardingIntroGetStarted
-                  : l10n.onboardingIntroNext,
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -25,17 +25,16 @@ void main() {
             return FilledButton(
               onPressed: () async {
                 if (onRotationConfirmation == null) {
-                  await showRecoveryKeySaveDialog(
+                  await showRecoveryKeyCreationDialog(
                     context,
-                    recoveryKey: recoveryKey,
+                    createRecoveryKey: () async => recoveryKey,
                   );
                   return;
                 }
                 final confirmed = await showAppDialog<bool>(
                   context: context,
-                  builder: (_) => const RecoveryKeySaveDialog(
+                  builder: (_) => const RecoveryKeySaveDialog.confirmUpdate(
                     recoveryKey: recoveryKey,
-                    requireSavedConfirmation: true,
                   ),
                 );
                 onRotationConfirmation(confirmed == true);
@@ -98,7 +97,16 @@ void main() {
   });
 
   testWidgets('保存對話框複製完整金鑰並可關閉', (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 640);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await pumpDialog(tester);
+    final displayedKey = tester
+        .widget<SelectableText>(find.byType(SelectableText))
+        .data!;
+    expect(displayedKey, contains('\n'));
+    expect(displayedKey.replaceAll('-\n', '-'), recoveryKey);
     String? copied;
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -111,7 +119,7 @@ void main() {
     addTearDown(
       () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
     );
-    await tester.tap(find.text(testL10n.commonActionCopy));
+    await tester.tap(find.byTooltip(testL10n.commonActionCopy));
     await tester.pumpAndSettle();
     expect(copied, recoveryKey);
     await tester.tap(find.text(testL10n.commonActionClose));
@@ -133,11 +141,11 @@ void main() {
     addTearDown(
       () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
     );
-    await tester.tap(find.text(testEnL10n.commonActionCopy));
+    await tester.tap(find.byTooltip(testEnL10n.commonActionCopy));
     await tester.pumpAndSettle();
     expect(find.text(testEnL10n.commonClipboardWriteFailed), findsOneWidget);
     expect(find.text(testEnL10n.commonCopiedToClipboard), findsNothing);
-    expect(find.text(recoveryKey), findsOneWidget);
+    expect(find.byType(SelectableText), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   });

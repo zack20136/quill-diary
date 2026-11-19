@@ -1,17 +1,20 @@
 import 'dart:async' show unawaited;
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/settings/settings_flow_controller.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/settings/widgets/recovery_key_save_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
-class FirstLaunchHomePane extends StatelessWidget {
+class FirstLaunchHomePane extends ConsumerWidget {
   const FirstLaunchHomePane({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
 
@@ -36,13 +39,7 @@ class FirstLaunchHomePane extends StatelessWidget {
                     icon: Icons.key_outlined,
                     title: l10n.firstLaunchCreateVaultTitle,
                     message: l10n.firstLaunchCreateVaultMessage,
-                    onTap: () => unawaited(
-                      context.push(
-                        AppRoutes.settingsLocation(
-                          focus: SettingsFocusTarget.recoveryKey,
-                        ),
-                      ),
-                    ),
+                    onTap: () => unawaited(_createRecoveryKey(context, ref)),
                   ),
                   const SizedBox(height: 16),
                   _FirstLaunchActionCard(
@@ -51,9 +48,8 @@ class FirstLaunchHomePane extends StatelessWidget {
                     message: l10n.firstLaunchTransferMessage,
                     onTap: () => unawaited(
                       context.push(
-                        AppRoutes.settingsLocation(
-                          focus: SettingsFocusTarget.externalRestore,
-                        ),
+                        AppRoutes.settingsRoute,
+                        extra: SettingsEntryAction.focusExternalRestore,
                       ),
                     ),
                   ),
@@ -64,6 +60,26 @@ class FirstLaunchHomePane extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _createRecoveryKey(BuildContext context, WidgetRef ref) async {
+    final GoRouter router = GoRouter.of(context);
+    final SettingsFlowController settings = ref.read(
+      settingsFlowControllerProvider,
+    );
+    final bool configureUnlock = await showRecoveryKeyCreationDialog(
+      context,
+      createRecoveryKey: settings.createRecoveryKey,
+      offerUnlockSetup: true,
+    );
+    if (configureUnlock) {
+      unawaited(
+        router.push<void>(
+          AppRoutes.settingsRoute,
+          extra: SettingsEntryAction.focusUnlockMethod,
+        ),
+      );
+    }
   }
 }
 

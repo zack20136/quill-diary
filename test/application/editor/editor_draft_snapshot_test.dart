@@ -161,7 +161,7 @@ void main() {
     expect(pendingId, isNotEmpty);
   });
 
-  test('還原草稿時會沿用暫存附件 ID', () {
+  test('還原舊草稿會修正 MIME 並保留一般附件的加密來源', () async {
     final EditorDraftRecord record = EditorDraftRecord(
       title: null,
       dateValue: '2026-06-18',
@@ -173,9 +173,9 @@ void main() {
       pendingAttachments: const <EditorDraftPendingAttachment>[
         EditorDraftPendingAttachment(
           assetId: 'pending-1',
-          relativePath: 'pending/photo.jpg.enc',
-          mimeType: 'image/jpeg',
-          originalFilename: 'photo.jpg',
+          relativePath: 'pending/note.txt.enc',
+          mimeType: 'application/octet-stream',
+          originalFilename: 'note.txt',
         ),
       ],
       provisionalEntryId: 'entry-1',
@@ -183,11 +183,21 @@ void main() {
       updatedAt: DateTime(2026, 6, 18, 9),
     );
 
-    final pending = pendingAttachmentsFromDraftRecord(
+    final pending = await pendingAttachmentsFromDraftRecord(
       record,
-      absolutePathBuilder: (String relativePath) => 'C:/drafts/$relativePath',
+      draftKey: 'entry-1',
+      resolvePath: (String relativePath, bool forPreview) async {
+        expect(forPreview, isFalse);
+        return 'C:/drafts/$relativePath';
+      },
     );
 
     expect(pending.single.assetId, 'pending-1');
+    expect(pending.single.mimeType, 'text/plain');
+    expect(pending.single.sourcePath, isNull);
+    expect(pending.single.encryptedDraftSource, (
+      draftKey: 'entry-1',
+      path: 'C:/drafts/pending/note.txt.enc',
+    ));
   });
 }

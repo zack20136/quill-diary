@@ -1,3 +1,4 @@
+import 'package:cryptography_flutter/cryptography_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/transfer/portable_transfer_service.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
@@ -16,7 +17,15 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 final cryptoServiceProvider = Provider<CryptoService>((Ref ref) {
-  return LocalCryptoService();
+  return LocalCryptoService(
+    contentCipher: BackgroundAesGcm(
+      secretKeyLength: 32,
+      channelPolicy: const CryptographyChannelPolicy(
+        minLength: 1 << 20,
+        maxLength: null,
+      ),
+    ),
+  );
 });
 
 final indexDatabaseManagerProvider = Provider<IndexDatabaseManager>((Ref ref) {
