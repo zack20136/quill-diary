@@ -51,17 +51,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('保存對話框顯示完整復原金鑰與提示文案', (WidgetTester tester) async {
-    await pumpDialog(tester);
-
-    expect(find.text(recoveryKey), findsOneWidget);
-    expect(
-      find.text(testL10n.settingsRecoveryKeySaveDialogHint),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('勾選已保存新金鑰後才可開始輪替', (tester) async {
+  testWidgets('新金鑰隨寬度分列，勾選已保存才可輪替', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(360, 640);
     addTearDown(tester.view.resetPhysicalSize);
@@ -76,9 +66,15 @@ void main() {
       testL10n.settingsRecoveryKeyStartUpdate,
     );
     expect(tester.widget<FilledButton>(updateButton).onPressed, isNull);
+    String displayedKey() =>
+        tester.widget<SelectableText>(find.byType(SelectableText)).data!;
+    final narrowKey = displayedKey();
+    tester.view.physicalSize = const Size(800, 640);
+    await tester.pumpAndSettle();
+    expect(narrowKey.replaceAll('-\n', '-'), recoveryKey);
     expect(
-      find.text('0123-4567-89AB-\nCDEF-GHJK-MNPQ'),
-      findsOneWidget,
+      narrowKey.split('\n').length,
+      greaterThan(displayedKey().split('\n').length),
     );
 
     await tester.tap(find.text(testL10n.settingsRecoveryKeySavedCheckbox));

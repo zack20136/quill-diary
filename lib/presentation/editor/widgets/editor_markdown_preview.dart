@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/editor/editor_body_blocks.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
@@ -18,6 +19,7 @@ class EditorMarkdownPreview extends StatefulWidget {
     this.privateRanges = const [],
     this.interactiveCheckboxes = false,
     this.onMarkdownChanged,
+    this.paintVisibleParagraphsOnly = false,
   });
 
   final String markdown;
@@ -25,6 +27,7 @@ class EditorMarkdownPreview extends StatefulWidget {
   final List<PrivateTextRange> privateRanges;
   final bool interactiveCheckboxes;
   final ValueChanged<String>? onMarkdownChanged;
+  final bool paintVisibleParagraphsOnly;
 
   @override
   State<EditorMarkdownPreview> createState() => _EditorMarkdownPreviewState();
@@ -277,10 +280,12 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
       flushCodeBlock();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
-    );
+    return widget.paintVisibleParagraphsOnly
+        ? _PreviewColumn(children: children)
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
+          );
   }
 
   Widget _inlineMarkdownText(
@@ -347,6 +352,46 @@ class _EditorMarkdownPreviewState extends State<EditorMarkdownPreview> {
       paragraph.writeSource(text.substring(cursor), sourceOffset + cursor);
     }
     return paragraph.build(baseStyle);
+  }
+}
+
+class _PreviewColumn extends Column {
+  const _PreviewColumn({required super.children})
+    : super(crossAxisAlignment: CrossAxisAlignment.stretch);
+
+  @override
+  RenderFlex createRenderObject(BuildContext context) =>
+      _RenderPreviewColumn(textDirection: Directionality.maybeOf(context));
+}
+
+class _RenderPreviewColumn extends RenderFlex {
+  _RenderPreviewColumn({super.textDirection})
+    : super(
+        direction: Axis.vertical,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+      );
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final RenderObject? viewport = RenderAbstractViewport.maybeOf(this);
+    if (viewport is! RenderBox) {
+      super.paint(context, offset);
+      return;
+    }
+
+    // 全文仍參與排版與選取。
+    final viewportBounds = MatrixUtils.transformRect(
+      viewport.getTransformTo(this),
+      Offset.zero & viewport.size,
+    );
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      final childOffset = (child.parentData! as FlexParentData).offset;
+      final bounds = child.paintBounds.shift(childOffset);
+      if (bounds.top >= viewportBounds.bottom) break;
+      if (bounds.overlaps(viewportBounds)) {
+        context.paintChild(child, offset + childOffset);
+      }
+    }
   }
 }
 

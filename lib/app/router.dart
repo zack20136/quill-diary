@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/chat_diary/chat_diary_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
@@ -78,9 +79,20 @@ abstract final class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.editorDetailRoute,
-          builder: (_, GoRouterState state) => EditorPage(
-            entryId: state.pathParameters['entryId'],
-            startInEditMode: state.uri.queryParameters['edit'] == '1',
+          pageBuilder: (_, GoRouterState state) => MaterialPage<void>(
+            key: state.pageKey,
+            name: state.name ?? state.path,
+            arguments: <String, String>{
+              ...state.pathParameters,
+              ...state.uri.queryParameters,
+            },
+            restorationId: state.pageKey.value,
+            // 快照會把載入中或鎖定前的畫面留到轉場結束。
+            allowSnapshotting: false,
+            child: EditorPage(
+              entryId: state.pathParameters['entryId'],
+              startInEditMode: state.uri.queryParameters['edit'] == '1',
+            ),
           ),
         ),
         GoRoute(

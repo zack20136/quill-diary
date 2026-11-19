@@ -217,6 +217,7 @@ class EditorBodySection extends StatelessWidget {
                     : EditorMarkdownPreview(
                         markdown: value.text,
                         typography: typography,
+                        paintVisibleParagraphsOnly: true,
                         interactiveCheckboxes: editorBodyHasCheckboxBlocks(
                           value.text,
                         ),

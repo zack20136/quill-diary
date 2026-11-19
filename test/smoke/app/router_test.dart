@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -78,22 +80,45 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('編輯器路由依 entryId 與 edit 參數建立頁面', (WidgetTester tester) async {
-    await pumpRoute(tester, AppRoutes.editorRoute);
-    EditorPage page = tester.widget<EditorPage>(find.byType(EditorPage));
-    expect(page.entryId, isNull);
-    expect(page.startInEditMode, isFalse);
+  testWidgets(
+    'Android 檢視日記使用即時轉場，編輯器路由依參數進入對應模式',
+    (tester) async {
+      await pumpRoute(tester, AppRoutes.homeRoute);
+      unawaited(router.push<void>('/editor/abc'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-    await pumpRoute(tester, '/editor/abc');
-    page = tester.widget<EditorPage>(find.byType(EditorPage));
-    expect(page.entryId, 'abc');
-    expect(page.startInEditMode, isFalse);
+      final editor = find.byType(EditorPage);
+      final preview = tester.widget<EditorPage>(editor);
+      expect(preview.entryId, 'abc');
+      expect(preview.startInEditMode, isFalse);
+      expect(
+        ModalRoute.of(tester.element(editor))?.animation?.status,
+        AnimationStatus.forward,
+      );
+      final snapshots = tester.widgetList<SnapshotWidget>(
+        find.ancestor(of: editor, matching: find.byType(SnapshotWidget)),
+      );
+      expect(
+        snapshots.where((widget) => widget.controller.allowSnapshotting),
+        isEmpty,
+      );
 
-    await pumpRoute(tester, '/editor/abc?edit=1');
-    page = tester.widget<EditorPage>(find.byType(EditorPage));
-    expect(page.entryId, 'abc');
-    expect(page.startInEditMode, isTrue);
-  });
+      await tester.pumpAndSettle();
+      await pumpRoute(tester, '/editor/abc?edit=1');
+      final editing = tester.widget<EditorPage>(editor);
+      expect(editing.entryId, 'abc');
+      expect(editing.startInEditMode, isTrue);
+
+      await pumpRoute(tester, AppRoutes.editorRoute);
+      final creating = tester.widget<EditorPage>(editor);
+      expect(creating.entryId, isNull);
+      expect(creating.startInEditMode, isFalse);
+    },
+    variant: const TargetPlatformVariant(<TargetPlatform>{
+      TargetPlatform.android,
+    }),
+  );
 
   testWidgets('聊天路由契約能開啟新聊天、草稿與完成聊天', (tester) async {
     final chatId = generateChatDiaryId();

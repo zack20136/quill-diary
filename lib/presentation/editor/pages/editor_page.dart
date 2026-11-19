@@ -126,6 +126,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   late final EditorFlowSession _flowSession;
 
+  bool get _opensInPreview => widget.entryId != null && !widget.startInEditMode;
   bool get _isEditing => !_previewMode;
   String get _draftKey => widget.chatId != null
       ? ChatDiarySession.draftKeyFor(widget.chatId!)
@@ -159,7 +160,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     );
 
     WidgetsBinding.instance.addObserver(this);
-    _previewMode = widget.entryId != null && !widget.startInEditMode;
+    _previewMode = _opensInPreview;
     _provisionalEntryId =
         widget.salvageToken ?? widget.entryId ?? generateEntryId();
     _draftCreatedAt = DateTime.now();
@@ -639,7 +640,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _didOfferDraftRestore = false;
     _handlingDraftRestore = false;
     _flowSession.reset();
-    _previewMode = widget.entryId != null && !widget.startInEditMode;
+    _previewMode = _opensInPreview;
     _entryTime = TimeOfDay.now();
     _provisionalEntryId = widget.entryId ?? generateEntryId();
     _persistedEntryDate = null;
@@ -660,12 +661,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     final AsyncValue<AppSessionState> sessionAsync = ref.watch(
       effectiveAppSessionProvider,
     );
-    final AsyncValue<DiaryEntry?> entryAsync = widget.entryId == null
-        ? const AsyncValue<DiaryEntry?>.data(null)
-        : ref.watch(entryProvider(widget.entryId!));
-    final AsyncValue<Object?> metadataAsync = ref.watch(
-      recoveryMetadataProvider,
-    );
 
     return sessionAsync.when(
       data: (AppSessionState sessionState) {
@@ -682,8 +677,18 @@ class _EditorPageState extends ConsumerState<EditorPage>
           );
         }
 
-        // 預覽勾選會 save 並 invalidate entryProvider；勿在 reload 時整頁換成 loading，
-        // 否則畫面會閃爍、捲動重置，看起來像核取方塊「跳來跳去」。
+        final AsyncValue<DiaryEntry?> entryAsync = widget.entryId == null
+            ? const AsyncValue<DiaryEntry?>.data(null)
+            : ref.watch(entryProvider(widget.entryId!));
+        // 既有日記的檢視流程可沿用解鎖時已驗證的金鑰。
+        final AsyncValue<bool> recoveryReady =
+            _opensInPreview && session.canUseRecovery
+            ? const AsyncData(true)
+            : ref
+                  .watch(recoveryMetadataProvider)
+                  .whenData((metadata) => metadata != null);
+
+        // 預覽勾選後重讀日記時，保留原捲動位置。
         return entryAsync.when(
           skipLoadingOnReload: true,
           data: (DiaryEntry? entry) {
@@ -706,7 +711,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
                     <AssetAttachment>[],
                   )
                 : ref.watch(entryAttachmentsProvider(widget.entryId!));
-            // reload 時 asData 會是 null；留上一筆附件，避免圖片列先消失再出現。
+            // 重讀時沿用上一批附件，避免圖片列閃爍。
             final List<AssetAttachment> allSavedAttachments =
                 attachmentsAsync.value ?? const <AssetAttachment>[];
             final List<EditorAttachmentItem> orderedAttachments =
@@ -744,9 +749,9 @@ class _EditorPageState extends ConsumerState<EditorPage>
                 unawaited(_requestClose());
               },
               child: Scaffold(
-                body: metadataAsync.when(
-                  data: (Object? metadata) {
-                    if (metadata == null) {
+                body: recoveryReady.when(
+                  data: (bool ready) {
+                    if (!ready) {
                       return Padding(
                         padding: const EdgeInsets.all(24),
                         child: AppStateView(

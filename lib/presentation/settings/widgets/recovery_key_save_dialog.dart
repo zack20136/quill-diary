@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -33,6 +35,8 @@ class RecoveryKeySaveDialog extends StatefulWidget {
 }
 
 class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
+  static const double _copyButtonClearance = 48;
+
   bool _saved = false;
 
   @override
@@ -42,25 +46,20 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
     final ColorScheme colorScheme = theme.colorScheme;
     final AppColors colors = context.appColors;
     final bool confirming = widget.requireSavedConfirmation;
-    final List<String> groups = widget.recoveryKey.split('-');
-    final int groupsPerRow = (groups.length + 1) ~/ 2;
-    final String displayKey = confirming && groups.length > 1
-        ? "${groups.take(groupsPerRow).join('-')}-\n"
-          "${groups.skip(groupsPerRow).join('-')}"
-        : widget.recoveryKey;
     final TextStyle keyStyle =
         AppTypography.mono(
-              (confirming ? theme.textTheme.titleLarge : theme.textTheme.titleMedium) ??
-                  const TextStyle(),
-            )
-            .copyWith(
-              fontWeight: confirming ? FontWeight.w700 : FontWeight.w600,
-              letterSpacing: confirming ? 1.15 : 1.1,
-              height: 1.5,
-              color: confirming ? colorScheme.onPrimaryContainer : null,
-            );
-    final Widget keyText = SelectableText(
-      displayKey,
+          (confirming
+                  ? theme.textTheme.titleLarge
+                  : theme.textTheme.titleMedium) ??
+              const TextStyle(),
+        ).copyWith(
+          fontWeight: confirming ? FontWeight.w700 : FontWeight.w600,
+          letterSpacing: confirming ? 1.15 : 1.1,
+          height: 1.5,
+          color: confirming ? colorScheme.onPrimaryContainer : null,
+        );
+    Widget keyText(String value) => SelectableText(
+      value,
       style: keyStyle,
       textAlign: confirming ? TextAlign.center : null,
       contextMenuBuilder: SensitiveClipboard.contextMenu,
@@ -95,7 +94,11 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.history_rounded, size: 18, color: colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.history_rounded,
+                    size: 18,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -119,45 +122,58 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
                 side: colors.outlineBorder(),
               ),
               child: confirming
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 48,
-                            vertical: 24,
-                          ),
-                          child: keyText,
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.content_copy_rounded,
-                              size: 20,
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        final displayedKey = _wrapRecoveryKey(
+                          widget.recoveryKey,
+                          style: keyStyle,
+                          maxLineWidth:
+                              constraints.maxWidth - 2 * _copyButtonClearance,
+                          textDirection: Directionality.of(context),
+                          textScaler: MediaQuery.textScalerOf(context),
+                        );
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: _copyButtonClearance,
+                                vertical: 24,
+                              ),
+                              child: keyText(displayedKey),
                             ),
-                            tooltip: l10n.commonActionCopy,
-                            color: colorScheme.onPrimaryContainer,
-                            visualDensity: const VisualDensity(
-                              horizontal: -1,
-                              vertical: -1,
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.content_copy_rounded,
+                                  size: 20,
+                                ),
+                                tooltip: l10n.commonActionCopy,
+                                color: colorScheme.onPrimaryContainer,
+                                visualDensity: const VisualDensity(
+                                  horizontal: -1,
+                                  vertical: -1,
+                                ),
+                                style: IconButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: copyKey,
+                              ),
                             ),
-                            style: IconButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            onPressed: copyKey,
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     )
                   : Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 18,
                       ),
-                      child: keyText,
+                      child: keyText(widget.recoveryKey),
                     ),
             ),
             if (confirming) ...[
@@ -223,5 +239,53 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
           ),
       ],
     );
+  }
+}
+
+String _wrapRecoveryKey(
+  String recoveryKey, {
+  required TextStyle style,
+  required double maxLineWidth,
+  required TextDirection textDirection,
+  required TextScaler textScaler,
+}) {
+  final groups = recoveryKey.split('-');
+  if (groups.length == 1) return recoveryKey;
+
+  List<String> linesFor(int groupsPerLine) {
+    final lines = <String>[];
+    for (var start = 0; start < groups.length; start += groupsPerLine) {
+      final end = math.min(start + groupsPerLine, groups.length);
+      final line = groups.getRange(start, end).join('-');
+      lines.add(end < groups.length ? '$line-' : line);
+    }
+    return lines;
+  }
+
+  final painter = TextPainter(
+    textDirection: textDirection,
+    textScaler: textScaler,
+    maxLines: 1,
+  );
+  bool fits(String line) {
+    painter.text = TextSpan(text: line, style: style);
+    painter.layout(maxWidth: maxLineWidth);
+    return !painter.didExceedMaxLines;
+  }
+
+  try {
+    for (
+      var groupsPerLine = (groups.length + 1) ~/ 2;
+      groupsPerLine > 1;
+      groupsPerLine--
+    ) {
+      final lines = linesFor(groupsPerLine);
+      if (!maxLineWidth.isFinite || (maxLineWidth > 0 && lines.every(fits))) {
+        return lines.join('\n');
+      }
+    }
+    return linesFor(1).join('\n');
+  } finally {
+    painter.dispose();
   }
 }
