@@ -39,13 +39,27 @@ String buildPersonaConversationPrompt({
   final instructions = privacy.protectPrompt(
     personaFixedInstructions(l10n: l10n, guidance: guidance),
   );
-  return [
-    instructions,
-    '${l10n.personaSubjectHeading}\n$subject',
-    '${l10n.personaMemory}\n${protectedCards[PersonaCardKind.memory]!}',
-    '${l10n.personaTone}\n${protectedCards[PersonaCardKind.tone]!}',
-  ].join('\n\n');
+  return personaConversationInstructions(
+    l10n,
+    instructions: instructions,
+    subject: subject,
+    memory: protectedCards[PersonaCardKind.memory]!,
+    tone: protectedCards[PersonaCardKind.tone]!,
+  );
 }
+
+String personaConversationInstructions(
+  AppLocalizations l10n, {
+  required String instructions,
+  required String subject,
+  required String memory,
+  required String tone,
+}) => [
+  instructions,
+  '${l10n.personaSubjectHeading}\n$subject',
+  '${l10n.personaMemory}\n$memory',
+  '${l10n.personaTone}\n$tone',
+].join('\n\n');
 
 String personaAttributedMessage({
   required AppLocalizations l10n,
@@ -56,11 +70,39 @@ String personaAttributedMessage({
     ? '${l10n.personaSubjectHeading}\n$personToken\n\n$text'
     : '${l10n.personaDefaultName}\n\n$text';
 
-/// 分身固定指令：身分句取代一般聊天的通用角色句，其餘與聊天相同。
 String personaFixedInstructions({
   required AppLocalizations l10n,
   String? guidance,
 }) =>
     '${l10n.personaIdentityPrompt}\n\n'
     '${l10n.chatDiaryConversationRules}\n\n'
-    '${guidance ?? l10n.chatDiaryConversationGuidancePrompt}';
+    '${guidance ?? l10n.personaConversationGuidancePrompt}';
+
+String personaGenerationInstructions(
+  AppLocalizations l10n,
+  PersonaUpdateTarget target, {
+  bool compact = false,
+}) => [
+  if (target.kinds.contains(PersonaCardKind.memory))
+    l10n.personaMemoryUpdatePrompt,
+  if (target.kinds.contains(PersonaCardKind.tone)) l10n.personaToneUpdatePrompt,
+  'target: ${target.name}',
+  l10n.personaOutputRules(
+    compact
+        ? PersonaLimits.compactMemoryCodeUnits
+        : PersonaLimits.memoryCodeUnits,
+    compact ? PersonaLimits.compactToneCodeUnits : PersonaLimits.toneCodeUnits,
+  ),
+  compact ? l10n.personaCardRepairPrompt : l10n.personaCardOutputLanguage,
+].join('\n\n');
+
+String personaExtractionInstructions(
+  AppLocalizations l10n,
+  PersonaUpdateTarget target, {
+  bool retry = false,
+}) => [
+  l10n.personaExtractionRules,
+  'target: ${target.name}',
+  if (retry) l10n.personaExtractionRetryPrompt,
+  l10n.personaCardOutputLanguage,
+].join('\n\n');

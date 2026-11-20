@@ -71,7 +71,11 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
   final _materialsScroll = ScrollController();
   final _reviewScroll = ScrollController();
   final _savedScroll = ScrollController();
-  Future<List<DiaryEntrySummary>>? _results;
+  List<DiaryEntrySummary>? _searchMatches;
+  String _appliedQuery = '';
+  bool _searching = false;
+  bool _searchFailed = false;
+  int _searchGeneration = 0;
   Timer? _searchTimer;
   bool _backgrounded = false;
   bool _acting = false;
@@ -105,7 +109,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
       if (next.value?.isUnlocked != true) {
         _dismissDialogs();
         _search.clear();
-        _results = null;
+        _clearDiarySearch();
       } else {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) unawaited(_initialize());
@@ -751,9 +755,8 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                           TextButton(
                             onPressed: () => setState(() {
                               _selectedOnly = true;
-                              _searchTimer?.cancel();
                               _search.clear();
-                              _results = null;
+                              _clearDiarySearch();
                             }),
                             child: Text(l.personaSelectedOnly),
                           ),
@@ -800,6 +803,55 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
     );
   }
 
+  void _clearDiarySearch() {
+    _searchTimer?.cancel();
+    _searchGeneration++;
+    _searching = false;
+    _searchFailed = false;
+    _searchMatches = null;
+    _appliedQuery = '';
+  }
+
+  void _scheduleDiarySearch(String query) {
+    _searchTimer?.cancel();
+    final generation = ++_searchGeneration;
+    final trimmed = query.trim();
+    if (trimmed.isEmpty || _controller.session == null) {
+      setState(_clearDiarySearch);
+      return;
+    }
+    // 避免全選套用到上一輪的搜尋結果。
+    setState(() => _searchFailed = false);
+    _searchTimer = Timer(const Duration(milliseconds: 300), () async {
+      if (!mounted ||
+          generation != _searchGeneration ||
+          _controller.session == null) {
+        return;
+      }
+      setState(() => _searching = true);
+      try {
+        final matches = await ref
+            .read(vaultRepositoryProvider)
+            .searchEntries(trimmed);
+        if (!mounted || generation != _searchGeneration) return;
+        setState(() {
+          _searchMatches = matches;
+          _appliedQuery = trimmed;
+          _searching = false;
+          _searchFailed = false;
+        });
+      } on Object {
+        if (!mounted || generation != _searchGeneration) return;
+        setState(() {
+          _searchMatches = null;
+          _appliedQuery = trimmed;
+          _searching = false;
+          _searchFailed = true;
+        });
+      }
+    });
+  }
+
   Widget _diarySection(AppLocalizations l, PersonaDraft draft) {
     return AppSliverSectionCard(
       title: l.personaDiaries,
@@ -817,67 +869,108 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               labelText: l.personaSearch,
               prefixIcon: const Icon(Icons.search),
             ),
-            onChanged: (query) {
-              _searchTimer?.cancel();
-              _searchTimer = Timer(const Duration(milliseconds: 300), () {
-                if (!mounted || _controller.session == null) return;
-                setState(
-                  () => _results = query.trim().isEmpty
-                      ? null
-                      : ref
-                            .read(vaultRepositoryProvider)
-                            .searchEntries(query.trim()),
-                );
-              });
-            },
+            onChanged: _scheduleDiarySearch,
           ),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: 12)),
-        SliverToBoxAdapter(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FilterChip(
-              label: Text('${l.personaSelectedOnly} (${draft.diaries.length})'),
-              selected: _selectedOnly,
-              onSelected: (value) => setState(() => _selectedOnly = value),
-            ),
-          ),
-        ),
-        _diaryEntrySliver(l),
+        _diaryEntrySliver(l, draft),
       ],
     );
   }
 
-  Widget _diaryEntrySliver(AppLocalizations l) {
-    if (_results != null) {
-      return FutureBuilder<List<DiaryEntrySummary>>(
-        future: _results,
-        builder: (_, snapshot) => snapshot.hasData
-            ? _diaryRows(snapshot.data!)
-            : SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: snapshot.hasError
-                      ? Text(l.personaError)
-                      : const LinearProgressIndicator(),
-                ),
-              ),
-      );
+  Widget _diaryEntrySliver(AppLocalizations l, PersonaDraft draft) {
+    final query = _search.text.trim();
+    if (query.isNotEmpty) {
+      if (_searchFailed && query == _appliedQuery) {
+        return _diaryStatus(l, draft, Text(l.personaError));
+      }
+      if (query != _appliedQuery || _searching || _searchMatches == null) {
+        return _diaryStatus(l, draft, const LinearProgressIndicator());
+      }
+      return _diaryRows(l, draft, _searchMatches!);
     }
-    if (_selectedOnly) return _diaryRows(const []);
+    if (_selectedOnly) return _diaryRows(l, draft, const []);
     return ref
         .watch(personRelatedEntriesProvider(widget.personId))
         .when(
-          data: _diaryRows,
-          error: (_, _) => SliverToBoxAdapter(child: Text(l.personaError)),
+          data: (matches) => _diaryRows(l, draft, matches),
+          error: (_, _) => _diaryStatus(l, draft, Text(l.personaError)),
           loading: () =>
-              const SliverToBoxAdapter(child: LinearProgressIndicator()),
+              _diaryStatus(l, draft, const LinearProgressIndicator()),
         );
   }
 
-  Widget _diaryRows(List<DiaryEntrySummary> matches) {
+  Widget _diaryStatus(AppLocalizations l, PersonaDraft draft, Widget child) {
+    return SliverMainAxisGroup(
+      slivers: [
+        _diaryToolbar(l, draft, const []),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _diaryToolbar(
+    AppLocalizations l,
+    PersonaDraft draft,
+    List<String> ids,
+  ) {
+    final selected = {for (final source in draft.diaries) source.entryId};
+    final allSelected = ids.isNotEmpty && ids.every(selected.contains);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FilterChip(
+              label: Text('${l.personaSelectedOnly} (${draft.diaries.length})'),
+              selected: _selectedOnly,
+              onSelected: (value) => setState(() => _selectedOnly = value),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: ids.isEmpty || _acting
+                  ? null
+                  : () {
+                      final targets = allSelected
+                          ? ids
+                          : [
+                              for (final id in ids)
+                                if (!selected.contains(id)) id,
+                            ];
+                      if (targets.isEmpty) return;
+                      _run(
+                        () => _controller.selectDiaries(targets, !allSelected),
+                      );
+                    },
+              child: Text(
+                allSelected
+                    ? l.homeSelectionDeselectAll
+                    : l.homeSelectionSelectAll,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _diaryRows(
+    AppLocalizations l,
+    PersonaDraft draft,
+    List<DiaryEntrySummary> matches,
+  ) {
     final sources = {
-      for (final source in _controller.draft!.diaries) source.entryId: source,
+      for (final source in draft.diaries) source.entryId: source,
     };
     final summaries = {for (final summary in matches) summary.id: summary};
     final ids = _selectedOnly
@@ -888,100 +981,109 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
               )
               .toList()
         : matches.map((entry) => entry.id).toList();
-    if (ids.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(context.l10n.personaNoRelatedDiaries),
-        ),
-      );
-    }
-    return SliverList.builder(
-      itemCount: ids.length,
-      itemBuilder: (_, index) {
-        final bodyStyle = _bodyStyle;
-        final id = ids[index];
-        final source = sources[id];
-        final summary = summaries[id];
-        final entry = _controller.entries[id];
-        final title =
-            summary?.title ??
-            entry?.title ??
-            summary?.date.value ??
-            entry?.date.value ??
-            context.l10n.personaSourceUnavailable;
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Checkbox(
-            value: source != null,
-            onChanged: (selected) =>
-                _run(() => _controller.selectDiary(id, selected == true)),
-          ),
-          title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
-          subtitle: Text(
-            source != null && entry == null
-                ? context.l10n.personaSourceUnavailable
-                : source?.needsReview == true
-                ? context.l10n.personaChangedDiary
-                : '${summary?.date.value ?? entry?.date.value ?? ''}${source == null || source.hiddenRanges.isEmpty ? '' : ' · ${context.l10n.personaHiddenCount(source.hiddenRanges.length)}'}',
-          ),
-          trailing: source != null && entry == null
-              ? IconButton(
-                  tooltip: context.l10n.personaRemove,
-                  icon: const Icon(Icons.close),
-                  onPressed: () =>
-                      _run(() => _controller.selectDiary(id, false)),
-                )
-              : Icon(
-                  source != null && source.hiddenRanges.isNotEmpty
-                      ? Icons.visibility_off_outlined
-                      : Icons.chevron_right,
-                  size: 20,
+    return SliverMainAxisGroup(
+      slivers: [
+        _diaryToolbar(l, draft, ids),
+        if (ids.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(l.personaNoRelatedDiaries),
+            ),
+          )
+        else
+          SliverList.builder(
+            itemCount: ids.length,
+            itemBuilder: (_, index) {
+              final bodyStyle = _bodyStyle;
+              final id = ids[index];
+              final source = sources[id];
+              final summary = summaries[id];
+              final entry = _controller.entries[id];
+              final title =
+                  summary?.title ??
+                  entry?.title ??
+                  summary?.date.value ??
+                  entry?.date.value ??
+                  context.l10n.personaSourceUnavailable;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Checkbox(
+                  value: source != null,
+                  onChanged: (selected) =>
+                      _run(() => _controller.selectDiary(id, selected == true)),
                 ),
-          onTap: source != null && entry == null
-              ? null
-              : () => _run(() async {
-                  if (source != null) {
-                    await _mask(
-                      title,
-                      entry!.markdownBody,
-                      source.hiddenRanges,
-                      (hidden, revealed) {
-                        source.hiddenRanges = hidden;
-                        source.revealedRanges = revealed;
-                      },
-                      revealed: source.revealedRanges,
-                      checked: () {
-                        source.needsReview = false;
-                        _controller.schedulePersist();
-                      },
-                    );
-                  } else {
-                    final session = _controller.session;
-                    final value = await ref
-                        .read(vaultRepositoryProvider)
-                        .loadEntry(session!, id);
-                    if (value == null ||
-                        !mounted ||
-                        !identical(session, _controller.session)) {
-                      return;
-                    }
-                    await _dialog<void>(
-                      PersonaDiaryPreviewDialog(
-                        title: title,
-                        body: value.markdownBody,
-                        bodyStyle: bodyStyle,
-                        ranges: _displayRanges(
-                          await _buildMaterialRegistry(),
-                          text: value.markdownBody,
-                          scope: 'diary',
-                        ),
+                title: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  source != null && entry == null
+                      ? context.l10n.personaSourceUnavailable
+                      : source?.needsReview == true
+                      ? context.l10n.personaChangedDiary
+                      : '${summary?.date.value ?? entry?.date.value ?? ''}${source == null || source.hiddenRanges.isEmpty ? '' : ' · ${context.l10n.personaHiddenCount(source.hiddenRanges.length)}'}',
+                ),
+                trailing: source != null && entry == null
+                    ? IconButton(
+                        tooltip: context.l10n.personaRemove,
+                        icon: const Icon(Icons.close),
+                        onPressed: () =>
+                            _run(() => _controller.selectDiary(id, false)),
+                      )
+                    : Icon(
+                        source != null && source.hiddenRanges.isNotEmpty
+                            ? Icons.visibility_off_outlined
+                            : Icons.chevron_right,
+                        size: 20,
                       ),
-                    );
-                  }
-                }),
-        );
-      },
+                onTap: source != null && entry == null
+                    ? null
+                    : () => _run(() async {
+                        if (source != null) {
+                          await _mask(
+                            title,
+                            entry!.markdownBody,
+                            source.hiddenRanges,
+                            (hidden, revealed) {
+                              source.hiddenRanges = hidden;
+                              source.revealedRanges = revealed;
+                            },
+                            revealed: source.revealedRanges,
+                            checked: () {
+                              source.needsReview = false;
+                              _controller.schedulePersist();
+                            },
+                          );
+                        } else {
+                          final session = _controller.session;
+                          final value = await ref
+                              .read(vaultRepositoryProvider)
+                              .loadEntry(session!, id);
+                          if (value == null ||
+                              !mounted ||
+                              !identical(session, _controller.session)) {
+                            return;
+                          }
+                          await _dialog<void>(
+                            PersonaDiaryPreviewDialog(
+                              title: title,
+                              body: value.markdownBody,
+                              bodyStyle: bodyStyle,
+                              ranges: _displayRanges(
+                                await _buildMaterialRegistry(),
+                                text: value.markdownBody,
+                                scope: 'diary',
+                              ),
+                            ),
+                          );
+                        }
+                      }),
+              );
+            },
+          ),
+      ],
     );
   }
 
@@ -1762,7 +1864,13 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         if (controller.failed)
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text(l.personaError),
+            child: Text(switch (controller.generationIssue) {
+              PersonaGenerationIssue.capacity => l.personaCapacityError,
+              PersonaGenerationIssue.evidence => l.personaEvidenceError,
+              PersonaGenerationIssue.cardLength => l.personaCardLengthError,
+              PersonaGenerationIssue.cardLanguage => l.personaCardLanguageError,
+              null => l.personaError,
+            }),
           ),
         if (controller.cleanupPending)
           Padding(
@@ -1770,13 +1878,22 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
             child: Text(l.personaCleanupPending),
           ),
         Expanded(child: _wizardStep(controller, draft)),
-        if (controller.busy)
+        if (controller.generating)
           AiGenerationCard(
-            title: l.personaProcessing,
-            status: l.personaRequestProgress(
-              controller.completedRequests,
-              controller.totalRequests,
-            ),
+            title: personaGenerationPhaseLabel(l, controller.generationPhase),
+            status: switch (controller.batchProgress) {
+              final batch? => l.personaBatchProgress(
+                batch.round,
+                batch.completed,
+                batch.total,
+              ),
+              null => l.chatDiaryGenerationWaiting,
+            },
+            progress: switch (controller.batchProgress) {
+              final batch? => batch.completed / batch.total,
+              null => null,
+            },
+            elapsed: () => controller.generationElapsed,
             hint: l.personaRetryHint,
             onStop: controller.stop,
           )
@@ -1854,9 +1971,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         if (showDiscard)
           OutlinedButton(
             key: const ValueKey('persona-discard-result'),
-            onPressed: disabled
-                ? null
-                : () => _run(_controller.discardResult),
+            onPressed: disabled ? null : () => _run(_controller.discardResult),
             style: OutlinedButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
               side: BorderSide(color: Theme.of(context).colorScheme.error),

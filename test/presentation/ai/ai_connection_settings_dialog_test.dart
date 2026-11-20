@@ -14,11 +14,13 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
+import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
+import 'package:quill_diary/presentation/ai/ai_prompt_settings_dialog.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 
@@ -100,7 +102,30 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  final promptEntry = find.byKey(const ValueKey('ai-prompt-settings'));
+
+  Future<void> openPrompts(WidgetTester tester) async {
+    await tester.ensureVisible(promptEntry);
+    await tester.tap(promptEntry);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> closePrompts(WidgetTester tester) async {
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(AiPromptSettingsDialog),
+            matching: find.byType(TextButton),
+          )
+          .last,
+    );
+    await tester.pumpAndSettle();
+  }
+
   Future<void> prompt(WidgetTester tester, String label) async {
+    if (find.byType(AiPromptSettingsDialog).evaluate().isEmpty) {
+      await openPrompts(tester);
+    }
     await tester.ensureVisible(find.text(label));
     await tester.tap(find.text(label));
     await tester.pumpAndSettle();
@@ -527,8 +552,7 @@ void main() {
   group('提示詞', () {
     testWidgets('聊天個性、引導與生成獨立編輯，自訂內容不被語系切換覆寫', (tester) async {
       await open(tester);
-      expect(find.text('固定規則'), findsNWidgets(2));
-      expect(find.text('使用內建提示詞'), findsNWidgets(5));
+      await openPrompts(tester);
       await tester.tap(find.text('固定規則').first);
       await tester.pumpAndSettle();
       expect(find.text('套用'), findsNothing);
@@ -608,6 +632,7 @@ void main() {
         find.widgetWithText(FilledButton, testEnL10n.aiPromptApply),
       );
       await tester.pumpAndSettle();
+      await closePrompts(tester);
       final Finder englishKey = find.byKey(const ValueKey('ai-api-key-openai'));
       await tester.ensureVisible(englishKey);
       await tester.enterText(englishKey, 'synthetic-key');
@@ -617,6 +642,60 @@ void main() {
       expect(store.chatDiaryPrompts.guidanceOverride, 'Shared guidance');
       expect(store.chatDiaryPrompts.generationOverride, isNull);
       expect(store.organizationPrompts.conversationOverride, isNull);
+      expect(networkCalls, 0);
+    });
+    testWidgets('提示詞頁的內建預覽保留編輯稿，完整預覽採用尚未儲存的個性', (tester) async {
+      await open(tester);
+      await prompt(tester, testL10n.chatDiaryPersonalityLabel);
+      final editor = find.byKey(
+        const ValueKey(ChatDiaryPromptPurpose.personality),
+      );
+      await tester.enterText(editor, '新的個性草稿');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(testL10n.aiPromptViewBuiltIn));
+      await tester.pumpAndSettle();
+      final builtIn = find.byKey(const ValueKey('prompt-built-in-preview'));
+      expect(tester.widget<TextField>(builtIn).readOnly, isTrue);
+      expect(
+        tester.widget<TextField>(builtIn).controller!.text,
+        isNot(contains('新的個性草稿')),
+      );
+      await tester.tap(find.text(testL10n.commonActionClose).last);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(editor).controller!.text, '新的個性草稿');
+      await tester.tap(
+        find.widgetWithText(FilledButton, testL10n.aiPromptApply),
+      );
+      await tester.pumpAndSettle();
+      final complete = find.byKey(
+        const ValueKey<Key>(ValueKey('chat-full-prompt')),
+      );
+      for (final (previewKey, detailKey) in const [
+        (
+          'chat-full-prompt',
+          ValueKey(ChatDiaryPromptPurpose.conversationRules),
+        ),
+        ('organization-full-prompt', ValueKey('organization-rules-prompt')),
+        ('persona-full-prompt', ValueKey('persona-conversation-prompt')),
+      ]) {
+        expect(
+          tester.getTopLeft(find.byKey(ValueKey<Key>(ValueKey(previewKey)))).dy,
+          lessThan(tester.getTopLeft(find.byKey(ValueKey<Key>(detailKey))).dy),
+        );
+      }
+      await tester.ensureVisible(complete);
+      await tester.tap(complete);
+      await tester.pumpAndSettle();
+      final field = find.byKey(const ValueKey('chat-full-prompt'));
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        resolveChatDiaryPrompt(
+          ChatDiaryPromptPurpose.conversation,
+          AppLanguage.zh,
+          const ChatDiaryPromptSettings(personalityOverride: '新的個性草稿'),
+        ),
+      );
+      expect(store.chatDiaryPrompts.personalityOverride, isNull);
       expect(networkCalls, 0);
     });
     testWidgets('既有完整生成提示詞作為引導，切換語言及儲存仍保留原文', (tester) async {
@@ -637,6 +716,7 @@ void main() {
         find.widgetWithText(FilledButton, testEnL10n.aiPromptApply),
       );
       await tester.pumpAndSettle();
+      await closePrompts(tester);
       final key = find.byKey(const ValueKey('ai-api-key-openai'));
       await tester.ensureVisible(key);
       await tester.enterText(key, 'synthetic-key');
@@ -647,6 +727,7 @@ void main() {
     });
     testWidgets('日記整理提示詞可自訂，還原後恢復內建', (tester) async {
       await open(tester);
+      await openPrompts(tester);
       final fixedRules = find.text('固定規則').last;
       await tester.ensureVisible(fixedRules);
       await tester.tap(fixedRules);
@@ -655,7 +736,11 @@ void main() {
       expect(tester.widget<TextField>(rules).readOnly, isTrue);
       expect(
         tester.widget<TextField>(rules).controller!.text,
-        lookupAppLocalizations(appZhLocale).organizationRules,
+        allOf(
+          contains(testL10n.organizationRules),
+          contains(testL10n.organizationDiscussionRulesPrompt),
+          contains(testL10n.organizationDraftRulesPrompt),
+        ),
       );
       expect(find.text('套用'), findsNothing);
       expect(find.text('還原預設'), findsNothing);
@@ -692,6 +777,7 @@ void main() {
       );
       await tester.tap(find.widgetWithText(FilledButton, '套用'));
       await tester.pumpAndSettle();
+      await closePrompts(tester);
       final key = find.byKey(const ValueKey('ai-api-key-openai'));
       await tester.ensureVisible(key);
       await tester.enterText(key, 'synthetic-key');
@@ -709,14 +795,11 @@ void main() {
           )
           .controller!;
       double pixels() => settingsScroll.offset;
-      settingsScroll.jumpTo(80);
-      await tester.pump();
-      await tester.ensureVisible(find.text('預設個性'));
+      await tester.ensureVisible(promptEntry);
       await tester.pump();
       final double before = pixels();
-      expect(before, greaterThan(0));
-      await tester.tap(find.text('預設個性'));
-      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      await prompt(tester, testL10n.chatDiaryPersonalityLabel);
       expect(pixels(), before);
       await tester.drag(
         find.byKey(const ValueKey(ChatDiaryPromptPurpose.personality)),
@@ -732,6 +815,7 @@ void main() {
       await tester.tap(find.text('取消').last);
       await tester.pumpAndSettle();
       expect(find.byType(AiPromptDialog), findsNothing);
+      await closePrompts(tester);
       expect(pixels(), closeTo(before, 0.5));
     });
     testWidgets('小螢幕與鍵盤下可讀取完整提示詞，取消提示詞不改變設定', (tester) async {
@@ -758,6 +842,7 @@ void main() {
       expect(find.byType(AiPromptDialog), findsNothing);
       tester.view.resetViewInsets();
       await tester.pumpAndSettle();
+      await closePrompts(tester);
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
       expect(store.chatDiaryPrompts.personalityOverride, isNull);

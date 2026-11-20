@@ -374,7 +374,10 @@ void main() {
         await started.future;
         subscription.close();
         await container.pump();
-        expect(container.read(chatDiaryControllerProvider(chat.id).exists), isTrue);
+        expect(
+          container.read(chatDiaryControllerProvider(chat.id).exists),
+          isTrue,
+        );
         expect(client.closed, isFalse);
         expect(
           await controller.load(chat.id, setup.session),
@@ -389,7 +392,10 @@ void main() {
         await stream.close();
         await sending;
         await container.pump();
-        expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
+        expect(
+          container.read(chatDiaryControllerProvider(chat.id).exists),
+          isFalse,
+        );
         expect(client.calls, hasLength(1));
         final stored = (await store.load(chat.id, setup.session))!;
         expect(
@@ -420,13 +426,19 @@ void main() {
       await store.saveStarted!.future;
       await container.pump();
       expect(controller.busy, isTrue);
-      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isTrue);
+      expect(
+        container.read(chatDiaryControllerProvider(chat.id).exists),
+        isTrue,
+      );
       store.saveGate = null;
       store.saveStarted = null;
       saved.complete();
       await sending;
       await container.pump();
-      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
+      expect(
+        container.read(chatDiaryControllerProvider(chat.id).exists),
+        isFalse,
+      );
       expect(
         (await store.load(chat.id, setup.session))!.messages.last.status,
         ChatDiaryMessageStatus.complete,
@@ -484,12 +496,18 @@ void main() {
       await started.future;
       subscription.close();
       await container.pump();
-      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isTrue);
+      expect(
+        container.read(chatDiaryControllerProvider(chat.id).exists),
+        isTrue,
+      );
       stream.add('# 合成日記\n\n保留這段內容');
       await stream.close();
       expect(await generation, ChatDiaryGenerationResult.generated);
       await container.pump();
-      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
+      expect(
+        container.read(chatDiaryControllerProvider(chat.id).exists),
+        isFalse,
+      );
       final stored = (await store.load(chat.id, setup.session))!;
       expect(stored.generatedEntryId, isNotNull);
       expect(stored.generatedFromMessageId, stored.activeMessages.last.id);
@@ -539,7 +557,10 @@ void main() {
       await firstStream.close();
       await firstSending;
       await container.pump();
-      expect(container.read(chatDiaryControllerProvider(chat.id).exists), isFalse);
+      expect(
+        container.read(chatDiaryControllerProvider(chat.id).exists),
+        isFalse,
+      );
       expect(second.busy, isTrue);
       expect(secondClient.closed, isFalse);
       secondStream.add('第二個獨立回覆');
@@ -883,6 +904,9 @@ void main() {
       final sentImage = chat.pendingImageIds.single;
       controller.updateComposer('秘密與散步', [const PrivateTextRange(0, 2)]);
       await controller.send();
+      client.output = '最後一則無人接續的回覆';
+      controller.updateComposer('改到週五', []);
+      await controller.send();
       await controller.addImage(testAiPng);
       final unsentImage = chat.pendingImageIds.single;
       controller.updateComposer('未送出的私密內容', [const PrivateTextRange(0, 3)]);
@@ -903,6 +927,12 @@ void main() {
       expect(generation.turns.single.imageIds, [sentImage]);
       expect(generation.turns.single.text, isNot(contains('未送出')));
       expect(generation.turns.single.text, isNot(contains('秘密')));
+      final materials = jsonDecode(generation.turns.single.text) as Map;
+      expect(materials['assistant_context'], [
+        {'for_user_turn': 2, 'text': '回覆'},
+      ]);
+      expect(materials['user_turns'].last, {'turn': 2, 'text': '改到週五'});
+      expect(generation.turns.single.text, isNot(contains('最後一則')));
       client.output = '# 記錄\n\n今天去散步。';
       await controller.generate(testZhL10n);
       expect(client.calls.last.prompt, generation.systemPrompt);
@@ -1057,13 +1087,11 @@ void main() {
         expect(draft.title, '最近的紀錄');
         expect(draft.markdownBody, example.body);
         final history =
-            jsonDecode(client.calls.last.messages.single.text) as List;
-        expect(history.map((message) => message['role']), [
-          'user',
-          'assistant',
+            jsonDecode(client.calls.last.messages.single.text) as Map;
+        expect(history['user_turns'], [
+          {'turn': 1, 'text': example.body},
         ]);
-        expect(history.first['text'], example.body);
-        expect(history.last['text'], '回覆');
+        expect(history['assistant_context'], isEmpty);
       });
     }
     test('多輪上下文重複圖片不讓日記重複附圖', () async {

@@ -302,6 +302,8 @@ int? _leadingPrivacyTokenLength(String text) {
   return (text: output.toString(), pending: pending);
 }
 
+const aiConnectionTestPrompt = 'Reply with OK.';
+
 String aiDiaryDataBlock(String original) =>
     '<diary_data>\n${jsonEncode({'original': original})}\n</diary_data>';
 

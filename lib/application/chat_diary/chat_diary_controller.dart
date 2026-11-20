@@ -464,7 +464,7 @@ class ChatDiaryController extends ChangeNotifier {
                       message,
                       history,
                       l10n: l10n,
-                      forceAttribution: replyPersona != null,
+                      replyingAsPersonaId: replyPersona?.personaId,
                       missingPersonaName: missingPersonaName,
                     ),
               imageIds: List.of(message.imageIds),
@@ -483,11 +483,7 @@ class ChatDiaryController extends ChangeNotifier {
           ? [
               AiPreviewTurn(
                 isUser: true,
-                text: _generationData(
-                  privacy,
-                  history,
-                  missingPersonaName: missingPersonaName,
-                ),
+                text: _generationData(privacy, history),
                 imageIds: [for (final turn in turns) ...turn.imageIds],
               ),
             ]
@@ -664,7 +660,7 @@ class ChatDiaryController extends ChangeNotifier {
     int operationVersion, {
     bool diary = false,
     List<ChatDiaryMessage>? history,
-    bool personaReply = false,
+    String? replyingAsPersonaId,
   }) async {
     final chatSession = chat!;
     final vaultSession = _vaultSession!;
@@ -677,7 +673,7 @@ class ChatDiaryController extends ChangeNotifier {
     _ensureOperationIsCurrent(operationVersion);
     for (final message in selectedHistory) {
       if (!message.isUser &&
-          message.status != ChatDiaryMessageStatus.complete) {
+          (diary || message.status != ChatDiaryMessageStatus.complete)) {
         continue;
       }
       final images = <AiInputImage>[];
@@ -694,13 +690,13 @@ class ChatDiaryController extends ChangeNotifier {
         AiInputMessage(
           isUser: message.isUser,
           text: diary
-              ? _protectedMessageText(privacy, message)
+              ? ''
               : _conversationMessageText(
                   privacy,
                   message,
                   selectedHistory,
                   l10n: l10n,
-                  forceAttribution: personaReply,
+                  replyingAsPersonaId: replyingAsPersonaId,
                   missingPersonaName: missingPersonaName,
                 ),
           images: images,
@@ -711,11 +707,7 @@ class ChatDiaryController extends ChangeNotifier {
     return [
       AiInputMessage(
         isUser: true,
-        text: _generationData(
-          privacy,
-          selectedHistory,
-          missingPersonaName: missingPersonaName,
-        ),
+        text: _generationData(privacy, selectedHistory),
         images: [for (final message in result) ...message.images],
       ),
     ];
@@ -750,12 +742,9 @@ class ChatDiaryController extends ChangeNotifier {
         guidance: prompts.guidanceOverride,
       );
     }
-    var prompt = resolveChatDiaryPrompt(purpose, language, prompts);
-    if (purpose == ChatDiaryPromptPurpose.generation &&
-        chat!.activeMessages.any((m) => m.persona != null)) {
-      prompt = '${l10n.personaDiarySourcePrompt}\n\n$prompt';
-    }
-    return privacy.protectPrompt(prompt);
+    return privacy.protectPrompt(
+      resolveChatDiaryPrompt(purpose, language, prompts),
+    );
   }
 
   Map<String, String> _speaker(
@@ -781,12 +770,17 @@ class ChatDiaryController extends ChangeNotifier {
     ChatDiaryMessage message,
     List<ChatDiaryMessage> history, {
     required AppLocalizations l10n,
-    bool forceAttribution = false,
+    required String? replyingAsPersonaId,
     required String missingPersonaName,
   }) {
     final text = _protectedMessageText(privacy, message);
+    final samePersona =
+        replyingAsPersonaId != null &&
+        message.persona?.personaId == replyingAsPersonaId;
     if (message.isUser ||
-        !forceAttribution && !history.any((m) => m.persona != null)) {
+        samePersona ||
+        (replyingAsPersonaId == null &&
+            !history.any((m) => m.persona != null))) {
       return text;
     }
     final speaker = _speaker(
@@ -804,24 +798,30 @@ class ChatDiaryController extends ChangeNotifier {
 
   String _generationData(
     ChatDiaryPrivacyProcessor privacy,
-    List<ChatDiaryMessage> history, {
-    required String missingPersonaName,
-  }) {
-    final attributed = history.any((m) => m.persona != null);
-    return jsonEncode([
-      for (final message in history)
-        if (message.isUser || message.status == ChatDiaryMessageStatus.complete)
-          {
-            'role': message.isUser ? 'user' : 'assistant',
-            if (attributed)
-              'speaker': _speaker(
-                privacy,
-                message,
-                missingPersonaName: missingPersonaName,
-              ),
-            'text': _protectedMessageText(privacy, message),
-          },
-    ]);
+    List<ChatDiaryMessage> history,
+  ) {
+    final context = <Map<String, Object>>[];
+    final userTurns = <Map<String, Object>>[];
+    for (var i = 0; i < history.length; i++) {
+      final message = history[i];
+      if (!message.isUser) continue;
+      final turn = userTurns.length + 1;
+      if (i > 0) {
+        final previous = history[i - 1];
+        if (!previous.isUser &&
+            previous.status == ChatDiaryMessageStatus.complete) {
+          context.add({
+            'for_user_turn': turn,
+            'text': _protectedMessageText(privacy, previous),
+          });
+        }
+      }
+      userTurns.add({
+        'turn': turn,
+        'text': _protectedMessageText(privacy, message),
+      });
+    }
+    return jsonEncode({'assistant_context': context, 'user_turns': userTurns});
   }
 
   Future<_LoadedPersona> _loadReplyPersona(
@@ -1169,7 +1169,7 @@ class ChatDiaryController extends ChangeNotifier {
         privacy,
         operationVersion,
         history: chatSession.pathTo(replyParent),
-        personaReply: replyPersona != null,
+        replyingAsPersonaId: replyPersona?.personaId,
       );
       final client = await _clientForOperation(operationVersion);
       _ensureOperationIsCurrent(operationVersion);

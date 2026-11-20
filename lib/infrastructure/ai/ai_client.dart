@@ -116,7 +116,7 @@ abstract class AiClient {
   }
 
   Future<void> testConnection() async {
-    const prompt = 'Reply with OK.';
+    const prompt = aiConnectionTestPrompt;
     final protocol = connectionConfig.protocol;
     final path = switch (protocol) {
       AiApiProtocol.chatCompletions => '/chat/completions',

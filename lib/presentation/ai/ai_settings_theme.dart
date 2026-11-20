@@ -23,3 +23,17 @@ class AiSettingsTheme extends StatelessWidget {
     );
   }
 }
+
+class AiSettingsSurface extends StatelessWidget {
+  const AiSettingsSurface({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    borderRadius: BorderRadius.circular(16),
+    clipBehavior: Clip.antiAlias,
+    child: child,
+  );
+}

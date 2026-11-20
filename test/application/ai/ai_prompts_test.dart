@@ -144,6 +144,10 @@ void main() {
     expect(enChat, contains(en.organizationConversationPrompt));
     expect(zhDraft, contains(zh.organizationGenerationPrompt));
     expect(enDraft, contains(en.organizationGenerationPrompt));
+    expect(zhChat, contains(zh.organizationDiscussionRulesPrompt));
+    expect(zhChat, isNot(contains(zh.organizationDraftRulesPrompt)));
+    expect(zhDraft, contains(zh.organizationDraftRulesPrompt));
+    expect(zhDraft, isNot(contains(zh.organizationDiscussionRulesPrompt)));
     expect(zhChat, isNot(contains(en.organizationConversationPrompt)));
     expect(enDraft, isNot(contains(zh.organizationGenerationPrompt)));
 

@@ -61,6 +61,13 @@ class AiRequestPreviewDialog extends StatelessWidget {
           ),
           text: generation.instructions,
         ),
+        if (generation.turns.singleOrNull case final material?
+            when generation.conversationTurns != null)
+          AiPreviewTextSection(
+            key: const ValueKey('ai-request-generation-data'),
+            title: l10n.chatDiaryGenerationDataLabel,
+            text: material.text,
+          ),
       ],
       if (diary != null) ...[
         AiPreviewTextSection(

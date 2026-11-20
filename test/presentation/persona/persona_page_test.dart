@@ -95,6 +95,7 @@ void main() {
           personaId: record.personaId,
           updateTarget: target,
           modelTarget: hasRequest ? PersonaUpdateTarget.memory : null,
+          l10n: testL10n,
           fallbackCards: {
             for (final card in cards.entries)
               card.key: PersonaCandidate(
@@ -374,6 +375,7 @@ void main() {
         personaId: record.personaId,
         updateTarget: PersonaUpdateTarget.both,
         modelTarget: PersonaUpdateTarget.both,
+        l10n: testL10n,
         fallbackCards: personaCandidates(),
         baseUpdatedAt: record.draft!.baseUpdatedAt,
         session: session,

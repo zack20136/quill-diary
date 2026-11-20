@@ -13,13 +13,17 @@ import '../../helpers/shared/test_l10n.dart';
 void main() {
   final l10n = testZhL10n;
 
-  test('分身固定指令以身分句開頭，並使用目前生效的對話引導', () {
+  test('分身預設使用自己的對話引導，並沿用使用者自訂引導', () {
     for (final language in AppLanguage.values) {
       final localized = lookupAppLocalizations(language.flutterLocale);
       final defaults = personaFixedInstructions(l10n: localized);
       expect(defaults, startsWith(localized.personaIdentityPrompt));
       expect(defaults, contains(localized.chatDiaryConversationRules));
-      expect(defaults, endsWith(localized.chatDiaryConversationGuidancePrompt));
+      expect(defaults, endsWith(localized.personaConversationGuidancePrompt));
+      expect(
+        defaults,
+        isNot(contains(localized.chatDiaryConversationGuidancePrompt)),
+      );
       expect(
         defaults,
         isNot(contains(localized.chatDiaryConversationRoleLine)),
@@ -34,7 +38,7 @@ void main() {
       expect(overridden, endsWith('本次共通引導'));
       expect(
         overridden,
-        isNot(contains(localized.chatDiaryConversationGuidancePrompt)),
+        isNot(contains(localized.personaConversationGuidancePrompt)),
       );
     }
   });

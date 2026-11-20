@@ -59,13 +59,13 @@ String resolveDiaryOrganizationInstructions({
   required DiaryOrganizationPromptSettings settings,
 }) {
   final l10n = localizationsFor(language);
-  final stage = generate
-      ? l10n.organizationGenerationLabel
-      : l10n.organizationConversationLabel;
+  final stageRules = generate
+      ? l10n.organizationDraftRulesPrompt
+      : l10n.organizationDiscussionRulesPrompt;
   final prompt = resolveDiaryOrganizationPrompt(
     generate: generate,
     language: language,
     settings: settings,
   );
-  return '${l10n.organizationRules}\n\n$stage\n\n$prompt';
+  return '${l10n.organizationRules}\n\n$stageRules\n\n$prompt';
 }

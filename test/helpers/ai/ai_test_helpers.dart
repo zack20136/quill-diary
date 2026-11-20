@@ -75,12 +75,17 @@ class OverviewAiSettingsStore extends AiSettingsStore {
   @override
   Future<void> save(
     UnlockedVaultSession session,
-    AiStoredSettings stored,
-  ) async {
+    AiStoredSettings stored, {
+    bool preserveSelectedPersona = false,
+  }) async {
     settings = stored.connection;
     aiEnabled = stored.aiEnabled;
     hidePersonNames = stored.hidePersonNames;
-    chatDiaryPrompts = stored.chatDiaryPrompts;
+    chatDiaryPrompts = preserveSelectedPersona
+        ? stored.chatDiaryPrompts.withSelectedPersona(
+            chatDiaryPrompts.selectedPersona,
+          )
+        : stored.chatDiaryPrompts;
     organizationPrompts = stored.organizationPrompts;
   }
 

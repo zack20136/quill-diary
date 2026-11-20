@@ -5,6 +5,12 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_option_field.dart';
+
+typedef AiPromptVariant = ({
+  String Function(AppLocalizations) label,
+  String Function(AppLanguage) prompt,
+});
 
 class AiPromptEdit {
   const AiPromptEdit(this.customText);
@@ -19,6 +25,7 @@ Future<AiPromptEdit?> showAiPromptDialog(
   required Key fieldKey,
   String? customText,
   bool readOnly = false,
+  List<AiPromptVariant> variants = const [],
 }) => showAppDialog<AiPromptEdit>(
   context: context,
   builder: (_) => AiPromptDialog(
@@ -28,6 +35,7 @@ Future<AiPromptEdit?> showAiPromptDialog(
     fieldKey: fieldKey,
     customText: customText,
     readOnly: readOnly,
+    variants: variants,
   ),
 );
 
@@ -40,6 +48,7 @@ class AiPromptDialog extends StatefulWidget {
     required this.fieldKey,
     this.customText,
     this.readOnly = false,
+    this.variants = const [],
   });
 
   final String Function(AppLocalizations l10n) title;
@@ -48,6 +57,7 @@ class AiPromptDialog extends StatefulWidget {
   final Key fieldKey;
   final String? customText;
   final bool readOnly;
+  final List<AiPromptVariant> variants;
 
   @override
   State<AiPromptDialog> createState() => _AiPromptDialogState();
@@ -60,6 +70,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
   late bool _custom = widget.customText != null;
   String? _locale;
   bool _invalid = false, _obscured = false;
+  int _variant = 0;
 
   @override
   void initState() {
@@ -87,9 +98,15 @@ class _AiPromptDialogState extends State<AiPromptDialog>
     _custom = _controller.text != _defaultPrompt();
   }
 
-  String _defaultPrompt() => widget.defaultPrompt(
-    context.l10n.localeName == 'en' ? AppLanguage.en : AppLanguage.zh,
-  );
+  String _defaultPrompt() {
+    final language = context.l10n.localeName == 'en'
+        ? AppLanguage.en
+        : AppLanguage.zh;
+    if (widget.variants.isNotEmpty) {
+      return widget.variants[_variant].prompt(language);
+    }
+    return widget.defaultPrompt(language);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +124,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
           : LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 const double gap = 12;
-                // 鍵盤把卡片壓矮時，說明改成自己捲，輸入框仍保留一行的高度。
+                // 鍵盤開啟時，保留至少一行輸入空間。
                 final double fieldMin = MediaQuery.textScalerOf(context)
                     .scale(40);
                 final double errorReserve = _invalid ? gap + 20 : 0;
@@ -124,9 +141,31 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                         behavior: ScrollConfiguration.of(context)
                             .copyWith(scrollbars: false),
                         child: SingleChildScrollView(
-                          child: Text(
-                            widget.help(l10n),
-                            style: Theme.of(context).textTheme.bodySmall,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                widget.help(l10n),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              if (widget.variants.isNotEmpty) ...[
+                                const SizedBox(height: gap),
+                                AppOptionField<int>(
+                                  label: l10n.aiPromptPreviewVariant,
+                                  value: _variant,
+                                  options: [
+                                    for (final (index, variant)
+                                        in widget.variants.indexed)
+                                      (index, variant.label(l10n)),
+                                  ],
+                                  onChanged: (index) => setState(() {
+                                    _variant = index;
+                                    _controller.text = _defaultPrompt();
+                                    if (_scroll.hasClients) _scroll.jumpTo(0);
+                                  }),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
@@ -176,7 +215,25 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                 );
               },
             ),
-      leading: widget.readOnly ? null : _restoreButton(l10n),
+      leading: widget.readOnly
+          ? null
+          : Wrap(
+              children: [
+                _restoreButton(l10n),
+                if (_custom && !_obscured)
+                  TextButton(
+                    onPressed: () => showAiPromptDialog(
+                      context,
+                      title: widget.title,
+                      help: (_) => l10n.aiPromptBuiltIn,
+                      defaultPrompt: widget.defaultPrompt,
+                      fieldKey: const ValueKey('prompt-built-in-preview'),
+                      readOnly: true,
+                    ),
+                    child: Text(l10n.aiPromptViewBuiltIn),
+                  ),
+              ],
+            ),
       actions: _actions(l10n),
     );
   }

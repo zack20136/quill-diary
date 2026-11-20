@@ -1,3 +1,4 @@
+import 'package:quill_diary/application/persona/persona_controller.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/l10n/app_localizations.dart';
 
@@ -10,3 +11,14 @@ String personaStepLabel(AppLocalizations l10n, PersonaStep step) =>
       PersonaStep.confirmation => l10n.personaConfirmation,
       PersonaStep.review => l10n.personaReview,
     };
+
+String personaGenerationPhaseLabel(
+  AppLocalizations l10n,
+  PersonaGenerationPhase? phase,
+) => switch (phase) {
+  PersonaGenerationPhase.extracting => l10n.personaExtractingActive,
+  PersonaGenerationPhase.reducing => l10n.personaReducingActive,
+  PersonaGenerationPhase.integrating => l10n.personaIntegratingActive,
+  PersonaGenerationPhase.compacting => l10n.personaCompactingActive,
+  null => l10n.personaProcessing,
+};

@@ -24,6 +24,10 @@ enum PersonaStep { materials, confirmation, review }
 abstract final class PersonaLimits {
   static const memoryCodeUnits = 8000;
   static const toneCodeUnits = 4000;
+  static const compactMemoryCodeUnits = 7200;
+  static const compactToneCodeUnits = 3600;
+  static const evidenceCodeUnits = 1500;
+  static const extractionRounds = 4;
   static const requestCodeUnits = 16000;
   static const responseCodeUnits = 64000;
   static const importBytes = 16 * 1024 * 1024;
@@ -32,6 +36,10 @@ abstract final class PersonaLimits {
   static const pieceCodeUnits = 9000;
   static int card(PersonaCardKind kind) =>
       kind == PersonaCardKind.memory ? memoryCodeUnits : toneCodeUnits;
+}
+
+class PersonaCardTooLong extends FormatException {
+  const PersonaCardTooLong() : super('分身內容過長');
 }
 
 bool personaTimesMatch(DateTime? left, DateTime? right) {
@@ -51,7 +59,10 @@ class PersonaCandidate {
   final Map<String, String?> tokens;
 
   void validate(PersonaCardKind kind) {
-    if (text.trim().isEmpty || text.length > PersonaLimits.card(kind)) {
+    if (text.length > PersonaLimits.card(kind)) {
+      throw const PersonaCardTooLong();
+    }
+    if (text.trim().isEmpty) {
       throw const FormatException('分身內容長度不正確');
     }
     validateBindings();

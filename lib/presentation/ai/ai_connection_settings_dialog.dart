@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
-import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
-import 'package:quill_diary/application/ai/ai_prompts.dart';
 import 'package:quill_diary/application/errors/ai_error_text.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
@@ -12,14 +10,13 @@ import 'package:quill_diary/domain/ai/ai_catalog.dart';
 import 'package:quill_diary/domain/ai/ai_connection_settings.dart';
 import 'package:quill_diary/domain/ai/ai_failure.dart';
 import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
-import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/ai/ai_client.dart';
 import 'package:quill_diary/infrastructure/ai/ai_transport.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_model_thinking_dialog.dart';
-import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
+import 'package:quill_diary/presentation/ai/ai_prompt_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_settings_theme.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
@@ -109,8 +106,9 @@ class _AiConnectionSettingsDialogState
   String? _testingConnectionId;
   bool get _isTestingConnection => _testingConnectionId != null;
   int _connectionTestVersion = 0;
-  String? _personalityOverride, _guidanceOverride, _generationOverride;
-  String? _organizationConversationOverride, _organizationGenerationOverride;
+  ChatDiaryPromptSettings _chatPrompts = const ChatDiaryPromptSettings();
+  DiaryOrganizationPromptSettings _organizationPrompts =
+      const DiaryOrganizationPromptSettings();
   bool _aiEnabled = true;
   bool _hidePersonNames = true;
   bool _isLoadingSettings = true;
@@ -219,13 +217,8 @@ class _AiConnectionSettingsDialogState
           .firstOrNull
           ?.config
           .connectionId;
-      _personalityOverride = stored.chatDiaryPrompts.personalityOverride;
-      _guidanceOverride = stored.chatDiaryPrompts.guidanceOverride;
-      _generationOverride = stored.chatDiaryPrompts.generationOverride;
-      _organizationConversationOverride =
-          stored.organizationPrompts.conversationOverride;
-      _organizationGenerationOverride =
-          stored.organizationPrompts.generationOverride;
+      _chatPrompts = stored.chatDiaryPrompts;
+      _organizationPrompts = stored.organizationPrompts;
       _aiEnabled = stored.aiEnabled;
       _hidePersonNames =
           widget.initialHidePersonNames ?? stored.hidePersonNames;
@@ -553,29 +546,23 @@ class _AiConnectionSettingsDialogState
     });
   }
 
-  Future<void> _editPrompt({
-    required String? customText,
-    required String Function(AppLocalizations l10n) title,
-    required String Function(AppLocalizations l10n) help,
-    required String Function(AppLanguage language) defaultPrompt,
-    required Key fieldKey,
-    void Function(String? customText)? apply,
-    bool readOnly = false,
-  }) async {
-    final result = await _withoutOuterScroll(
-      () => showAiPromptDialog(
-        context,
-        readOnly: readOnly,
-        title: title,
-        help: help,
-        defaultPrompt: defaultPrompt,
-        fieldKey: fieldKey,
-        customText: customText,
+  Future<void> _openPromptSettings() async {
+    await _withoutOuterScroll(
+      () => showAppDialog<void>(
+        context: context,
+        builder: (_) => AiPromptSettingsDialog(
+          chat: _chatPrompts,
+          organization: _organizationPrompts,
+          onChanged: (chat, organization) {
+            if (!mounted) return;
+            setState(() {
+              _chatPrompts = chat;
+              _organizationPrompts = organization;
+            });
+          },
+        ),
       ),
     );
-    if (mounted && result != null && apply != null && !readOnly) {
-      setState(() => apply(result.customText));
-    }
   }
 
   AiConnectionSettings _settings() => AiConnectionSettings(
@@ -717,16 +704,10 @@ class _AiConnectionSettingsDialogState
           connection: _settings(),
           aiEnabled: _aiEnabled,
           hidePersonNames: _hidePersonNames,
-          chatDiaryPrompts: ChatDiaryPromptSettings(
-            personalityOverride: _personalityOverride,
-            guidanceOverride: _guidanceOverride,
-            generationOverride: _generationOverride,
-          ),
-          organizationPrompts: DiaryOrganizationPromptSettings(
-            conversationOverride: _organizationConversationOverride,
-            generationOverride: _organizationGenerationOverride,
-          ),
+          chatDiaryPrompts: _chatPrompts,
+          organizationPrompts: _organizationPrompts,
         ),
+        preserveSelectedPersona: true,
       );
       for (final credential in _credentialsPendingDeletion.values) {
         await store.saveApiKey(credential.connectionConfig, '');
@@ -761,47 +742,6 @@ class _AiConnectionSettingsDialogState
     } finally {
       if (mounted) setState(() => _isSavingSettings = false);
     }
-  }
-
-  Widget _promptTile({
-    required String title,
-    required IconData icon,
-    required VoidCallback onTap,
-    String? custom,
-    bool showStatus = true,
-  }) {
-    final l10n = context.l10n;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-      leading: Icon(icon, size: 22),
-      minLeadingWidth: 22,
-      horizontalTitleGap: 12,
-      titleTextStyle: Theme.of(context).textTheme.bodyMedium,
-      subtitleTextStyle: Theme.of(context).textTheme.bodySmall
-          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      title: Text(title),
-      subtitle: showStatus
-          ? Text(custom == null ? l10n.aiPromptBuiltIn : l10n.aiPromptCustom)
-          : null,
-      trailing: const Icon(Icons.chevron_right),
-      onTap: _isBusy ? null : onTap,
-    );
-  }
-
-  Widget _promptGroup(List<Widget> tiles) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var index = 0; index < tiles.length; index++) ...[
-            if (index > 0) const Divider(height: 1, indent: 12, endIndent: 12),
-            tiles[index],
-          ],
-        ],
-      ),
-    );
   }
 
   List<_AiModelEntry> _modelRows() {
@@ -1200,191 +1140,22 @@ class _AiConnectionSettingsDialogState
                       const SizedBox(height: 12),
                       _hidePeopleCard(l10n),
                       const SizedBox(height: 12),
-                      _sectionCard(
-                        title: l10n.chatDiaryTitle,
-                        children: [
-                          _promptGroup([
-                            _promptTile(
-                              title: l10n.chatDiaryRulesLabel,
-                              showStatus: false,
-                              icon: Icons.shield_outlined,
-                              onTap: () => _editPrompt(
-                                customText: null,
-                                readOnly: true,
-                                title: (l10n) => l10n.chatDiaryRulesLabel,
-                                help: (l10n) => l10n.chatDiaryRulesHelp,
-                                defaultPrompt: (language) =>
-                                    resolveChatDiaryPrompt(
-                                      ChatDiaryPromptPurpose.conversationRules,
-                                      language,
-                                      const ChatDiaryPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  ChatDiaryPromptPurpose.conversationRules,
-                                ),
-                              ),
-                            ),
-                            _promptTile(
-                              title: l10n.chatDiaryGuidanceLabel,
-                              custom: _guidanceOverride,
-                              icon: Icons.route_outlined,
-                              onTap: () => _editPrompt(
-                                customText: _guidanceOverride,
-                                title: (l10n) => l10n.chatDiaryGuidanceLabel,
-                                help: (l10n) => l10n.chatDiaryGuidanceHelp,
-                                defaultPrompt: (language) =>
-                                    resolveChatDiaryPrompt(
-                                      ChatDiaryPromptPurpose
-                                          .conversationGuidance,
-                                      language,
-                                      const ChatDiaryPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  ChatDiaryPromptPurpose.conversationGuidance,
-                                ),
-                                apply: (value) => _guidanceOverride = value,
-                              ),
-                            ),
-                            _promptTile(
-                              title: l10n.chatDiaryPersonalityLabel,
-                              custom: _personalityOverride,
-                              icon: Icons.forum_outlined,
-                              onTap: () => _editPrompt(
-                                customText: _personalityOverride,
-                                title: (l10n) => l10n.chatDiaryPersonalityLabel,
-                                help: (l10n) => l10n.chatDiaryPersonalityHelp,
-                                defaultPrompt: (language) =>
-                                    resolveChatDiaryPrompt(
-                                      ChatDiaryPromptPurpose.personality,
-                                      language,
-                                      const ChatDiaryPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  ChatDiaryPromptPurpose.personality,
-                                ),
-                                apply: (value) => _personalityOverride = value,
-                              ),
-                            ),
-                            _promptTile(
-                              title: l10n.chatDiaryGenerationRulesLabel,
-                              showStatus: false,
-                              icon: Icons.shield_outlined,
-                              onTap: () => _editPrompt(
-                                customText: null,
-                                readOnly: true,
-                                title: (l10n) =>
-                                    l10n.chatDiaryGenerationRulesLabel,
-                                help: (l10n) =>
-                                    l10n.chatDiaryGenerationRulesHelp,
-                                defaultPrompt: (language) =>
-                                    resolveChatDiaryPrompt(
-                                      ChatDiaryPromptPurpose.generationRules,
-                                      language,
-                                      const ChatDiaryPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  ChatDiaryPromptPurpose.generationRules,
-                                ),
-                              ),
-                            ),
-                            _promptTile(
-                              title: l10n.chatDiaryGenerationGuidanceLabel,
-                              custom: _generationOverride,
-                              icon: Icons.article_outlined,
-                              onTap: () => _editPrompt(
-                                customText: _generationOverride,
-                                title: (l10n) =>
-                                    l10n.chatDiaryGenerationGuidanceLabel,
-                                help: (l10n) =>
-                                    l10n.chatDiaryGenerationGuidanceHelp,
-                                defaultPrompt: (language) =>
-                                    resolveChatDiaryPrompt(
-                                      ChatDiaryPromptPurpose.generationGuidance,
-                                      language,
-                                      const ChatDiaryPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  ChatDiaryPromptPurpose.generationGuidance,
-                                ),
-                                apply: (value) => _generationOverride = value,
-                              ),
-                            ),
-                          ]),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _sectionCard(
-                        title: l10n.organizationTitle,
-                        children: [
-                          _promptGroup([
-                            _promptTile(
-                              title: l10n.chatDiaryRulesLabel,
-                              showStatus: false,
-                              icon: Icons.shield_outlined,
-                              onTap: () => _editPrompt(
-                                customText: null,
-                                readOnly: true,
-                                title: (l10n) => l10n.chatDiaryRulesLabel,
-                                help: (l10n) => l10n.organizationRulesHelp,
-                                defaultPrompt: (language) =>
-                                    localizationsFor(language)
-                                        .organizationRules,
-                                fieldKey: const ValueKey(
-                                  'organization-rules-prompt',
-                                ),
-                              ),
-                            ),
-                            _promptTile(
-                              title: l10n.organizationConversationLabel,
-                              custom: _organizationConversationOverride,
-                              icon: Icons.forum_outlined,
-                              onTap: () => _editPrompt(
-                                customText: _organizationConversationOverride,
-                                title: (l10n) =>
-                                    l10n.organizationConversationLabel,
-                                help: (l10n) =>
-                                    l10n.organizationConversationHelp,
-                                defaultPrompt: (language) =>
-                                    resolveDiaryOrganizationPrompt(
-                                      generate: false,
-                                      language: language,
-                                      settings:
-                                          const DiaryOrganizationPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  'organization-conversation-prompt',
-                                ),
-                                apply: (value) =>
-                                    _organizationConversationOverride = value,
-                              ),
-                            ),
-                            _promptTile(
-                              title: l10n.organizationGenerationLabel,
-                              custom: _organizationGenerationOverride,
-                              icon: Icons.edit_note_outlined,
-                              onTap: () => _editPrompt(
-                                customText: _organizationGenerationOverride,
-                                title: (l10n) =>
-                                    l10n.organizationGenerationLabel,
-                                help: (l10n) => l10n.organizationGenerationHelp,
-                                defaultPrompt: (language) =>
-                                    resolveDiaryOrganizationPrompt(
-                                      generate: true,
-                                      language: language,
-                                      settings:
-                                          const DiaryOrganizationPromptSettings(),
-                                    ),
-                                fieldKey: const ValueKey(
-                                  'organization-generation-prompt',
-                                ),
-                                apply: (value) =>
-                                    _organizationGenerationOverride = value,
-                              ),
-                            ),
-                          ]),
-                          const SizedBox(height: 8),
-                        ],
+                      AiSettingsSurface(
+                        child: ListTile(
+                          key: const ValueKey('ai-prompt-settings'),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ),
+                          leading: const Icon(Icons.notes_outlined, size: 22),
+                          minLeadingWidth: 22,
+                          horizontalTitleGap: 12,
+                          titleTextStyle: Theme.of(context)
+                              .textTheme
+                              .bodyMedium,
+                          title: Text(l10n.aiPromptsTitle),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: _isBusy ? null : _openPromptSettings,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       _sectionCard(
@@ -1472,10 +1243,7 @@ class _AiConnectionSettingsDialogState
   }
 
   Widget _hidePeopleCard(AppLocalizations l10n) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
+    return AiSettingsSurface(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
         child: Column(
@@ -1500,10 +1268,7 @@ class _AiConnectionSettingsDialogState
   }
 
   Widget _sectionCard({required String title, required List<Widget> children}) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
+    return AiSettingsSurface(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         child: Column(

@@ -67,10 +67,9 @@ Future<void> _dragListFromEdge(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
-    await (FontLoader('MaterialIcons')..addFont(
-          rootBundle.load('fonts/MaterialIcons-Regular.otf'),
-        ))
-        .load();
+    await (FontLoader(
+      'MaterialIcons',
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
   });
   final person = personaPerson('測試王小明');
   final peer = personaPerson('阿華');
@@ -200,6 +199,7 @@ void main() {
         personaId: record.personaId,
         updateTarget: PersonaUpdateTarget.both,
         modelTarget: PersonaUpdateTarget.memory,
+        l10n: testL10n,
         fallbackCards: personaCandidates(),
         baseUpdatedAt: controller.draft!.baseUpdatedAt,
         session: session,

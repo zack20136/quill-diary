@@ -2,15 +2,37 @@ import 'dart:convert';
 
 import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/persona/persona_material.dart';
 import 'package:quill_diary/application/persona/persona_request_payload.dart';
 import 'package:quill_diary/domain/ai/ai_request.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/shared/test_l10n.dart';
 
 void main() {
+  test('依材料原本的本地日期提供前一日，未標日期的原文不推算', () {
+    final chat = PersonaMaterial.chat(
+      label: '聊天',
+      date: '2026-11-01T00:20:00+08:00',
+      text: '昨天收到了',
+      speakerRole: PersonaSpeakerRole.personaSubject,
+      speaker: '人物',
+      styleText: '',
+    );
+    const diary = PersonaMaterial.diary(
+      label: '日記',
+      date: '2024-03-01',
+      text: 'I got it yesterday',
+    );
+    const raw = PersonaMaterial.raw(label: '原文', text: '昨天收到了');
+    expect(chat.toRequestJson()['previous_local_date'], '2026-10-31');
+    expect(diary.toRequestJson()['previous_local_date'], '2024-02-29');
+    expect(raw.toRequestJson(), isNot(contains('previous_local_date')));
+  });
+
   test('長材料的正文與風格各自成段，不會按編號配在一起', () {
     final pieces = personaExtractionBatches(
       [

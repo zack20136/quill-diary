@@ -275,11 +275,27 @@ void main() {
     );
     expect(remembered.toJson()['version'], DataVersions.aiSettings);
 
+    await store.save(
+      setup.session,
+      remembered.copyWith(
+        chatDiaryPrompts: const ChatDiaryPromptSettings(
+          guidanceOverride: '已更新引導',
+        ),
+      ),
+      preserveSelectedPersona: true,
+    );
+    final edited = await store.read(setup.session);
+    expect(edited.chatDiaryPrompts.guidanceOverride, '已更新引導');
+    expect(
+      edited.chatDiaryPrompts.selectedPersona?.personaId,
+      persona.personaId,
+    );
+
     await store.updateSelectedPersona(setup.session, null);
 
     final cleared = await store.read(setup.session);
     expect(cleared.chatDiaryPrompts.selectedPersona, isNull);
-    expect(cleared.chatDiaryPrompts.guidanceOverride, '保留引導');
+    expect(cleared.chatDiaryPrompts.guidanceOverride, '已更新引導');
     expect(
       (cleared.toJson()['chat_diary'] as Map).containsKey('selected_persona'),
       isFalse,

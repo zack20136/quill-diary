@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/ai/ai_connection_providers.dart';
-import 'package:quill_diary/application/ai/ai_prompt_localizations.dart';
 import 'package:quill_diary/application/persona/persona_material.dart';
+import 'package:quill_diary/application/persona/persona_prompts.dart';
 import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/application/persona/persona_request_payload.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
@@ -25,11 +25,30 @@ import 'package:quill_diary/infrastructure/persona/persona_store.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
+enum PersonaGenerationPhase { extracting, reducing, integrating, compacting }
+
+enum PersonaGenerationIssue { capacity, evidence, cardLength, cardLanguage }
+
+typedef PersonaBatchProgress = ({int round, int completed, int total});
+
+final _quotedPersonaText = RegExp(r'「[^」]*」|『[^』]*』|“[^”]*”|"[^"\r\n]*"');
+final _personaHanCharacter = RegExp(r'[\u3400-\u9fff\uf900-\ufaff]');
+final _personaEnglishWord = RegExp(r'[A-Za-z]{2,}');
+
+bool _personaHasEnglishProse(String text) {
+  final prose = text
+      .replaceAll(privacyTokenPattern, '')
+      .replaceAll(_quotedPersonaText, '');
+  final latin = _personaEnglishWord.allMatches(prose).length;
+  return latin >= 4 && latin > _personaHanCharacter.allMatches(prose).length;
+}
+
 class PersonaGenerationContext {
   PersonaGenerationContext({
     required this.personaId,
     required this.updateTarget,
     required this.modelTarget,
+    required this.l10n,
     required Map<PersonaCardKind, PersonaCandidate> fallbackCards,
     required Map<PersonaCardKind, DateTime?> baseUpdatedAt,
     required this.session,
@@ -48,6 +67,7 @@ class PersonaGenerationContext {
   final String personaId;
   final PersonaUpdateTarget updateTarget;
   final PersonaUpdateTarget? modelTarget;
+  final AppLocalizations l10n;
   final Map<PersonaCardKind, PersonaCandidate> fallbackCards;
   final Map<PersonaCardKind, DateTime?> baseUpdatedAt;
   final UnlockedVaultSession session;
@@ -122,11 +142,15 @@ class PersonaController extends ChangeNotifier {
   bool loading = false;
   bool busy = false;
   bool failed = false;
+  PersonaGenerationIssue? generationIssue;
+  PersonaGenerationPhase? generationPhase;
   bool cleanupPending = false;
   bool missingDiaries = false;
-  int completedRequests = 0;
-  int totalRequests = 0;
-  final Map<String, String> _responses = {};
+  PersonaBatchProgress? batchProgress;
+  final _generationClock = Stopwatch();
+  bool get generating => _generationClock.isRunning;
+  Duration get generationElapsed => _generationClock.elapsed;
+  final Map<String, List<PersonaEvidence>> _evidenceCache = {};
   AiClient? _client;
   Timer? _saveTimer;
   int _epoch = 0;
@@ -362,8 +386,9 @@ class PersonaController extends ChangeNotifier {
     if (draft?.step == PersonaStep.confirmation) {
       draft!.step = PersonaStep.materials;
     }
-    _responses.clear();
+    _evidenceCache.clear();
     failed = false;
+    generationIssue = null;
   }
 
   void resetToMaterials() {
@@ -438,23 +463,57 @@ class PersonaController extends ChangeNotifier {
     }
   }
 
-  Future<void> selectDiary(String id, bool selected) async {
+  Future<void> selectDiary(String id, bool selected) =>
+      selectDiaries([id], selected);
+
+  /// 已選日記沿用原有遮蔽。其餘變更寫入後才回報讀取失敗。
+  Future<void> selectDiaries(Iterable<String> ids, bool selected) async {
     if (busy || draft == null || session == null) return;
-    if (selected && draft!.diaries.any((d) => d.entryId == id)) return;
+    final requested = <String>[];
+    final seen = <String>{};
+    for (final id in ids) {
+      if (seen.add(id)) requested.add(id);
+    }
+    if (requested.isEmpty) return;
     if (!selected) {
-      draft!.diaries.removeWhere((d) => d.entryId == id);
-      entries.remove(id);
-    } else if (!draft!.diaries.any((d) => d.entryId == id)) {
-      final epoch = _epoch;
-      final loaded = await _readDiary(id, epoch);
-      if (loaded == null) throw const FormatException('日記不可用');
-      entries[id] = loaded.entry;
+      final before = draft!.diaries.length;
+      draft!.diaries.removeWhere((d) => seen.contains(d.entryId));
+      for (final id in requested) {
+        entries.remove(id);
+      }
+      if (draft!.diaries.length == before) return;
+      resetToMaterials();
+      await persist();
+      return;
+    }
+    final existing = {for (final source in draft!.diaries) source.entryId};
+    final missing = [
+      for (final id in requested)
+        if (!existing.contains(id)) id,
+    ];
+    if (missing.isEmpty) return;
+    final epoch = _epoch;
+    final loaded = <({DiaryEntry entry, String hash})>[];
+    var unavailable = false;
+    for (final id in missing) {
+      final value = await _readDiary(id, epoch);
+      if (value == null) {
+        unavailable = true;
+        continue;
+      }
+      loaded.add(value);
+    }
+    _ensure(epoch);
+    if (loaded.isEmpty) throw const FormatException('日記不可用');
+    for (final value in loaded) {
+      entries[value.entry.id] = value.entry;
       draft!.diaries.add(
-        PersonaDiarySource(entryId: id, bodyHash: loaded.hash),
+        PersonaDiarySource(entryId: value.entry.id, bodyHash: value.hash),
       );
     }
     resetToMaterials();
     await persist();
+    if (unavailable) throw const FormatException('日記不可用');
   }
 
   Future<void> attachImport(PersonaChatImport value) => _commitImport(value);
@@ -798,17 +857,6 @@ class PersonaController extends ChangeNotifier {
             revealedRanges: draft!.cardRevealedRanges[kind] ?? [],
           ),
     };
-    final instructions = [
-      if (modelTarget != null) ...[
-        if (needsMemory) l10n.personaMemoryUpdatePrompt,
-        if (needsTone) l10n.personaToneUpdatePrompt,
-        'target: ${modelTarget.name}',
-        l10n.personaOutputRules(
-          PersonaLimits.memoryCodeUnits,
-          PersonaLimits.toneCodeUnits,
-        ),
-      ],
-    ].join('\n\n');
     final subject = registry.protect(
       people.firstWhere((p) => p.id == personId).name,
       scope: 'subject',
@@ -817,14 +865,17 @@ class PersonaController extends ChangeNotifier {
       personaId: record!.personaId,
       updateTarget: draft!.target,
       modelTarget: modelTarget,
+      l10n: l10n,
       fallbackCards: fallbackCards,
       baseUpdatedAt: draft!.baseUpdatedAt,
       session: session!,
       connection: connection,
-      instructions: instructions,
+      instructions: modelTarget == null
+          ? ''
+          : personaGenerationInstructions(l10n, modelTarget),
       extractionInstructions: modelTarget == null
           ? ''
-          : '${l10n.personaExtractionRules}\ntarget: ${modelTarget.name}',
+          : personaExtractionInstructions(l10n, modelTarget),
       registry: registry,
       blocks: blocks,
       baseline: baseline,
@@ -832,8 +883,6 @@ class PersonaController extends ChangeNotifier {
       selectionSignature: selectionSignature,
     );
     _ensure(epoch);
-    completedRequests = 0;
-    totalRequests = 0;
     draft!.step = PersonaStep.confirmation;
     await persist();
     _ensure(epoch);
@@ -866,23 +915,17 @@ class PersonaController extends ChangeNotifier {
     PersonaGenerationContext context,
     int epoch,
     String instructions,
-    String data, {
-    bool cacheResult = true,
-  }) async {
+    String data,
+  ) async {
     if (personaRequestLength(instructions, data) >
         PersonaLimits.requestCodeUnits) {
-      throw const FormatException('分身請求超過長度上限');
+      throw PersonaGenerationIssue.capacity;
     }
     final current = await store.load(personId, session!);
     _ensureJob(context, epoch);
     if (!_diskMatches(current, context)) {
       throw const FormatException('分身或基準已變更');
     }
-    final key = await hashVaultText('$instructions\n$data');
-    _ensureJob(context, epoch);
-    if (_responses.containsKey(key)) return _responses[key]!;
-    totalRequests++;
-    notifyListeners();
     final output = StringBuffer();
     final request = await prepareAiRequest(
       background: context.requiresBatching,
@@ -904,7 +947,7 @@ class PersonaController extends ChangeNotifier {
           request.messages.single.text,
         ) >
         PersonaLimits.requestCodeUnits) {
-      throw const FormatException('外送請求超過長度上限');
+      throw PersonaGenerationIssue.capacity;
     }
     await for (final delta in _client!.reply(request)) {
       _ensureJob(context, epoch);
@@ -915,16 +958,150 @@ class PersonaController extends ChangeNotifier {
       }
     }
     _ensureJob(context, epoch);
-    var text = output.toString();
-    if (text.trim().isEmpty) throw const FormatException('模型未回傳內容');
-    if (cacheResult) {
-      text = context.registry.protectEvidence(text);
-      context.registry.validateOutputTokens(text, data);
-      _responses[key] = text;
-    }
-    completedRequests++;
+    return output.toString();
+  }
+
+  void _setGenerationPhase(
+    PersonaGenerationPhase phase, {
+    PersonaBatchProgress? progress,
+  }) {
+    generationPhase = phase;
+    batchProgress = progress;
     notifyListeners();
-    return text;
+  }
+
+  Future<List<Object?>> _extractEvidence(
+    PersonaGenerationContext context,
+    int epoch, {
+    required List<Object?> materials,
+    required Map<String, String> baseline,
+    required PersonaUpdateTarget target,
+  }) async {
+    int finalLength(List<Object?> items) => personaRequestLength(
+      context.instructions,
+      personaGenerationData(
+        subject: context.subject,
+        baseline: baseline,
+        materials: items,
+      ),
+    );
+
+    var items = materials;
+    var retried = false;
+    for (var round = 0; round < PersonaLimits.extractionRounds; round++) {
+      final inputLength = finalLength(items);
+      if (inputLength <= PersonaLimits.requestCodeUnits) return items;
+      final evidence = <PersonaEvidence>{};
+      final batches = personaExtractionBatches(
+        items,
+        subject: context.subject,
+        instructions: context.extractionInstructions,
+      );
+      _setGenerationPhase(
+        round == 0
+            ? PersonaGenerationPhase.extracting
+            : PersonaGenerationPhase.reducing,
+        progress: (round: round + 1, completed: 0, total: batches.length),
+      );
+      var completed = 0;
+      for (final batch in batches) {
+        final data = personaExtractionData(
+          subject: context.subject,
+          fragment: batch,
+        );
+        final normalInstructions = context.extractionInstructions;
+        final retryInstructions = personaExtractionInstructions(
+          context.l10n,
+          target,
+          retry: true,
+        );
+        Future<void> extract(String instructions) async {
+          final key = await hashVaultText('$instructions\n$data');
+          _ensureJob(context, epoch);
+          var accepted = _evidenceCache[key];
+          if (accepted == null) {
+            final raw = await _request(context, epoch, instructions, data);
+            _ensureJob(context, epoch);
+            accepted = _evidenceCache[key] = decodePersonaEvidence(
+              raw,
+              target: target,
+              registry: context.registry,
+              requestData: data,
+            );
+          }
+          evidence.addAll(accepted);
+        }
+
+        try {
+          await extract(normalInstructions);
+        } on PersonaEvidenceInvalid {
+          if (retried ||
+              personaRequestLength(retryInstructions, data) >
+                  PersonaLimits.requestCodeUnits) {
+            rethrow;
+          }
+          retried = true;
+          await extract(retryInstructions);
+        }
+        _ensureJob(context, epoch);
+        batchProgress = (
+          round: round + 1,
+          completed: ++completed,
+          total: batches.length,
+        );
+        notifyListeners();
+      }
+      items = evidence.map(personaEvidenceMaterial).toList();
+      if (finalLength(items) >= inputLength) {
+        throw PersonaGenerationIssue.evidence;
+      }
+    }
+    if (finalLength(items) > PersonaLimits.requestCodeUnits) {
+      throw PersonaGenerationIssue.capacity;
+    }
+    return items;
+  }
+
+  Set<PersonaCardKind> _readCandidates(
+    PersonaGenerationContext context,
+    String output,
+    String requestData,
+    PersonaUpdateTarget target,
+    Map<PersonaCardKind, PersonaCandidate> candidate, {
+    bool repairing = false,
+  }) {
+    final decoded = jsonDecode(output);
+    final kinds = target.kinds;
+    if (decoded is! Map ||
+        decoded.length != kinds.length ||
+        !kinds.every((kind) => decoded[kind.name] is String)) {
+      throw const FormatException('模型輸出欄位不正確');
+    }
+    final tooLong = <PersonaCardKind>{};
+    for (final kind in kinds) {
+      final text = decoded[kind.name] as String;
+      if (text.trim().isEmpty) {
+        if (repairing) throw PersonaGenerationIssue.cardLength;
+        continue;
+      }
+      PersonaCandidate? card;
+      try {
+        card = context.registry.candidate(
+          text,
+          kind,
+          record!.cards?[kind],
+          requestData: requestData,
+        );
+      } on PersonaCardTooLong {
+        tooLong.add(kind);
+      }
+      if (!isEnglishL10n(context.l10n) &&
+          _personaHasEnglishProse(card?.text ?? text)) {
+        throw PersonaGenerationIssue.cardLanguage;
+      }
+      if (card != null) candidate[kind] = card;
+    }
+    return tooLong;
   }
 
   String _selectionSignature(PersonaDraft draft) {
@@ -943,6 +1120,12 @@ class PersonaController extends ChangeNotifier {
     AiClient? client;
     busy = true;
     failed = false;
+    generationIssue = null;
+    generationPhase = null;
+    batchProgress = null;
+    _generationClock
+      ..reset()
+      ..start();
     notifyListeners();
     try {
       _ensureJob(context, epoch);
@@ -961,17 +1144,38 @@ class PersonaController extends ChangeNotifier {
       final modelTarget = context.modelTarget;
       if (modelTarget != null) {
         final connection = context.connection!;
-        if (personaRequestLength(
+        var baseline = context.baseline;
+        var materials = context.requestMaterials.cast<Object?>().toList();
+        String generationData(List<Object?> items) => personaGenerationData(
+          subject: context.subject,
+          baseline: baseline,
+          materials: items,
+        );
+        int availableMaterialSpace() =>
+            PersonaLimits.requestCodeUnits -
+            personaRequestLength(
               context.instructions,
-              personaGenerationData(
-                subject: context.subject,
-                baseline: context.baseline,
-                materials: const [],
-              ),
-            ) >=
-            PersonaLimits.requestCodeUnits) {
-          throw const FormatException('分身固定內容已無法容納材料');
+              generationData(const []),
+            );
+
+        if (context.requiresBatching &&
+            baseline.isNotEmpty &&
+            availableMaterialSpace() < PersonaLimits.evidenceCodeUnits) {
+          materials = [
+            for (final entry in baseline.entries)
+              {
+                'source': 'prior_card',
+                'card_kind': entry.key,
+                'text': entry.value,
+              },
+            ...materials,
+          ];
+          baseline = const {};
         }
+        if (availableMaterialSpace() <= 0) {
+          throw PersonaGenerationIssue.capacity;
+        }
+
         final key = await requireAiRequestKey(
           enabled: ref.read(aiEnabledProvider),
           connection: connection,
@@ -981,75 +1185,53 @@ class PersonaController extends ChangeNotifier {
         client = ref.read(aiClientFactoryProvider)(connection, key);
         _ensureJob(context, epoch);
         _client = client;
-        var materials = context.requestMaterials.cast<Object?>().toList();
-        for (
-          var level = 0;
-          personaRequestLength(
-                context.instructions,
-                personaGenerationData(
-                  subject: context.subject,
-                  baseline: context.baseline,
-                  materials: materials,
-                ),
-              ) >
-              PersonaLimits.requestCodeUnits;
-          level++
-        ) {
-          if (level >= 4) throw const FormatException('材料仍過長，請減少材料');
-          final batches = personaExtractionBatches(
-            materials,
-            subject: context.subject,
-            instructions: context.extractionInstructions,
-          );
-          final summaries = <String>[];
-          for (final batch in batches) {
-            summaries.add(
-              await _request(
-                context,
-                epoch,
-                context.extractionInstructions,
-                personaExtractionData(
-                  subject: context.subject,
-                  fragment: batch,
-                ),
-              ),
-            );
-          }
-          if (jsonEncode(summaries).length >= jsonEncode(materials).length) {
-            throw const FormatException('中間證據未縮短，請減少材料或調整模型');
-          }
-          materials = summaries;
-        }
-        final data = personaGenerationData(
-          subject: context.subject,
-          baseline: context.baseline,
+        materials = await _extractEvidence(
+          context,
+          epoch,
           materials: materials,
+          baseline: baseline,
+          target: modelTarget,
         );
+        _ensureJob(context, epoch);
+        final data = generationData(materials);
+        _setGenerationPhase(PersonaGenerationPhase.integrating);
         final output = await _request(
           context,
           epoch,
           context.instructions,
           data,
-          cacheResult: false,
         );
-        final decoded = jsonDecode(output);
-        final expected = modelTarget.kinds.map((k) => k.name).toSet();
-        if (decoded is! Map ||
-            decoded.length != expected.length ||
-            !decoded.keys.every(expected.contains) ||
-            decoded.values.any((v) => v is! String)) {
-          throw const FormatException('模型輸出欄位不正確');
-        }
-        for (final kind in modelTarget.kinds) {
-          final text = decoded[kind.name] as String;
-          if (text.trim().isNotEmpty) {
-            candidate[kind] = context.registry.candidate(
-              text,
-              kind,
-              record!.cards?[kind],
-              requestData: data,
-            );
-          }
+        _ensureJob(context, epoch);
+        final overflow = _readCandidates(
+          context,
+          output,
+          data,
+          modelTarget,
+          candidate,
+        );
+        if (overflow.isNotEmpty) {
+          final target = overflow.length == 2
+              ? PersonaUpdateTarget.both
+              : overflow.single == PersonaCardKind.memory
+              ? PersonaUpdateTarget.memory
+              : PersonaUpdateTarget.tone;
+          final instructions = personaGenerationInstructions(
+            context.l10n,
+            target,
+            compact: true,
+          );
+          _setGenerationPhase(PersonaGenerationPhase.compacting);
+          final shortened = await _request(context, epoch, instructions, data);
+          _ensureJob(context, epoch);
+          final unresolved = _readCandidates(
+            context,
+            shortened,
+            data,
+            target,
+            candidate,
+            repairing: true,
+          );
+          if (unresolved.isNotEmpty) throw PersonaGenerationIssue.cardLength;
         }
       }
       _ensureJob(context, epoch);
@@ -1057,13 +1239,23 @@ class PersonaController extends ChangeNotifier {
       draft!.step = PersonaStep.review;
       await persist(ensureCurrent: () => _ensureJob(context, epoch));
       _ensureJob(context, epoch);
-    } on Object {
-      if (epoch == _epoch) failed = true;
+    } on Object catch (error) {
+      if (epoch == _epoch) {
+        failed = true;
+        generationIssue = switch (error) {
+          PersonaGenerationIssue issue => issue,
+          PersonaEvidenceInvalid() => PersonaGenerationIssue.evidence,
+          _ => null,
+        };
+      }
     } finally {
       client?.close();
       if (identical(_client, client)) _client = null;
       if (epoch == _epoch) {
         busy = false;
+        generationPhase = null;
+        batchProgress = null;
+        _generationClock.stop();
         notifyListeners();
       }
       keepAlive.close();
@@ -1188,6 +1380,9 @@ class PersonaController extends ChangeNotifier {
     _client = null;
     loading = false;
     busy = false;
+    generationPhase = null;
+    batchProgress = null;
+    _generationClock.stop();
     _invalidate();
     _releaseJob?.call();
     _releaseJob = null;

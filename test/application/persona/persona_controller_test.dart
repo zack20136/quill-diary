@@ -364,6 +364,7 @@ void main() {
       personaId: current.personaId,
       updateTarget: current.updateTarget,
       modelTarget: current.modelTarget,
+      l10n: current.l10n,
       fallbackCards: current.fallbackCards,
       baseUpdatedAt: current.baseUpdatedAt,
       session: current.session,
@@ -434,7 +435,10 @@ void main() {
       final data = jsonDecode(client.calls.last.messages.single.text) as Map;
       if (data['fragment'] case final List fragment) {
         batches.add(fragment);
-        yield '事件證據：無。風格證據：persona_subject 使用短問答。';
+        yield jsonEncode({
+          'memory': [],
+          'tone': ['persona_subject 使用短問答'],
+        });
       } else {
         yield jsonEncode({'memory': '對話尚未形成事件', 'tone': '短句回應'});
       }
@@ -506,11 +510,16 @@ void main() {
         final data = jsonDecode(client.calls.last.messages.single.text) as Map;
         expect(data['fragment'], isA<List>());
         final length = jsonEncode(data['fragment']).length;
-        yield '證' * (shrinks ? length ~/ 2 : length * 2);
+        yield jsonEncode({
+          'memory': [
+            '證' * (shrinks ? (length ~/ 2).clamp(1, 1000) : length * 2),
+          ],
+          'tone': [],
+        });
       };
       await controller.generate();
       expect(controller.failed, isTrue);
-      expect(client.calls, hasLength(shrinks ? 4 : 1));
+      expect(client.calls, hasLength(shrinks ? 4 : 2));
       expect(controller.draft!.candidate, isNull);
       expect(controller.draft!.diaries.single.entryId, entryId);
       expect(
@@ -520,26 +529,48 @@ void main() {
     });
   }
 
-  for (final fixedCards in [false, true]) {
-    test('${fixedCards ? '既有卡片' : '固定指令'}超限時不送出請求，保留材料與草稿', () async {
-      await controller.prepare(testL10n);
-      if (fixedCards) {
-        replacePreview(
-          baseline: {'memory': '"' * PersonaLimits.requestCodeUnits},
+  test('固定指令超限時不送出請求，保留材料與草稿', () async {
+    await controller.prepare(testL10n);
+    replacePreview(instructions: '指' * PersonaLimits.requestCodeUnits);
+    await controller.generate();
+    expect(controller.generationIssue, PersonaGenerationIssue.capacity);
+    expect(client.calls, isEmpty);
+    expect(controller.draft!.diaries.single.entryId, entryId);
+    expect(
+      (await store.load(person.id, setup.session))!.draft!.candidate,
+      isNull,
+    );
+  });
+
+  test('舊卡擠壓容量時，依舊卡來源提取後才送去整合', () async {
+    await controller.prepare(testL10n);
+    replacePreview(baseline: {'memory': '"' * PersonaLimits.memoryCodeUnits});
+    final rawSources = <String>[];
+    client.response = () async* {
+      final data = jsonDecode(client.calls.last.messages.single.text) as Map;
+      if (data['fragment'] case final List fragment) {
+        rawSources.addAll(
+          fragment.cast<Map>().map((item) => item['source'] as String),
         );
+        yield jsonEncode({
+          'memory': ['舊卡中的承諾'],
+          'tone': [],
+        });
       } else {
-        replacePreview(instructions: '指' * PersonaLimits.requestCodeUnits);
+        expect(data['current_cards'], isEmpty);
+        expect(data['materials'], [
+          {'evidence_kind': 'memory', 'text': '舊卡中的承諾'},
+        ]);
+        yield personaReplyJson('整合後的記憶');
       }
-      await controller.generate();
-      expect(controller.failed, isTrue);
-      expect(client.calls, isEmpty);
-      expect(controller.draft!.diaries.single.entryId, entryId);
-      expect(
-        (await store.load(person.id, setup.session))!.draft!.candidate,
-        isNull,
-      );
-    });
-  }
+    };
+    await controller.generate();
+    expect(rawSources, containsAll(['prior_card', 'diary']));
+    expect(
+      controller.draft!.candidate![PersonaCardKind.memory]!.text,
+      '整合後的記憶',
+    );
+  });
 
   test('載入途中鎖定可立即重新載入，舊載入結束不解除新載入狀態', () async {
     controller.lock();
@@ -1159,9 +1190,29 @@ void main() {
     await controller.selectDiary(entryId, false);
     await controller.selectDiary(entryId, true);
     await controller.prepare(testL10n);
+    String? retryData;
+    final progress = <PersonaBatchProgress>{};
+    controller.addListener(() {
+      if (controller.batchProgress case final batch?) progress.add(batch);
+    });
     client.response = () async* {
       if (client.calls.last.prompt.contains(testL10n.personaExtractionRules)) {
-        yield '精簡的中間證據';
+        if (client.calls.length == 1) {
+          retryData = client.calls.last.messages.single.text;
+          yield '格式錯誤';
+          return;
+        }
+        if (client.calls.length == 2) {
+          expect(client.calls.last.messages.single.text, retryData);
+          expect(
+            client.calls.last.prompt,
+            contains(testL10n.personaExtractionRetryPrompt),
+          );
+        }
+        yield jsonEncode({
+          'memory': ['精簡的中間證據'],
+          'tone': [],
+        });
       } else {
         yield personaReplyJson('長材料記憶');
       }
@@ -1178,7 +1229,158 @@ void main() {
     }
     final saved = await store.load(person.id, setup.session);
     expect(jsonEncode(saved!.toJson()), isNot(contains('精簡的中間證據')));
+    final firstRound = progress.where((event) => event.round == 1).toList();
+    final total = firstRound.first.total;
+    expect(firstRound.map((event) => event.total).toSet(), {total});
+    expect(firstRound.map((event) => event.completed), [
+      for (var done = 0; done <= total; done++) done,
+    ]);
+    expect(client.calls, hasLength(total + 2));
   });
+
+  test('繁中整合拒收英文敘述並保留草稿', () async {
+    await controller.prepare(testL10n);
+    client.output = personaReplyJson(
+      '2026-11-09: returned the bicycle pump to the neighbor.',
+      tone: '短句直接',
+    );
+
+    await controller.generate();
+
+    expect(client.calls, hasLength(1));
+    expect(controller.generationIssue, PersonaGenerationIssue.cardLanguage);
+    expect(controller.draft!.step, PersonaStep.confirmation);
+    expect(controller.draft!.candidate, isNull);
+  });
+
+  test('繁中整合可保留角色標記、英文專名和逐字引用', () async {
+    await controller.prepare(testL10n);
+    const memory = '2026-11-09：幫 user 歸還打氣筒。保留店名 Blue Bottle Coffee。';
+    const tone = '短句直接。「Go ahead, user」保留原文。';
+    client.output = personaReplyJson(memory, tone: tone);
+
+    await controller.generate();
+
+    expect(client.calls, hasLength(1));
+    expect(
+      controller.draft!.candidate?[PersonaCardKind.memory]?.text,
+      memory,
+    );
+    expect(controller.draft!.candidate?[PersonaCardKind.tone]?.text, tone);
+  });
+
+  test('跨批更正維持完整項目，再精簡後一起整合', () async {
+    await harness.saveSimpleEntry(
+      setup,
+      id: entryId,
+      markdownBody: '需要分批的材料' * 3200,
+    );
+    await controller.selectDiary(entryId, false);
+    await controller.selectDiary(entryId, true);
+    await controller.prepare(testL10n);
+    final original = controller.preview!;
+    final fixed = personaGenerationData(
+      subject: original.subject,
+      baseline: original.baseline,
+      materials: const [],
+    );
+    replacePreview(
+      instructions:
+          '指' *
+          (PersonaLimits.requestCodeUnits -
+              personaRequestLength('', fixed) -
+              500),
+    );
+    final initial = '11/07 曉禾自述做了兩個碗。${'補' * 300}';
+    final correction = '11/08 曉禾更正 11/07 自己只做了一個小碗。${'補' * 300}';
+    const latest = '2026-11-07：曉禾做了一個小碗';
+    var firstRound = 0;
+    final phases = <PersonaGenerationPhase?>{};
+    controller.addListener(() => phases.add(controller.generationPhase));
+    client.response = () async* {
+      final data = jsonDecode(client.calls.last.messages.single.text) as Map;
+      if (data['fragment'] case final List fragment) {
+        if ((fragment.first as Map).containsKey('evidence_kind')) {
+          expect(fragment, [
+            {'evidence_kind': 'memory', 'text': initial},
+            {'evidence_kind': 'memory', 'text': correction},
+          ]);
+          yield jsonEncode({
+            'memory': [latest],
+            'tone': [],
+          });
+        } else {
+          firstRound++;
+          yield jsonEncode({
+            'memory': [
+              if (firstRound == 1) initial,
+              if (firstRound == 2) correction,
+            ],
+            'tone': [],
+          });
+        }
+      } else {
+        expect(data['materials'], [
+          {'evidence_kind': 'memory', 'text': latest},
+        ]);
+        yield personaReplyJson(latest);
+      }
+    };
+
+    await controller.generate();
+
+    expect(firstRound, greaterThan(1));
+    expect(
+      phases,
+      containsAll([
+        PersonaGenerationPhase.extracting,
+        PersonaGenerationPhase.reducing,
+        PersonaGenerationPhase.integrating,
+      ]),
+    );
+    expect(controller.draft!.candidate?[PersonaCardKind.memory]?.text, latest);
+  });
+
+  for (final recovers in [true, false]) {
+    test(recovers ? '只有記憶超長時重整記憶並沿用合格風格' : '重整仍超長時留下原草稿且無候選', () async {
+      await controller.prepare(testL10n);
+      final longMemory = '事' * (PersonaLimits.memoryCodeUnits + 1);
+      client.response = () async* {
+        if (client.calls.length == 1) {
+          yield personaReplyJson(longMemory, tone: '自然短句');
+          return;
+        }
+        expect(
+          client.calls.last.messages.single.text,
+          client.calls.first.messages.single.text,
+        );
+        expect(client.calls.last.prompt, contains('target: memory'));
+        expect(
+          client.calls.last.prompt,
+          isNot(contains(testL10n.personaToneUpdatePrompt)),
+        );
+        yield jsonEncode({'memory': recovers ? '精簡記憶' : longMemory});
+      };
+
+      await controller.generate();
+
+      expect(client.calls, hasLength(2));
+      if (recovers) {
+        expect(
+          controller.draft!.candidate![PersonaCardKind.memory]!.text,
+          '精簡記憶',
+        );
+        expect(
+          controller.draft!.candidate![PersonaCardKind.tone]!.text,
+          '自然短句',
+        );
+      } else {
+        expect(controller.generationIssue, PersonaGenerationIssue.cardLength);
+        expect(controller.draft!.candidate, isNull);
+        expect(controller.draft!.diaries.single.entryId, entryId);
+      }
+    });
+  }
 
   test('停止立即解除忙碌，新工作進行時舊結果不能修改候選或解除狀態', () async {
     await controller.prepare(testL10n);
@@ -1360,9 +1562,10 @@ void main() {
     expect(message.persona!.personaId, persona.personaId);
     expect(message.toJson().containsKey('system_prompt'), isFalse);
     final diary = await chat.previewRequest(generate: true);
-    expect(diary!.systemPrompt, contains(testL10n.personaDiarySourcePrompt));
-    expect(diary.systemPrompt, isNot(contains('一起去海邊')));
-    expect(diary.turns.single.text, contains('ai_persona'));
+    expect(diary!.systemPrompt, isNot(contains('一起去海邊')));
+    final data = jsonDecode(diary.turns.single.text) as Map;
+    expect(data['assistant_context'], isEmpty);
+    expect(data['user_turns'], hasLength(1));
     container.read(personaDeletionsProvider.notifier).mark(person.id);
     expect(chat.chat!.selectedPersona, isNull);
   });
@@ -1406,6 +1609,7 @@ void main() {
     expect(client.calls.last.prompt, isNot(contains('預設專屬個性')));
     await chat.selectPersona(first);
     chat.updateComposer('一起討論吧', []);
+    final attributedPreview = (await chat.previewRequest())!;
     await chat.send();
     final messages = client.calls.last.messages;
     expect(messages.map((m) => m.isUser), [true, false, true, false, true]);
@@ -1413,14 +1617,14 @@ void main() {
         .where((m) => !m.isUser)
         .map((m) => m.text)
         .toList();
-    expect(
-      replies.every(
-        (text) => text.startsWith('${testL10n.personaSubjectHeading}\n'),
-      ),
-      isTrue,
-    );
+    expect(replies.first, '第一位的回覆');
+    expect(replies.last, startsWith('${testL10n.personaSubjectHeading}\n'));
+    expect(replies.last, endsWith('第二位的回覆'));
     expect(replies.every((text) => text.contains('ai_persona')), isFalse);
-    expect(replies[0].split('\n')[1], isNot(replies[1].split('\n')[1]));
+    expect(
+      attributedPreview.turns.where((turn) => !turn.isUser).map((t) => t.text),
+      replies,
+    );
     await chat.selectPersona(second);
     final preview = await chat.previewRequest();
     expect(preview!.systemPrompt, contains('喜歡登山'));
@@ -1505,6 +1709,41 @@ void main() {
       PrivateTextRange(0, body.length),
     ];
     expect(controller.hasMaterials, isFalse);
+  });
+
+  test('一次勾選多篇日記會保留已選的隱藏範圍，讀不到的日記不影響其餘結果', () async {
+    final second = await harness.saveSimpleEntry(setup, markdownBody: '另一篇。');
+    controller.draft!.diaries.single.hiddenRanges.add(
+      const PrivateTextRange(0, 1),
+    );
+    await expectLater(
+      controller.selectDiaries([entryId, second, generateEntryId()], true),
+      throwsFormatException,
+    );
+    expect(controller.draft!.diaries.map((d) => d.entryId).toList(), [
+      entryId,
+      second,
+    ]);
+    expect(controller.draft!.diaries.first.hiddenRanges.single.end, 1);
+    expect(controller.entries.containsKey(second), isTrue);
+    expect(
+      (await store.load(
+        person.id,
+        setup.session,
+      ))!.draft!.diaries.map((d) => d.entryId).toList(),
+      [entryId, second],
+    );
+
+    await controller.selectDiaries([entryId], false);
+    expect(controller.draft!.diaries.single.entryId, second);
+    expect(controller.entries.containsKey(entryId), isFalse);
+    expect(
+      (await store.load(
+        person.id,
+        setup.session,
+      ))!.draft!.diaries.single.entryId,
+      second,
+    );
   });
 
   test('再次勾選已選日記不會清掉候選', () async {

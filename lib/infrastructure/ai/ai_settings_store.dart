@@ -106,7 +106,11 @@ class AiSettingsStore {
     });
   }
 
-  Future<void> save(UnlockedVaultSession session, AiStoredSettings settings) {
+  Future<void> save(
+    UnlockedVaultSession session,
+    AiStoredSettings settings, {
+    bool preserveSelectedPersona = false,
+  }) {
     final current = settings.copyWith(
       connection: adoptConnectionCatalog(settings.connection).settings,
     );
@@ -118,7 +122,17 @@ class AiSettingsStore {
       final file = await _settingsFile();
       // 一般儲存拒絕覆寫不可讀設定；重建必須經過明確確認與指紋比對。
       await _recover(file, session);
-      await _writeFile(session, snapshot);
+      final selectedPersona = preserveSelectedPersona && file.existsSync()
+          ? (await _decode(file, session)).chatDiaryPrompts.selectedPersona
+          : snapshot.chatDiaryPrompts.selectedPersona;
+      await _writeFile(
+        session,
+        snapshot.copyWith(
+          chatDiaryPrompts: snapshot.chatDiaryPrompts.withSelectedPersona(
+            selectedPersona,
+          ),
+        ),
+      );
     });
   }
 

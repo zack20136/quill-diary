@@ -46,14 +46,19 @@ class PersonaSummarySection extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (controller.busy) ...[
+              if (controller.generating) ...[
                 const LinearProgressIndicator(),
                 Text(
-                  l.personaProcessingStatus(
-                    controller.completedRequests,
-                    controller.totalRequests,
-                  ),
+                  personaGenerationPhaseLabel(l, controller.generationPhase),
                 ),
+                if (controller.batchProgress case final batch?)
+                  Text(
+                    l.personaBatchProgress(
+                      batch.round,
+                      batch.completed,
+                      batch.total,
+                    ),
+                  ),
               ],
               if (saved.hasError) Text(l.personaNeedsRecovery),
               if (record?.available == true) ...[

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/persona/persona_privacy.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
 String personaGenerationData({
@@ -22,6 +23,68 @@ String personaExtractionData({
 
 int personaRequestLength(String instructions, String data) =>
     instructions.length + data.length;
+
+typedef PersonaEvidence = ({PersonaCardKind kind, String text});
+
+class PersonaEvidenceInvalid extends FormatException {
+  const PersonaEvidenceInvalid() : super('分身證據的格式或長度不正確');
+}
+
+List<PersonaEvidence> decodePersonaEvidence(
+  String output, {
+  required PersonaUpdateTarget target,
+  required PersonaTokenRegistry registry,
+  required String requestData,
+}) {
+  if (output.length > PersonaLimits.evidenceCodeUnits) {
+    throw const PersonaEvidenceInvalid();
+  }
+  Object? decoded;
+  try {
+    decoded = jsonDecode(output);
+  } on FormatException {
+    throw const PersonaEvidenceInvalid();
+  }
+  final kinds = target.kinds;
+  if (decoded is! Map || decoded.length != kinds.length) {
+    throw const PersonaEvidenceInvalid();
+  }
+  final evidence = <PersonaEvidence>{};
+  for (final kind in kinds) {
+    final items = decoded[kind.name];
+    if (items is! List ||
+        items.any((item) => item is! String || item.trim().isEmpty)) {
+      throw const PersonaEvidenceInvalid();
+    }
+    for (final item in items.cast<String>()) {
+      registry.validateOutputTokens(item, requestData);
+      final protected = registry.protectEvidence(item);
+      registry.validateOutputTokens(protected, requestData);
+      evidence.add((kind: kind, text: protected));
+    }
+  }
+  if (encodePersonaEvidence(evidence, target).length >
+      PersonaLimits.evidenceCodeUnits) {
+    throw const PersonaEvidenceInvalid();
+  }
+  return evidence.toList();
+}
+
+String encodePersonaEvidence(
+  Iterable<PersonaEvidence> evidence,
+  PersonaUpdateTarget target,
+) => jsonEncode({
+  for (final kind in target.kinds)
+    kind.name: [
+      for (final item in evidence)
+        if (item.kind == kind) item.text,
+    ],
+});
+
+Map<String, String> personaEvidenceMaterial(PersonaEvidence evidence) => {
+  'evidence_kind': evidence.kind.name,
+  'text': evidence.text,
+};
 
 List<List<Object?>> personaExtractionBatches(
   Iterable<Object?> materials, {
@@ -66,6 +129,9 @@ List<Object?> _personaBatchPieces(Object? material, int budget) {
     return _splitText('$material', remainingBudget(''));
   }
   final map = material.map((key, value) => MapEntry(key.toString(), value));
+  if (map.containsKey('evidence_kind')) {
+    throw const PersonaEvidenceInvalid();
+  }
   final text = map['text'] as String? ?? '';
   final style = map['style_text'] as String?;
   final empty = <String, Object?>{
