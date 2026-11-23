@@ -3,12 +3,7 @@ package zack20136.com.quill_diary
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
 import android.os.Build
-import android.os.Bundle
-import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -20,38 +15,12 @@ class MainActivity : FlutterFragmentActivity() {
     private val deviceKeyChannel = DeviceKeyChannel(this)
     private val driveSignInChannel = DriveSignInChannel(this)
     private val documentFileChannels = DocumentFileChannels(this)
-    private val privacyCover by lazy {
-        View(this).apply { setBackgroundColor(Color.BLACK) }
-    }
     private var pendingOpenDriveBackup = false
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             DriveUploadBridge.completeNotificationPermission(granted)
         }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            setRecentsScreenshotEnabled(false)
-        } else {
-            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
-        addContentView(
-            privacyCover,
-            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
-        )
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        privacyCover.visibility = if (hasFocus) View.GONE else View.VISIBLE
-    }
-
-    override fun onPause() {
-        privacyCover.visibility = View.VISIBLE
-        super.onPause()
-    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
