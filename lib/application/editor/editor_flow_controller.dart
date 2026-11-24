@@ -12,13 +12,13 @@ import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/editor/editor_draft_snapshot.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
-import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/editor_draft.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
+import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
@@ -65,8 +65,6 @@ class EditorPersistDraftRequest {
   const EditorPersistDraftRequest({
     required this.draftKey,
     required this.snapshot,
-    required this.tagsRaw,
-    required this.attachmentIds,
     required this.pendingAttachments,
     required this.session,
     required this.createdAt,
@@ -77,14 +75,28 @@ class EditorPersistDraftRequest {
 
   final String draftKey;
   final EditorDraftSnapshot snapshot;
-  final String tagsRaw;
-  final List<AssetId> attachmentIds;
   final List<PendingAttachment> pendingAttachments;
   final UnlockedVaultSession session;
   final DateTime createdAt;
   final EntryId provisionalEntryId;
   final EntryId? existingEntryId;
   final List<Map<String, Object?>> salvageSourceFindings;
+
+  bool get isEmptyNewDraft =>
+      existingEntryId == null &&
+      editorDraftIsEmpty(snapshot, initialCreatedAt: createdAt);
+
+  EditorPersistDraftRequest withSession(UnlockedVaultSession session) =>
+      EditorPersistDraftRequest(
+        draftKey: draftKey,
+        snapshot: snapshot,
+        pendingAttachments: pendingAttachments,
+        session: session,
+        createdAt: createdAt,
+        provisionalEntryId: provisionalEntryId,
+        existingEntryId: existingEntryId,
+        salvageSourceFindings: salvageSourceFindings,
+      );
 }
 
 class EditorPersistDraftResult {
@@ -156,6 +168,15 @@ class EditorFlowController {
 
   final Ref _ref;
   final EditorActionPort _actions;
+  final _heldDrafts =
+      <
+        String,
+        ({
+          RecoveryMetadata metadata,
+          EditorPersistDraftRequest request,
+          Future<void>? previousWrite,
+        })
+      >{};
 
   EditorFlowSession startSession({
     required void Function(EditorPersistDraftResult) onDraftPersisted,
@@ -187,9 +208,9 @@ class EditorFlowController {
       dateValue: request.snapshot.dateValue,
       entryHour: request.snapshot.entryHour,
       entryMinute: request.snapshot.entryMinute,
-      tags: parseEditorTagsCsv(request.tagsRaw),
+      tags: request.snapshot.tags,
       markdownBody: request.snapshot.markdownBody,
-      attachmentIds: List<AssetId>.from(request.attachmentIds),
+      attachmentIds: request.snapshot.attachmentIds,
       pendingAttachments: pendingAttachments,
       provisionalEntryId: request.provisionalEntryId,
       createdAt: request.createdAt,
@@ -198,14 +219,46 @@ class EditorFlowController {
         request.salvageSourceFindings,
       ),
     );
-    await _actions.writeDraft(request.draftKey, record, request.session);
+    if (request.isEmptyNewDraft) {
+      await _actions.deleteDraft(request.draftKey);
+    } else {
+      await _actions.writeDraft(request.draftKey, record, request.session);
+    }
     if (_ref.mounted) _ref.invalidate(editorDraftKeysProvider);
     return EditorPersistDraftResult(record: record, snapshot: request.snapshot);
   }
 
   Future<void> discardDraft(String draftKey) async {
     await _actions.deleteDraft(draftKey);
+    _heldDrafts.remove(draftKey);
     if (_ref.mounted) _ref.invalidate(editorDraftKeysProvider);
+  }
+
+  Future<void> resumeHeldDraft(
+    String draftKey,
+    UnlockedVaultSession session,
+    RecoveryMetadata? metadata,
+  ) async {
+    final held = _heldDrafts[draftKey];
+    if (held == null || metadata == null) return;
+    if (!held.metadata.hasSameRecoveryGenerationAs(metadata) ||
+        metadata.vaultId != session.vaultId) {
+      _heldDrafts.remove(draftKey);
+      return;
+    }
+    final previous = held.previousWrite;
+    if (previous != null) {
+      await previous
+          .catchError((Object _) {})
+          .timeout(const Duration(seconds: 2));
+    }
+    if (!_ref.mounted ||
+        _heldDrafts[draftKey] != held ||
+        _ref.read(appSessionProvider).session != session) {
+      return;
+    }
+    await persistDraft(held.request.withSession(session));
+    if (_heldDrafts[draftKey] == held) _heldDrafts.remove(draftKey);
   }
 
   Future<EditorDraftRestoreDecision> restoreDraftIfNeeded({
@@ -240,9 +293,7 @@ class EditorFlowController {
       pendingAttachments: await pendingAttachmentsFromDraftRecord(
         record,
         draftKey: draftKey,
-        resolvePath: (String path, bool forPreview) => forPreview
-            ? _actions.materializePendingFileForPreview(draftKey, path, session)
-            : _actions.pendingAbsolutePath(draftKey, path),
+        resolvePath: (path) => _actions.pendingAbsolutePath(draftKey, path),
       ),
       snapshot: snapshot,
     );
@@ -351,22 +402,12 @@ class EditorFlowController {
       fileName,
       session,
     );
-    final bool needsPreview = mimeType.startsWith('image/');
     return PendingAttachment(
       assetId: generateAssetId(),
-      sourcePath: needsPreview
-          ? await _actions.materializePendingFileForPreview(
-              draftKey,
-              relativePath,
-              session,
-            )
-          : null,
-      encryptedDraftSource: needsPreview
-          ? null
-          : (
-              draftKey: draftKey,
-              path: await _actions.pendingAbsolutePath(draftKey, relativePath),
-            ),
+      encryptedDraftSource: (
+        draftKey: draftKey,
+        path: await _actions.pendingAbsolutePath(draftKey, relativePath),
+      ),
       pendingRelativePath: relativePath,
       mimeType: mimeType,
       originalFilename: fileName,
@@ -403,7 +444,7 @@ class EditorFlowController {
             continue;
           }
           items.add(
-            GalleryImageItem.encrypted(
+            GalleryImageItem(
               path: path,
               fileName: galleryDownloadFileName(
                 attachment.originalFilename ?? attachment.safeFilename,
@@ -413,13 +454,12 @@ class EditorFlowController {
             ),
           );
         case PendingEditorAttachmentItem(:final attachment):
-          final String? path = attachment.sourcePath?.trim();
-          if (path == null || path.isEmpty) {
-            continue;
-          }
+          final source = attachment.encryptedDraftSource;
+          if (source == null) continue;
           items.add(
-            GalleryImageItem.local(
-              path: path,
+            GalleryImageItem(
+              path: source.path,
+              draftKey: source.draftKey,
               fileName: galleryDownloadFileName(
                 attachment.originalFilename,
                 attachment.mimeType,
@@ -436,24 +476,18 @@ class EditorFlowController {
   }
 
   Future<Uint8List?> loadGalleryImageBytes(GalleryImageItem item) async {
-    switch (item.source) {
-      case GalleryImageSource.local:
-        final File file = File(item.path);
-        if (!file.existsSync()) {
-          return null;
-        }
-        return file.readAsBytes();
-      case GalleryImageSource.encrypted:
-        final AppSessionState sessionState = await _ref.read(
-          effectiveAppSessionProvider.future,
-        );
-        if (!sessionState.isUnlocked || sessionState.session == null) {
-          return null;
-        }
-        return _ref
-            .read(vaultRepositoryProvider)
-            .readDecryptedAssetBytes(sessionState.session!, item.path);
+    final session = await _ref.read(activeVaultSessionProvider.future);
+    if (session == null) return null;
+    final draftKey = item.draftKey;
+    if (draftKey != null) {
+      return _actions.readPendingAttachment((
+        draftKey: draftKey,
+        path: item.path,
+      ), session);
     }
+    return _ref
+        .read(vaultRepositoryProvider)
+        .readDecryptedAssetBytes(session, item.path);
   }
 
   DateTime _composeEntryCreatedAt({
@@ -513,6 +547,8 @@ class EditorFlowSession {
   final EditorFlowController _flow;
   final void Function(EditorPersistDraftResult) _onDraftPersisted;
   EditorPersistDraftRequest? _pendingDraft;
+  EditorPersistDraftRequest? _activeDraft;
+  EditorDraftSnapshot? _draftBaseline;
   Future<void>? _draftWrite;
   int _stateVersion = 0;
   int _previewVersion = 0;
@@ -525,8 +561,25 @@ class EditorFlowSession {
   Future<void>? _previewWrite;
   bool _closed = false;
 
+  void setDraftBaseline(EditorDraftSnapshot? snapshot) {
+    _draftBaseline = snapshot;
+  }
+
   Future<void> persistDraft(EditorPersistDraftRequest request) {
+    final latest =
+        _pendingDraft?.snapshot ?? _activeDraft?.snapshot ?? _draftBaseline;
+    if (latest == null
+        ? request.isEmptyNewDraft
+        : !editorDraftIsDirty(current: request.snapshot, saved: latest)) {
+      return _pendingDraft != null
+          ? _writePendingDrafts()
+          : _draftWrite ?? Future<void>.value();
+    }
     _pendingDraft = request;
+    return _writePendingDrafts();
+  }
+
+  Future<void> _writePendingDrafts() {
     final current = _draftWrite;
     if (current != null) return current;
     final completion = Completer<void>();
@@ -536,27 +589,59 @@ class EditorFlowSession {
   }
 
   Future<void> _drainDrafts(Completer<void> completion) async {
-    EditorPersistDraftRequest? activeRequest;
-    try {
-      while (_pendingDraft != null) {
-        final request = _pendingDraft!;
-        _pendingDraft = null;
-        activeRequest = request;
-        final version = _stateVersion;
+    while (_pendingDraft != null) {
+      final request = _pendingDraft!;
+      _pendingDraft = null;
+      _activeDraft = request;
+      final version = _stateVersion;
+      try {
         final result = await _flow.persistDraft(request);
-        if (!_closed && version == _stateVersion) _onDraftPersisted(result);
-        activeRequest = null;
+        if (version == _stateVersion) {
+          _draftBaseline = result.snapshot;
+          if (!_closed && _pendingDraft == null) _onDraftPersisted(result);
+        }
+      } on Object catch (error, stackTrace) {
+        if (version != _stateVersion) continue;
+        _pendingDraft ??= request;
+        _draftWrite = null;
+        completion.completeError(error, stackTrace);
+        return;
+      } finally {
+        _activeDraft = null;
       }
-      completion.complete();
-    } on Object catch (error, stackTrace) {
-      _pendingDraft ??= activeRequest;
-      completion.completeError(error, stackTrace);
-    } finally {
-      _draftWrite = null;
     }
+    _draftWrite = null;
+    completion.complete();
   }
 
-  Future<void> flushDrafts() => _draftWrite ?? Future<void>.value();
+  Future<void> flushDrafts() async {
+    final active = _draftWrite;
+    if (active != null) {
+      try {
+        await active;
+      } on Object {
+        if (_pendingDraft == null) rethrow;
+      }
+    }
+    if (_pendingDraft != null) await _writePendingDrafts();
+  }
+
+  void suspendDraft(RecoveryMetadata? metadata) {
+    final request = _pendingDraft ?? _activeDraft;
+    if (request != null && metadata?.vaultId == request.session.vaultId) {
+      _flow._heldDrafts[request.draftKey] = (
+        metadata: metadata!,
+        request: request.withSession(
+          UnlockedVaultSession(
+            vaultId: request.session.vaultId,
+            trustedDevice: false,
+          ),
+        ),
+        previousWrite: _draftWrite,
+      );
+    }
+    reset();
+  }
 
   Future<EditorSaveResult?> savePreview(EditorSaveRequest request) async {
     final version = ++_previewVersion;
@@ -604,6 +689,8 @@ class EditorFlowSession {
     _pendingPreviewSave?.completion.complete(null);
     _pendingPreviewSave = null;
     _pendingDraft = null;
+    _activeDraft = null;
+    _draftBaseline = null;
   }
 
   void close() {

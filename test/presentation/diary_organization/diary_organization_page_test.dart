@@ -554,6 +554,7 @@ void main() {
         await tester.pumpWidget(const SizedBox());
         await _drainStorage(tester, scope.dispose());
       });
+      scope.controller.updatePrivacy([const PrivateTextRange(3, 6)]);
       await tester.runAsync(scope.controller.startChat);
       await tester.pumpWidget(
         _app(scope, DiaryOrganizationPage(entryId: scope.entry.id)),
@@ -569,26 +570,52 @@ void main() {
         () => find.byType(AiRequestPreviewDialog).evaluate().isNotEmpty,
       );
       await tester.pumpAndSettle();
-      expect(
-        tester.getSize(find.byType(AlertDialog)).width,
-        lessThanOrEqualTo(tester.view.physicalSize.width * 0.9),
-      );
-      expect(find.text('原始日記內容'), findsOneWidget);
       expect(find.byKey(const ValueKey('ai-request-original')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('ai-request-instructions')),
-        findsOneWidget,
-      );
       final dialog = tester.widget<AiRequestPreviewDialog>(
         find.byType(AiRequestPreviewDialog),
       );
-      expect(find.text('聊天系統提示詞'), findsOneWidget);
-      expect(find.text('整理日記系統提示詞'), findsOneWidget);
-      expect(dialog.preview.turns.single.pending, isTrue);
-      expect(dialog.preview.turns.single.text, isNot(contains('私人')));
-      expect(dialog.generationPreview!.turns, isEmpty);
-      expect(find.text('尚未送出'), findsOneWidget);
+      final chatTitle = testL10n.aiPreviewSystemLabel(
+        testL10n.aiRequestPreviewChat,
+      );
+      final generationTitle = testL10n.aiPreviewSystemLabel(
+        testL10n.organizationGenerate,
+      );
+      expect(find.text(chatTitle), findsOneWidget);
+      expect(find.text(generationTitle), findsOneWidget);
+      expect(find.text(testL10n.chatDiaryPreviewPending), findsOneWidget);
       expect(scope.client.calls, isEmpty);
+      final jsonCard = find.byKey(const ValueKey('ai-request-json'));
+      await tester.tap(jsonCard);
+      await tester.pumpAndSettle();
+      expect(find.text(testL10n.aiRequestPreviewJsonHint), findsOneWidget);
+      final jsonText = tester
+          .widget<PrivateText>(
+            find.descendant(of: jsonCard, matching: find.byType(PrivateText)),
+          )
+          .text;
+      final json = jsonDecode(jsonText) as Map;
+      final chatJson = json['chat'] as Map;
+      final generationJson = json['generation'] as Map;
+      expect(chatJson['prompt'], chatTitle);
+      expect(generationJson['prompt'], generationTitle);
+      expect(chatJson['messages'], [
+        {
+          'role': 'user',
+          'text': dialog.preview.effective().turns.single.text,
+          'pending': true,
+        },
+      ]);
+      expect(generationJson['messages'], isEmpty);
+      expect(
+        chatJson['diary_body'],
+        dialog.preview.effective().diaryContext!.diaryBody,
+      );
+      expect(
+        generationJson['diary_body'],
+        dialog.generationPreview!.effective().diaryContext!.diaryBody,
+      );
+      expect(jsonText, isNot(contains('私人')));
+      expect(jsonText, isNot(contains('今天和王小明')));
       await tester.tap(find.widgetWithText(TextButton, '關閉'));
       await tester.pumpAndSettle();
       scope.controller.updateComposer('', []);
@@ -640,7 +667,10 @@ void main() {
       await _drainStorage(tester, stream.close());
       expect(scope.controller.draft!.organizedBody, isNull);
       scope.client.response = null;
-      scope.client.output = jsonEncode({'reply': '完成', 'body': '整理後的文字'});
+      scope.client.output = jsonEncode({
+        'reply': '完成',
+        'body': '${scope.controller.draft!.protectedSource}，整理後的文字。',
+      });
       await tester.tap(find.byKey(const ValueKey('organization-generate')));
       await _waitForUi(tester, () => !scope.controller.busy);
       await tester.pumpAndSettle();

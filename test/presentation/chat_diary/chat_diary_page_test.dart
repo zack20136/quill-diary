@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -34,6 +35,7 @@ import 'package:quill_diary/presentation/chat_diary/chat_diary_page.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
@@ -45,6 +47,19 @@ import '../../helpers/shared/widget_test_app.dart';
 final Finder _previewBody = find.byWidgetPredicate(
   (widget) => widget is Text && widget.textSpan != null,
 );
+
+final Finder _requestJson = find.byKey(const ValueKey('ai-request-json'));
+
+Future<String> _openRequestJson(WidgetTester tester) async {
+  await tester.ensureVisible(_requestJson);
+  await tester.tap(_requestJson);
+  await tester.pumpAndSettle();
+  return tester
+      .widget<PrivateText>(
+        find.descendant(of: _requestJson, matching: find.byType(PrivateText)),
+      )
+      .text;
+}
 
 class _ChatPreferences extends UserPreferences {
   _ChatPreferences({this.typography = EditorTypographyPreferences.defaults});
@@ -789,7 +804,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('聊天系統提示詞'), findsOneWidget);
       expect(find.text('生成日記系統提示詞'), findsOneWidget);
-      expect(find.text(testL10n.chatDiaryPrivateNotesHint), findsNothing);
+      expect(find.text(testL10n.chatDiaryPreviewLocalNotes), findsNothing);
       expect(tester.getSize(find.byType(AlertDialog)).width, closeTo(360, 0.1));
       expect(
         find.textContaining(testL10n.chatDiaryConversationRules),
@@ -842,12 +857,17 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
-    testWidgets('傳送預覽把照片留在原訊息，並顯示完成回覆與尚未送出的內容', (tester) async {
+    testWidgets('送出預覽保留照片順序，完整 JSON 納入已完成回覆與待送照片', (tester) async {
       tester.view.physicalSize = const Size(400, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final chat = testChatDiarySession(hidePersonNames: false);
+      chat.connectionConfig = setThinkingLevel(
+        chat.connectionConfig,
+        chat.connectionConfig.model,
+        AiThinkingLevel.high,
+      );
       final sentImage = generateAssetId();
       final pendingImage = generateAssetId();
       chat.images.addAll([
@@ -890,7 +910,6 @@ void main() {
           status: ChatDiaryMessageStatus.failed,
         ),
       );
-      chat.composerText = '還沒送出';
       chat.pendingImageIds.add(pendingImage);
       final store = OverviewChatDiaryStore(chat);
       store.images[sentImage] = testAiPng;
@@ -901,33 +920,19 @@ void main() {
         FakeAiClient(chat.connectionConfig),
         store: store,
       );
-      await tester.tap(find.byTooltip('查看送給 AI 的內容'));
+      await tester.tap(find.byTooltip(testL10n.aiPreviewRequest));
       await tester.pumpAndSettle();
       final dialog = find.byType(AlertDialog);
       expect(
         find.descendant(of: dialog, matching: find.text('這段失敗不會送出')),
         findsNothing,
       );
-      final you = find.descendant(of: dialog, matching: find.text('你'));
-      final assistant = find.descendant(of: dialog, matching: find.text('AI'));
-      expect(you, findsWidgets);
-      expect(assistant, findsOneWidget);
-      final pendingTag = find.descendant(
-        of: dialog,
-        matching: find.text('尚未送出'),
-      );
-      expect(pendingTag, findsOneWidget);
       expect(
-        tester.getCenter(you.first).dx,
-        greaterThan(tester.getCenter(assistant).dx),
-      );
-      expect(
-        tester.getCenter(pendingTag).dx,
-        lessThan(tester.getCenter(you.last).dx),
-      );
-      expect(
-        tester.getCenter(pendingTag).dx,
-        greaterThan(tester.getCenter(assistant).dx),
+        find.descendant(
+          of: dialog,
+          matching: find.text(testL10n.chatDiaryPreviewPending),
+        ),
+        findsOneWidget,
       );
       final images = find.descendant(of: dialog, matching: find.byType(Image));
       expect(images, findsNWidgets(2));
@@ -936,19 +941,6 @@ void main() {
         matching: find.text('想記住這張照片'),
       );
       final reply = find.descendant(of: dialog, matching: find.text('這段值得留下'));
-      final pending = find.descendant(of: dialog, matching: find.text('還沒送出'));
-      expect(
-        (tester.getCenter(pendingTag).dy - tester.getCenter(you.last).dy).abs(),
-        lessThan(12),
-      );
-      expect(
-        tester.getTopLeft(you.last).dx - tester.getTopRight(pendingTag).dx,
-        lessThan(20),
-      );
-      expect(
-        tester.getTopLeft(userText).dx,
-        greaterThan(tester.getTopLeft(reply).dx),
-      );
       expect(
         tester.getBottomLeft(images.first).dy,
         lessThan(tester.getTopLeft(userText).dy),
@@ -961,18 +953,50 @@ void main() {
         tester.getBottomLeft(reply).dy,
         lessThan(tester.getTopLeft(images.last).dy),
       );
+      final payload = jsonDecode(await _openRequestJson(tester)) as Map;
+      final chatRequest = payload['chat'] as Map;
+      final generation = payload['generation'] as Map;
+      expect(chatRequest['model'], chat.connectionConfig.model);
       expect(
-        tester.getBottomLeft(images.last).dy,
-        lessThan(tester.getTopLeft(pending).dy),
+        chatRequest['parameters'],
+        thinkingRequestFields(chat.connectionConfig),
       );
-      await tester.tap(find.text('生成日記系統提示詞'));
-      await tester.pumpAndSettle();
+      expect(generation['parameters'], chatRequest['parameters']);
       expect(
-        find.textContaining(testL10n.chatDiaryGenerationRules),
+        chatRequest['prompt'],
+        testL10n.aiPreviewSystemLabel(testL10n.aiRequestPreviewChat),
+      );
+      expect(
+        generation['prompt'],
+        testL10n.aiPreviewSystemLabel(testL10n.chatDiaryGenerateDiary),
+      );
+      expect(chatRequest['messages'], [
+        {
+          'role': 'user',
+          'text': '想記住這張照片',
+          'photos': ['photo_1'],
+        },
+        {'role': 'assistant', 'text': '這段值得留下'},
+        {
+          'role': 'user',
+          'text': '',
+          'photos': ['photo_2'],
+          'pending': true,
+        },
+      ]);
+      expect(generation['photos'], ['photo_1']);
+      expect(generation['data'], {
+        'user_turns': [
+          {'turn': 1, 'text': '想記住這張照片'},
+        ],
+        'assistant_context': [],
+      });
+      expect(
+        find.text(testL10n.chatDiaryGenerationUserCount(1)),
         findsOneWidget,
       );
       expect(
-        find.descendant(of: dialog, matching: find.text('尚未送出')),
+        find.text(testL10n.chatDiaryGenerationContextCount(0)),
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox.shrink());
@@ -1005,7 +1029,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(AlertDialog),
-          matching: find.text(testL10n.chatDiaryPrivateNotesHint),
+          matching: find.text(testL10n.chatDiaryPreviewLocalNotes),
         ),
         findsOneWidget,
       );
@@ -1026,6 +1050,10 @@ void main() {
         (tester.widget<Text>(texts.last)).textSpan!.toPlainText(),
         '**AI 原始回覆**',
       );
+      final requestJson = await _openRequestJson(tester);
+      expect(requestJson, contains('{{PRI_01}}'));
+      expect(requestJson, isNot(contains('秘密')));
+      expect(requestJson, isNot(contains(testL10n.chatDiaryGenerationRules)));
       await tester.pumpWidget(const SizedBox.shrink());
     });
     testWidgets('窄版大字與鍵盤下的送出預覽可捲動及關閉，尚未送出標籤不溢位', (tester) async {
@@ -1050,6 +1078,27 @@ void main() {
       await tester.tap(find.byTooltip(l10n.aiPreviewRequest));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(l10n.chatDiaryGenerationNoSentMessages), findsOneWidget);
+      final prompt = find.byKey(const ValueKey('ai-request-instructions'));
+      expect(
+        tester.getTopLeft(_requestJson).dy,
+        lessThan(tester.getTopLeft(prompt).dy),
+      );
+      final payload = jsonDecode(await _openRequestJson(tester)) as Map;
+      expect(
+        payload['chat']['prompt'],
+        l10n.aiPreviewSystemLabel(l10n.aiRequestPreviewChat),
+      );
+      expect(
+        payload['generation']['prompt'],
+        l10n.aiPreviewSystemLabel(l10n.chatDiaryGenerateDiary),
+      );
+      expect((payload['chat']['messages'] as List).single, {
+        'role': 'user',
+        'text': chat.composerText,
+        'pending': true,
+      });
+      expect(payload['generation']['data']['user_turns'], isEmpty);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
@@ -1300,6 +1349,13 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AppConfirmDialog),
+          matching: find.text(testL10n.aiSaveSettings),
+        ),
+      );
 
       await tester.pumpAndSettle();
       expect(find.text('127.0.0.1:11434/test-model'), findsOneWidget);
@@ -1362,6 +1418,13 @@ void main() {
       await tester.ensureVisible(name);
       await tester.enterText(name, '私人帳戶');
       await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AppConfirmDialog),
+          matching: find.text(testL10n.aiSaveSettings),
+        ),
+      );
       await tester.pumpAndSettle();
       final controller = container.read(chatDiaryControllerProvider(chat.id));
       expect(controller.chat!.connectionConfig.connectionId, a.connectionId);

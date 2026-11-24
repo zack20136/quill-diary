@@ -53,9 +53,14 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField).first, '小明');
-    await tester.tap(find.text(testL10n.personaChatRuleAddName));
+    await tester.tap(find.byTooltip(testL10n.personaChatRuleAddName));
     await tester.pump();
     expect(find.byType(PersonaSpeakerRoleCard), findsOneWidget);
+    final role = find.byType(PersonaDropdownField<PersonaSpeakerRole>);
+    expect(
+      tester.getRect(role).right,
+      closeTo(tester.getRect(find.byType(TextField).first).right, 0.5),
+    );
     await tester.tap(find.text(testL10n.personaRoleUnknown));
     await tester.pumpAndSettle();
     await tester.tap(find.text(testL10n.personaRoleSubject).last);
@@ -109,5 +114,74 @@ void main() {
     expect(chosen!.speakers.single.label, '小明');
     expect(chosen!.speakers.single.id, 'named-s1');
     expect(chosen!.speakers.single.role, PersonaSpeakerRole.personaSubject);
+  });
+
+  testWidgets('窄畫面大字與鍵盤下可捲過多位說話者並匯入全文', (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final existing = PersonaChatImport.raw(
+      vaultId: 'vault',
+      personId: generatePersonId(),
+      personaId: generatePersonaId(),
+      text: sample,
+      hidden: const [],
+      speakers: [
+        for (var i = 0; i < 12; i++)
+          PersonaImportSpeaker(
+            id: 'speaker-$i',
+            label: '聊天對象 $i',
+            role: PersonaSpeakerRole.unknown,
+          ),
+      ],
+    );
+    PersonaChatImport? result;
+    await tester.pumpWidget(
+      widgetTestApp(
+        brightness: Brightness.dark,
+        child: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              result = await showAppDialog<PersonaChatImport>(
+                context: context,
+                builder: (_) => PersonaChatRuleDialog(
+                  input: sample,
+                  vaultId: existing.vaultId,
+                  personId: existing.personId,
+                  personaId: existing.personaId,
+                  existing: existing,
+                ),
+              );
+            },
+            child: const Text('開啟'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('開啟'));
+    await tester.pumpAndSettle();
+    final name = find.byType(TextField).first;
+    await tester.ensureVisible(name);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+    await tester.enterText(name, '新對象');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip(testL10n.personaChatRuleAddName));
+    await tester.tap(find.byTooltip(testL10n.personaChatRuleAddName));
+    await tester.pumpAndSettle();
+    final preview = find.byType(TextField).last;
+    await tester.ensureVisible(preview);
+    await tester.pumpAndSettle();
+    expect(preview.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(
+      find.widgetWithText(FilledButton, testL10n.commonActionApply),
+    );
+    await tester.pumpAndSettle();
+    expect(result?.rawText, sample);
+    expect(result?.speakers.last.label, '新對象');
   });
 }

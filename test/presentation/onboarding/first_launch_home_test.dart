@@ -139,7 +139,7 @@ void main() {
     expect(find.text(testL10n.onboardingIntroPage1Title), findsNothing);
   });
 
-  testWidgets('尚無日記庫且尚未看過介紹時會自動顯示介紹 Dialog', (WidgetTester tester) async {
+  testWidgets('首次啟動會顯示介紹，略過後進入首次啟動首頁', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -165,17 +165,22 @@ void main() {
       isNull,
     );
 
-    for (int i = 0; i < 4; i++) {
-      await tester.tap(find.text(testL10n.onboardingIntroNext));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-    }
-    await tester.tap(find.text(testL10n.onboardingIntroGetStarted));
+    final skip = find.widgetWithText(TextButton, testL10n.onboardingIntroSkip);
+    final next = find.widgetWithText(
+      FilledButton,
+      testL10n.onboardingIntroNext,
+    );
+    expect(tester.getCenter(skip).dx, lessThan(tester.getCenter(next).dx));
+    await tester.tap(skip);
     await tester.pump();
     await pumpIntroFrames(tester);
 
     expect(find.byType(AppDialogShell), findsNothing);
     expect(find.byType(FirstLaunchHomePane), findsOneWidget);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomePage)),
+    );
+    expect(container.read(hasSeenOnboardingIntroProvider).value, isTrue);
     expect(
       tester
           .widget<HomeHeaderIconButton>(find.byType(HomeHeaderIconButton))

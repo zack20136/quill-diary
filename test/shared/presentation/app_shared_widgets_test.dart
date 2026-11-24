@@ -107,7 +107,7 @@ void main() {
     );
   });
 
-  testWidgets('確認 dialog 取消與確認會回傳對應結果', (tester) async {
+  testWidgets('簡短確認視窗在取消、關閉與確認時回傳對應結果', (tester) async {
     await tester.binding.setSurfaceSize(const Size(320, 568));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     bool? result;
@@ -134,6 +134,13 @@ void main() {
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(result, isFalse);
+
+    result = null;
+    await tester.tap(find.text('開啟'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithIcon(IconButton, Icons.close_rounded));
     await tester.pumpAndSettle();
     expect(result, isFalse);
 

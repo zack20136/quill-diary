@@ -23,6 +23,7 @@ import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_settings_dialog.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/preferences/in_memory_user_preferences.dart';
@@ -371,16 +372,26 @@ void main() {
       expect(store.keys[store.settings.connectionFor(a).credentialId], 'key-a');
       expect(tester.takeException(), isNull);
     });
-    testWidgets('設定讀取失敗時停用儲存且不覆寫既有資料', (tester) async {
-      store.failReads = true;
-      await open(tester);
-      expect(find.textContaining('AI 設定無法讀取'), findsOneWidget);
-      expect(
-        tester
-            .widget<FilledButton>(find.widgetWithText(FilledButton, '儲存'))
-            .onPressed,
-        isNull,
+    testWidgets('設定讀取失敗可重試，重試成功後才可儲存', (tester) async {
+      final read = Completer<void>();
+      store.readGate = read.future;
+      await tester.pumpWidget(app());
+      await tester.tap(find.text('AI 設定'));
+      await tester.pump();
+      read.completeError(StateError('測試讀取失敗'));
+      await tester.pumpAndSettle();
+      final retry = find.widgetWithText(
+        FilledButton,
+        testL10n.commonActionRetry,
       );
+      final save = find.widgetWithText(FilledButton, testL10n.aiSaveSettings);
+      expect(retry.hitTestable(), findsOneWidget);
+      expect(save, findsNothing);
+      store.readGate = null;
+      await tester.tap(retry);
+      await tester.pumpAndSettle();
+      expect(retry, findsNothing);
+      expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
       expect(networkCalls, 0);
     });
     for (final readingKey in [false, true]) {
@@ -473,7 +484,26 @@ void main() {
       expect(find.byType(AiConnectionSettingsDialog), findsOneWidget);
       expect(store.keys.values, isNot(contains('orphan-key')));
     });
-    testWidgets('介紹依提供商顯示政策與 HTTP 說明，連線不再要求確認', (tester) async {
+    testWidgets('加入及清空金鑰會即時更新可用模型提示', (tester) async {
+      await open(tester);
+      final warning = find.text(testL10n.aiSettingsNeedConnection);
+      final key = find.byKey(const ValueKey('ai-api-key-openai'));
+      expect(
+        tester.getTopLeft(warning).dy,
+        lessThan(tester.getTopLeft(find.text(testL10n.aiSettingsLead)).dy),
+      );
+      await tester.ensureVisible(key);
+      await tester.enterText(key, 'synthetic-key');
+      await tester.pumpAndSettle();
+      expect(warning, findsNothing);
+
+      await tester.enterText(key, '');
+      await tester.pumpAndSettle();
+      expect(warning, findsOneWidget);
+      expect(store.keys, isEmpty);
+      expect(networkCalls, 0);
+    });
+    testWidgets('顯示服務商政策，測試連線時直接送出', (tester) async {
       const connectionConfig = AiConnectionConfig(
         provider: AiProvider.gemini,
         model: 'test-model',
@@ -499,18 +529,70 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('允許連線'), findsNothing);
       expect(networkCalls, 1);
+    });
+
+    testWidgets('取消儲存 HTTP 連線保留編輯，確認後才寫入', (tester) async {
+      const originalUrl = 'https://gateway.example/v1';
+      store.settings = const AiConnectionSettings(
+        activeConnectionId: 'custom',
+        connections: {
+          'custom': AiConnectionConfig(
+            provider: AiProvider.custom,
+            model: 'test-model',
+            baseUrl: originalUrl,
+          ),
+        },
+      );
+      await open(tester);
       final url = find.byWidgetPredicate(
         (w) => w is TextField && w.decoration?.labelText == '服務網址',
       );
       await tester.ensureVisible(url);
       await tester.enterText(url, 'http://127.0.0.1:11434');
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining(testL10n.aiGeminiPolicyNotice),
-        findsOneWidget,
+      final key = find.byKey(const ValueKey('ai-api-key-custom'));
+      await tester.ensureVisible(key);
+      await tester.enterText(key, 'edited-key');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      expect(find.text(testL10n.aiHttpConfirmTitle), findsNothing);
+      final save = find.widgetWithText(FilledButton, testL10n.aiSaveSettings);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text(testL10n.aiHttpConfirmTitle), findsOneWidget);
+      expect(store.settings.connections['custom']!.baseUrl, originalUrl);
+      expect(store.keys.values, isNot(contains('edited-key')));
+      final confirm = find.ancestor(
+        of: find.text(testL10n.aiHttpConfirmTitle),
+        matching: find.byType(AppConfirmDialog),
       );
-      expect(find.textContaining('此網址使用 HTTP'), findsOneWidget);
-      expect(find.textContaining('選填'), findsNothing);
+      await tester.tap(
+        find.descendant(
+          of: confirm,
+          matching: find.text(testL10n.commonActionCancel),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(url).controller!.text,
+        'http://127.0.0.1:11434',
+      );
+      expect(tester.widget<TextField>(key).controller!.text, 'edited-key');
+      expect(store.keys.values, isNot(contains('edited-key')));
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: confirm,
+          matching: find.text(testL10n.aiSaveSettings),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        store.settings.connections['custom']!.baseUrl,
+        'http://127.0.0.1:11434',
+      );
+      expect(store.keys.values, contains('edited-key'));
     });
     testWidgets('Custom 可保存網址、模型與協定，API Key 可留空且切換不自動連線', (tester) async {
       tester.view.physicalSize = const Size(400, 800);
@@ -568,10 +650,6 @@ void main() {
       await tester.tap(find.text('關閉').last);
       await tester.pumpAndSettle();
       await prompt(tester, '預設個性');
-      expect(
-        find.text(lookupAppLocalizations(appZhLocale).chatDiaryPersonalityHelp),
-        findsOneWidget,
-      );
       final conversation = find.byKey(
         const ValueKey(ChatDiaryPromptPurpose.personality),
       );
@@ -747,7 +825,6 @@ void main() {
       await tester.tap(find.text('關閉').last);
       await tester.pumpAndSettle();
       await prompt(tester, '需求對話');
-      expect(find.textContaining('先不產生全文'), findsOneWidget);
       final conversation = find.byKey(
         const ValueKey('organization-conversation-prompt'),
       );
@@ -760,10 +837,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('使用自訂提示詞'), findsOneWidget);
       await prompt(tester, '整理生成');
-      expect(
-        find.textContaining(testL10n.organizationGenerationHelp),
-        findsOneWidget,
-      );
       final generation = find.byKey(
         const ValueKey('organization-generation-prompt'),
       );
@@ -1127,7 +1200,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('thinking-format')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('不傳送 Thinking 參數').last);
+      await tester.tap(find.text(testL10n.aiThinkingOmit).last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, '套用'));
       await tester.pumpAndSettle();

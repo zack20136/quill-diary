@@ -8,6 +8,7 @@ import 'package:quill_diary/app/router.dart';
 import 'package:quill_diary/application/onboarding/onboarding_intro.dart';
 import 'package:quill_diary/application/session/session_navigation_coordinator.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
+import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/billing_providers.dart';
 import 'package:quill_diary/application/settings/drive_upload_coordinator.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
@@ -15,6 +16,8 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/app_theme.dart';
 import 'package:quill_diary/shared/presentation/personalization_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -118,7 +121,13 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
               : dialogL10n.driveUploadAbandonedFailureBody;
           return AppDialogShell(
             title: dialogL10n.driveUploadAbandonedFailureTitle,
-            content: Text(body),
+            content: AppScrollView(
+              child: AppFeedbackBanner(
+                message: body,
+                tone: AppFeedbackTone.error,
+                outlined: true,
+              ),
+            ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
@@ -160,6 +169,12 @@ class _QuillDiaryAppState extends ConsumerState<QuillDiaryApp>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AppSessionState>(appSessionProvider, (previous, next) {
+      if (previous?.session != null && next.session != previous?.session) {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      }
+    });
     ref.listen<SessionNavigationRequest?>(
       sessionNavigationRequestProvider,
       _handleSessionRouteTransition,

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_preview.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/transfer/portable_transfer_dialogs.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 
 Future<PortableImportConfirmResult> confirmPortableImport({
   required BuildContext context,
@@ -22,8 +23,9 @@ Future<PortableImportConfirmResult> confirmPortableImport({
         selectedPreviewIndices,
       );
       return PortableTransferConfirmBody(
-        summaryLines: <String>[
-          l10n.portableExportEntryCount(selectedPreview.entryCount),
+        summaryIcon: Icons.file_download_outlined,
+        summaryTitle: l10n.portableExportEntryCount(selectedPreview.entryCount),
+        summaryDetails: <String>[
           if (preview.skippedFiles > 0)
             l10n.portableImportSkippedFilesCount(preview.skippedFiles),
           if (preview.skippedAttachments > 0)
@@ -52,14 +54,17 @@ Future<PortableImportConfirmResult> confirmPortableImport({
             ],
             initiallySelected: selectedPreviewIndices,
           );
-          if (next == null) return;
+          if (next == null || !context.mounted) return;
           setState(() {
             selectedPreviewIndices
               ..clear()
               ..addAll(next);
           });
         },
-        footer: l10n.portableImportAddsAsNewHint,
+        notice: AppFeedbackBanner(
+          icon: Icons.playlist_add_rounded,
+          message: l10n.portableImportAddsAsNewHint,
+        ),
       );
     },
   );

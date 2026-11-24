@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:cryptography/cryptography.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
@@ -90,6 +93,53 @@ void main() {
     );
 
     expect(decrypted, plaintext);
+  });
+
+  test('串流可讀取既有 LDJ2 密文，認證失敗時不交付任何明文', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'ldj2_stream_test_',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/attachment.enc');
+    final bytes = List<int>.generate(131073, (index) => index % 251);
+    final wrapKey = List<int>.filled(32, 19);
+    final context = DecryptionContext.recovery(
+      recoveryWrapKey: wrapKey,
+      vaultId: 'vlt_TEST01',
+    );
+    final envelope = await crypto.encryptBytes(
+      documentId: 'asset',
+      vaultId: 'vlt_TEST01',
+      plaintextBytes: bytes,
+      contentType: 'image/png',
+      recoveryWrapKey: wrapKey,
+      recoverySlotKdf: KdfDescriptor.argon2idRecovery(
+        saltBytes: List.filled(16, 8),
+      ),
+      createdAt: DateTime.utc(2026, 5),
+      updatedAt: DateTime.utc(2026, 5),
+    );
+    await file.writeAsBytes(envelope.toFileBytes());
+    Stream<List<int>> read() => crypto.readAuthenticatedFile(
+      file,
+      context,
+      documentId: 'asset',
+      contentType: 'image/png',
+    );
+
+    final opened = await read().toList();
+    expect(opened.length, greaterThan(1));
+    expect(opened.expand((part) => part), bytes);
+
+    final encrypted = envelope.toFileBytes();
+    await file.writeAsBytes(encrypted.sublist(0, encrypted.length - 1));
+    await expectLater(
+      read(),
+      emitsInOrder([
+        emitsError(isA<SecretBoxAuthenticationError>()),
+        emitsDone,
+      ]),
+    );
   });
 
   test('parseFileBytes 拒絕過短或錯誤 magic 的檔案', () {

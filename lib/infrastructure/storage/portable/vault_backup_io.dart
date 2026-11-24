@@ -1,20 +1,29 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
+import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/dart.dart';
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/portable/backup_integrity.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_restore_transaction.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/shared/archive_extract.dart';
+import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/shared/zip_structure.dart';
+import 'package:quill_diary/infrastructure/storage/tag_catalog_store.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
+import 'package:quill_diary/shared/data_versions.dart';
 
 /// 讀寫加密完整日記庫備份 zip 封存。
 ///
@@ -24,15 +33,13 @@ class VaultBackupIo {
   VaultBackupIo({
     required this._pathStrategy,
     required this._repository,
-    required this._indexDatabaseManager,
-    required this._editorDraftStore,
     this.personaBackupFiles,
   });
 
   final VaultPathStrategy _pathStrategy;
   final VaultRepository _repository;
-  final IndexDatabaseManager _indexDatabaseManager;
-  final EditorDraftStore _editorDraftStore;
+  final _crypto = LocalCryptoService();
+  bool _restoring = false;
 
   /// 已在日記庫修改序列內呼叫；回傳 ZIP 相對路徑及正式分身密文。
   final Future<Map<String, Uint8List>> Function()? personaBackupFiles;
@@ -76,58 +83,126 @@ class VaultBackupIo {
         }
       }
     }
+    final metadata =
+        await _repository.readRecoveryMetadata() ??
+        (throw const VaultBackupException(VaultBackupIssue.missingRecovery));
+    final session =
+        _repository.unlockedSessionForBackup ??
+        (throw StateError('備份需要已解鎖的日記庫。'));
+    final wrapKey = requireRecoveryWrapKey(session);
+    final context = vaultDecryptionContext(session);
+    final id = generateBackupId();
+    final generated = <String, List<int>>{
+      'recovery.json': utf8.encode(
+        jsonEncode({
+          ...metadata.toJson(),
+          'backup_format_version': DataVersions.vaultBackup,
+          'backup_id': id,
+        }),
+      ),
+      ...preservedTags,
+      ...publishedPersonas,
+    };
+    final files = <String, File>{};
+    await for (final item in vaultRoot.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (item is! File) continue;
+      final path = p
+          .split(p.relative(item.path, from: vaultRoot.path))
+          .join('/');
+      if (backupMemberType(path) != 'file' ||
+          generated.containsKey(path) ||
+          path.startsWith('personas/') ||
+          path.startsWith('preservation/')) {
+        continue;
+      }
+      files[path] = item;
+    }
+    final names = [...files.keys, ...generated.keys]..sort();
     await target.parent.create(recursive: true);
     onProgress?.call(
       const BackupTaskProgress(phase: BackupTaskPhase.creatingBackup),
     );
     final ZipFileEncoder encoder = ZipFileEncoder();
-    encoder.create(target.path);
+    encoder.create(target.path, level: ZipFileEncoder.store);
     try {
-      await encoder.addDirectory(
-        vaultRoot,
-        includeDirName: false,
-        filter: (FileSystemEntity entity, double progress) {
-          onProgress?.call(
-            BackupTaskProgress(
-              phase: BackupTaskPhase.creatingBackup,
-              fraction: progress.clamp(0.0, 1.0),
+      final sha256 = const DartSha256();
+      final members = [
+        backupMember(
+          path: 'entries',
+          length: 0,
+          hash: (await sha256.hash([])).bytes,
+        ),
+      ];
+      encoder.addArchiveFile(ArchiveFile.directory('entries/'));
+      for (final name in names) {
+        final bytes = generated[name];
+        final file = files[name];
+        if (bytes != null) {
+          members.add(
+            backupMember(
+              path: name,
+              length: bytes.length,
+              hash: (await sha256.hash(bytes)).bytes,
             ),
           );
-          final String relative = p.relative(entity.path, from: vaultRoot.path);
-          final List<String> segments = p.split(relative);
-          if (relative == 'tag_styles.json' ||
-              relative.startsWith('tag_styles.json.') &&
-                  relative != 'tag_styles.json.enc' ||
-              preservedTags.containsKey(relative)) {
-            return ZipFileOperation.skip;
+          encoder.addArchiveFile(ArchiveFile(name, bytes.length, bytes));
+        } else {
+          if (purpose == VaultBackupPurpose.normal && name.endsWith('.enc')) {
+            await _crypto.verifyFile(file!, context);
           }
-          if (segments.isNotEmpty &&
-              (segments.first == 'index' ||
-                  segments.first == 'quarantine' ||
-                  segments.first == 'chat_diary_drafts' ||
-                  segments.first.toLowerCase() == 'personas' ||
-                  segments.first == 'diary_organization_drafts' ||
-                  segments.first == 'chat_diary_remote_cleanup' ||
-                  segments.any(
-                    (s) => s.endsWith('.tmp') || s.endsWith('.previous'),
-                  ))) {
-            return ZipFileOperation.skip;
-          }
-          return ZipFileOperation.include;
-        },
+          members.add(
+            backupMember(
+              path: name,
+              length: await file!.length(),
+              hash: (await sha256File(file)).bytes,
+            ),
+          );
+          await encoder.addFile(file, name);
+        }
+        onProgress?.call(
+          BackupTaskProgress(
+            phase: BackupTaskPhase.creatingBackup,
+            fraction: (members.length - 1) / (names.length + 1),
+          ),
+        );
+      }
+      final payload = await backupIntegrityPayload(
+        backupId: id,
+        metadata: metadata,
+        purpose: purpose,
+        members: members,
       );
-      for (final entry in preservedTags.entries) {
-        encoder.addArchiveFile(
-          ArchiveFile(entry.key, entry.value.length, entry.value),
-        );
-      }
-      for (final entry in publishedPersonas.entries) {
-        encoder.addArchiveFile(
-          ArchiveFile(entry.key, entry.value.length, entry.value),
-        );
-      }
+      final now = DateTime.now();
+      final envelope = (await _crypto.encryptBytes(
+        documentId: 'backup_integrity_$id',
+        vaultId: metadata.vaultId,
+        plaintextBytes: utf8.encode(jsonEncode(payload)),
+        contentType: 'application/json',
+        recoveryWrapKey: wrapKey,
+        recoverySlotKdf: metadata.kdf,
+        createdAt: now,
+        updatedAt: now,
+      )).toFileBytes();
+      encoder.addArchiveFile(
+        ArchiveFile(backupIntegrityPath, envelope.length, envelope),
+      );
     } finally {
       await encoder.close();
+    }
+    final archive = await openZipArchive(target);
+    try {
+      await verifyBackupIntegrity(
+        archive: archive.archive,
+        crypto: _crypto,
+        backupId: id,
+        metadata: metadata,
+        wrapKey: wrapKey,
+      );
+    } finally {
+      await archive.close();
     }
     return target;
   }
@@ -149,6 +224,12 @@ class VaultBackupIo {
       } finally {
         await zip.close();
       }
+    } on VaultBackupException catch (error) {
+      return BackupInspectResult(
+        ok: false,
+        issue: error.issue,
+        layout: VaultBackupLayout.empty,
+      );
     } on ZipUnsafePathException {
       return const BackupInspectResult(
         ok: false,
@@ -179,7 +260,7 @@ class VaultBackupIo {
     var issue = ok ? VaultBackupIssue.passed : layout.issue;
 
     if (ok) {
-      recoveryMetadata = _readRecoveryMetadataFromZip(zip.archive);
+      recoveryMetadata = _readBackupPreview(zip.archive)?.metadata;
       if (recoveryMetadata == null) {
         ok = false;
         issue = VaultBackupIssue.invalidRecoveryJson;
@@ -207,7 +288,7 @@ class VaultBackupIo {
     try {
       final OpenedZipArchive zip = await openZipArchive(backupFile);
       try {
-        return BackupRecoveryPreview(metadata: _requireRestorableBackup(zip));
+        return _requireRestorableBackup(zip);
       } finally {
         await zip.close();
       }
@@ -222,34 +303,66 @@ class VaultBackupIo {
     }
   }
 
-  Future<void> verifyBackupRecoveryKey(
+  Future<VerifiedBackupKey> verifyBackupRecoveryKey(
     File backupFile,
     String recoveryKey,
   ) async {
     final normalized = RecoveryKey.normalize(recoveryKey);
     try {
-      final OpenedZipArchive zip = await openZipArchive(backupFile);
+      final zip = await openZipArchive(backupFile);
       try {
-        final RecoveryMetadata? metadata = _readRecoveryMetadataFromZip(
-          zip.archive,
+        final preview =
+            _readBackupPreview(zip.archive) ??
+            (throw const VaultBackupException(
+              VaultBackupIssue.recoveryInfoMissing,
+            ));
+        final metadata = preview.metadata;
+        final wrapKey = await _crypto.deriveRecoveryWrapKey(
+          recoveryKey: normalized,
+          kdf: metadata.kdf,
         );
-        if (metadata == null) {
-          throw const VaultBackupException(
-            VaultBackupIssue.recoveryInfoMissing,
-          );
-        }
-        final Uint8List? sampleBytes = readEncryptedSampleBytes(zip.archive);
-        if (sampleBytes == null) {
+        final sample =
+            zip.archive.findFile(
+              preview.backupId == null
+                  ? 'manifest.json.enc'
+                  : backupIntegrityPath,
+            ) ??
+            zip.archive.files
+                .where(
+                  (file) =>
+                      file.isFile &&
+                      file.name.startsWith('entries/') &&
+                      file.name.endsWith('.md.enc'),
+                )
+                .firstOrNull;
+        if (sample == null) {
           throw const VaultBackupException(VaultBackupIssue.noEncryptedSample);
         }
-        await _repository.verifyRecoveryKeyAgainstBackupBytes(
-          metadata: metadata,
-          recoveryKey: normalized,
-          encryptedDocumentBytes: sampleBytes,
-        );
+        final work = await createWorkingDirectory(_pathStrategy, 'restore_key');
+        try {
+          final file = File(p.join(work.path, 'sample.enc'));
+          final output = OutputFileStream(file.path);
+          try {
+            writeZipEntry(sample, output);
+          } finally {
+            await output.close();
+          }
+          await _crypto.verifyFile(
+            file,
+            DecryptionContext.recovery(
+              recoveryWrapKey: wrapKey,
+              vaultId: metadata.vaultId,
+            ),
+          );
+        } finally {
+          await deleteWorkingDirectory(work);
+        }
+        return (preview: preview, wrapKey: wrapKey, recoveryKey: normalized);
       } finally {
         await zip.close();
       }
+    } on SecretBoxAuthenticationError {
+      throw const VaultBackupException(VaultBackupIssue.recoveryKeyMismatch);
     } on VaultBackupException {
       rethrow;
     } on Object {
@@ -257,91 +370,54 @@ class VaultBackupIo {
     }
   }
 
-  Future<void> restoreBackupZip(
+  Future<UnlockedVaultSession> restoreBackupZip(
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
+    BackupRecoveryPreview? expectedPreview,
+    VerifiedBackupKey? verifiedKey,
     BackupTaskProgressListener? onProgress,
   }) async {
-    final Directory vaultRoot = await _pathStrategy.vaultRootDirectory();
-    await vaultRoot.parent.create(recursive: true);
-    final Directory candidate = await vaultRoot.parent.createTemp(
-      '${p.basename(vaultRoot.path)}_restore_',
-    );
+    if (_restoring) throw StateError('已有日記庫還原正在執行。');
+    _restoring = true;
     try {
-      final RecoveryMetadata backupMetadata = await _extractRestoreCandidate(
-        backupFile,
-        candidate,
-        onProgress: onProgress,
-      );
-      _validateRestoredVaultPayload(candidate);
-      if (preserveTrustedDeviceAccess) {
-        final RecoveryMetadata? local = await _repository
-            .readRecoveryMetadata();
-        if (local?.hasSameRecoveryGenerationAs(backupMetadata) != true) {
-          throw const VaultBackupException(
-            VaultBackupIssue.recoveryKeyMismatch,
-          );
-        }
-      }
-
-      Directory? previousBackup;
-      if (vaultRoot.existsSync()) {
-        previousBackup = Directory(
-          '${vaultRoot.path}.bak_${DateTime.now().microsecondsSinceEpoch}',
+      return await _repository.runVaultMutation(() async {
+        final transaction = await VaultRestoreTransaction.forPaths(
+          _pathStrategy,
         );
-        await vaultRoot.rename(previousBackup.path);
-      }
-      try {
-        await candidate.rename(vaultRoot.path);
-      } on Object {
-        if (!vaultRoot.existsSync() && previousBackup != null) {
-          await previousBackup.rename(vaultRoot.path);
+        await transaction.prepare();
+        final UnlockedVaultSession restored;
+        try {
+          restored = await _extractAndPrepare(
+            backupFile,
+            transaction: transaction,
+            expectedPreview: expectedPreview,
+            verifiedKey: verifiedKey,
+            preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+            onProgress: onProgress,
+          );
+        } on Object {
+          await transaction.recover();
+          rethrow;
         }
-        rethrow;
-      }
-
-      _repository.clearRecoveryMetadataCache();
-      final Directory strayVaultIndex = Directory(
-        p.join(vaultRoot.path, 'index'),
-      );
-      if (strayVaultIndex.existsSync()) {
-        await strayVaultIndex.delete(recursive: true);
-      }
-
-      await _repository.closeUnlockedResources();
-      await _indexDatabaseManager.deleteDatabaseFiles();
-      await _editorDraftStore.deleteAll();
-      if (!preserveTrustedDeviceAccess) {
-        await _repository.clearTrustedDeviceAccess();
-      }
-      if (previousBackup != null) {
-        await _deleteRestoreDirectory(previousBackup);
-      }
+        await _repository.switchToRestoredVault(transaction, restored);
+        return restored;
+      });
     } finally {
-      await _deleteRestoreDirectory(candidate);
+      _restoring = false;
     }
   }
 
-  Future<RecoveryMetadata> _extractRestoreCandidate(
-    File backupFile,
-    Directory candidate, {
+  Future<UnlockedVaultSession> _extractAndPrepare(
+    File backupFile, {
+    required VaultRestoreTransaction transaction,
+    required BackupRecoveryPreview? expectedPreview,
+    required VerifiedBackupKey? verifiedKey,
+    required bool preserveTrustedDeviceAccess,
     BackupTaskProgressListener? onProgress,
   }) async {
+    final OpenedZipArchive zip;
     try {
-      final OpenedZipArchive zip = await openZipArchive(backupFile);
-      try {
-        final RecoveryMetadata metadata = _requireRestorableBackup(zip);
-        await extractArchiveToDirectory(
-          zip: zip,
-          targetDirectory: candidate,
-          onProgress: onProgress,
-        );
-        return metadata;
-      } finally {
-        await zip.close();
-      }
-    } on VaultBackupException {
-      rethrow;
+      zip = await openZipArchive(backupFile);
     } on ArchiveExtractionLimitException {
       throw const VaultBackupException(
         VaultBackupIssue.extractionLimitExceeded,
@@ -349,17 +425,102 @@ class VaultBackupIo {
     } on Object {
       throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
-  }
-
-  Future<void> _deleteRestoreDirectory(Directory directory) async {
     try {
-      if (directory.existsSync()) await directory.delete(recursive: true);
-    } on FileSystemException {
-      // 清理失敗不能掩蓋原始錯誤，也不撤銷已完成的替換。
+      final preview = _requireRestorableBackup(zip);
+      final metadata = preview.metadata;
+      for (final expected in [expectedPreview, verifiedKey?.preview]) {
+        if (expected != null &&
+            (expected.backupId != preview.backupId ||
+                !expected.metadata.hasSameRecoveryGenerationAs(metadata))) {
+          throw const VaultBackupException(
+            VaultBackupIssue.invalidBackupIntegrity,
+          );
+        }
+      }
+      final trusted = verifiedKey == null
+          ? await _repository.trustedSessionForBackup(metadata)
+          : null;
+      final wrapKey = verifiedKey?.wrapKey ?? trusted?.recoveryWrapKey;
+      if (wrapKey == null || preserveTrustedDeviceAccess && trusted == null) {
+        throw const VaultBackupException(VaultBackupIssue.recoveryKeyMismatch);
+      }
+      final id = preview.backupId;
+      if (id != null) {
+        try {
+          await verifyBackupIntegrity(
+            archive: zip.archive,
+            crypto: _crypto,
+            backupId: id,
+            metadata: metadata,
+            wrapKey: wrapKey,
+          );
+        } on Object {
+          throw const VaultBackupException(
+            VaultBackupIssue.invalidBackupIntegrity,
+          );
+        }
+      }
+      final size = zip.archive.files.fold<int>(
+        0,
+        (sum, file) => sum + file.size,
+      );
+      await transaction.checkSpace(size + 32 * 1024 * 1024);
+      final candidate = Directory(p.join(transaction.candidate.path, 'vault'));
+      try {
+        await extractArchiveToDirectory(
+          zip: zip,
+          targetDirectory: candidate,
+          onProgress: onProgress,
+          include: (path, isFile) =>
+              backupMemberType(path) == (isFile ? 'file' : 'directory') ||
+              id == null &&
+                  (path == 'tag_styles.json' ||
+                      path == 'recovery_rotation.pending' ||
+                      path == 'recovery_rotation.pending.previous' ||
+                      path == 'recovery_rotation.pending.tmp'),
+        );
+      } on ArchiveExtractionLimitException {
+        throw const VaultBackupException(
+          VaultBackupIssue.extractionLimitExceeded,
+        );
+      } on FormatException {
+        throw const VaultBackupException(VaultBackupIssue.invalidArchive);
+      }
+      _validateRestoredVaultPayload(candidate);
+      if (id != null) {
+        await atomicWriteString(
+          File(p.join(candidate.path, 'recovery.json')),
+          jsonEncode(metadata.toJson()),
+        );
+      }
+      try {
+        return await _repository.prepareRestoredVault(
+          workingRoot: transaction.candidate,
+          metadata: metadata,
+          session: UnlockedVaultSession(
+            vaultId: metadata.vaultId,
+            recoveryWrapKey: wrapKey,
+            trustedDevice:
+                preserveTrustedDeviceAccess && trusted?.trustedDevice == true,
+            deviceSlotId: preserveTrustedDeviceAccess
+                ? trusted?.deviceSlotId
+                : null,
+          ),
+          recoveryKey: verifiedKey?.recoveryKey,
+        );
+      } on TagCatalogException catch (error) {
+        if (error.kind == TagCatalogFailure.io) rethrow;
+        throw const VaultBackupException(VaultBackupIssue.invalidBackupContent);
+      } on Object catch (error) {
+        if (!isUnreadableContentError(error)) rethrow;
+        throw const VaultBackupException(VaultBackupIssue.invalidBackupContent);
+      }
+    } finally {
+      await zip.close();
     }
   }
 
-  RecoveryMetadata _requireRestorableBackup(OpenedZipArchive zip) {
+  BackupRecoveryPreview _requireRestorableBackup(OpenedZipArchive zip) {
     if (zip.archive.files.isEmpty) {
       throw const VaultBackupException(VaultBackupIssue.invalidArchive);
     }
@@ -371,18 +532,27 @@ class VaultBackupIo {
       throw VaultBackupException(layout.issue);
     }
     ensureArchiveExtractionBudget(zip.archive);
-    return _readRecoveryMetadataFromZip(zip.archive) ??
+    return _readBackupPreview(zip.archive) ??
         (throw const VaultBackupException(
           VaultBackupIssue.invalidRecoveryJson,
         ));
   }
 
-  RecoveryMetadata? _readRecoveryMetadataFromZip(Archive archive) {
+  BackupRecoveryPreview? _readBackupPreview(Archive archive) {
     final Uint8List? bytes = readZipEntry(
       archive,
       relativePath: 'recovery.json',
     );
-    return bytes == null ? null : parseRecoveryMetadataBytes(bytes);
+    if (bytes == null) return null;
+    final metadata = parseRecoveryMetadataBytes(bytes);
+    if (metadata == null) return null;
+    return BackupRecoveryPreview(
+      metadata: metadata,
+      backupId: readBackupId(
+        archive,
+        jsonDecode(utf8.decode(bytes)) as Map<String, Object?>,
+      ),
+    );
   }
 
   void _validateRestoredVaultPayload(Directory root) {

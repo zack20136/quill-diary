@@ -57,9 +57,8 @@ class SettingsStatusPanel extends StatelessWidget {
     required this.bannerMessage,
     required this.bannerTone,
     required this.onUnlockWithRecovery,
+    required this.onCancelUnlock,
     this.recoveryKeyHint,
-    this.onCancelUnlock,
-    this.showBanner = true,
     super.key,
   });
 
@@ -70,9 +69,8 @@ class SettingsStatusPanel extends StatelessWidget {
   final IconData bannerIcon;
   final String bannerMessage;
   final AppFeedbackTone bannerTone;
-  final VoidCallback? onUnlockWithRecovery;
-  final VoidCallback? onCancelUnlock;
-  final bool showBanner;
+  final VoidCallback onUnlockWithRecovery;
+  final VoidCallback onCancelUnlock;
 
   @override
   Widget build(BuildContext context) {
@@ -84,14 +82,13 @@ class SettingsStatusPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        if (showBanner)
-          AppFeedbackBanner(
-            icon: bannerIcon,
-            message: bannerMessage,
-            tone: bannerTone,
-          ),
+        AppFeedbackBanner(
+          icon: bannerIcon,
+          message: bannerMessage,
+          tone: bannerTone,
+        ),
         if (isUnlocking) ...<Widget>[
-          if (showBanner) const SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             l10n.settingsSecurityLockUnlockingWaitHint,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -100,18 +97,16 @@ class SettingsStatusPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const AppLoadingState(layout: AppLoadingStateLayout.section),
-          if (onCancelUnlock != null) ...<Widget>[
-            const SizedBox(height: 14),
-            AppActionButton(
-              label: l10n.settingsSecurityLockCancelUnlockButton,
-              icon: Icons.close_rounded,
-              appearance: AppActionButtonAppearance.outlined,
-              onPressed: busy ? null : onCancelUnlock,
-            ),
-          ],
+          const SizedBox(height: 14),
+          AppActionButton(
+            label: l10n.settingsSecurityLockCancelUnlockButton,
+            icon: Icons.close_rounded,
+            appearance: AppActionButtonAppearance.outlined,
+            onPressed: busy ? null : onCancelUnlock,
+          ),
         ],
         if (needsRecovery) ...<Widget>[
-          if (showBanner || isUnlocking) const SizedBox(height: 16),
+          const SizedBox(height: 16),
           if (recoveryKeyHint != null &&
               recoveryKeyHint!.isNotEmpty) ...<Widget>[
             Text(
@@ -123,19 +118,15 @@ class SettingsStatusPanel extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           RecoveryKeyTextField(controller: recoveryKeyInputController),
-          const SizedBox(height: 12),
-          Text(
-            l10n.settingsSecurityLockRecoveryUnlockHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
           const SizedBox(height: 14),
-          AppActionButton(
-            label: l10n.settingsSecurityLockUnlockWithRecoveryButton,
-            icon: Icons.lock_open_rounded,
-            appearance: AppActionButtonAppearance.primary,
-            onPressed: busy ? null : onUnlockWithRecovery,
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: AppActionButton(
+              label: l10n.settingsSecurityLockUnlockWithRecoveryButton,
+              icon: Icons.lock_open_rounded,
+              appearance: AppActionButtonAppearance.primary,
+              onPressed: busy ? null : onUnlockWithRecovery,
+            ),
           ),
         ],
       ],
@@ -387,7 +378,6 @@ class SettingsSecurityOverview extends ConsumerWidget {
     required this.onRotateRecoveryKey,
     required this.onInspectVault,
     this.onRetryTrustedUnlock,
-    required this.lockPanel,
     super.key,
   });
 
@@ -404,7 +394,6 @@ class SettingsSecurityOverview extends ConsumerWidget {
   final VoidCallback? onRotateRecoveryKey;
   final VoidCallback? onInspectVault;
   final VoidCallback? onRetryTrustedUnlock;
-  final Widget? lockPanel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -562,10 +551,6 @@ class SettingsSecurityOverview extends ConsumerWidget {
                   ],
                 ),
         ),
-        if (lockPanel != null) ...<Widget>[
-          const SizedBox(height: 14),
-          lockPanel!,
-        ],
       ],
     );
   }

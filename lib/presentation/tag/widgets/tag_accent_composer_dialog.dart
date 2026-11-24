@@ -8,8 +8,10 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<String?> showTagAccentComposerDialog({
@@ -251,7 +253,6 @@ class _TagAccentComposerDialogState
     final bool customSelected = _isCustom;
 
     return AppDialogShell(
-      accent: true,
       icon: const Icon(Icons.color_lens_rounded),
       title: widget.titleText ?? l10n.tagAddTitle,
       closeEnabled: !busy,
@@ -288,148 +289,164 @@ class _TagAccentComposerDialogState
               : Text(widget.primaryButtonLabel ?? l10n.tagSaveButton),
         ),
       ],
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          if (showBlurb) ...<Widget>[
-            const SizedBox(height: 14),
-            Text(
-              widget.descriptionText!.trim(),
-              style: theme.textTheme.bodySmall?.copyWith(
-                height: 1.42,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 6),
-          ],
-          TextField(
-            controller: _nameCtrl,
-            enabled: !busy,
-            textInputAction: TextInputAction.done,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              hintText: l10n.tagNameHint,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 16,
-              ),
-              filled: true,
-              fillColor: cs.surface.withValues(alpha: 0.95),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onSubmitted: (_) => _save(),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            l10n.tagDefaultColorLabel,
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: cs.onSurface.withValues(alpha: 0.65),
-            ),
-          ),
-          const SizedBox(height: 12),
-          ClipRect(
-            child: SizedBox(
-              height: 48,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: accentColorPresets.length,
-                separatorBuilder: (BuildContext context, int index) =>
-                    const SizedBox(width: 12),
-                itemBuilder: (BuildContext context, int index) {
-                  final Color c = accentColorPresets[index];
-                  final bool selected =
-                      !_isCustom && colorArgb32(c) == colorArgb32(_accent);
-                  return GestureDetector(
-                    key: Key('tag-color-preset-$index'),
-                    onTap: busy
-                        ? null
-                        : () => setState(() {
-                            _accent = c;
-                            _isCustom = false;
-                          }),
-                    child: AnimatedContainer(
-                      key: Key('tag-color-preset-swatch-$index'),
-                      duration: const Duration(milliseconds: 160),
-                      curve: Curves.easeOutCubic,
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: accentSwatchColor(c),
-                        border: Border.all(
-                          color: selected
-                              ? cs.primary.withValues(alpha: 0.9)
-                              : cs.onSurface.withValues(alpha: 0.18),
-                          width: selected ? 3.25 : 1.5,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: busy ? null : _openCustomColorPicker,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              side: BorderSide(
-                color: customSelected
-                    ? cs.primary.withValues(alpha: 0.9)
-                    : cs.outlineVariant.withValues(alpha: 0.5),
-                width: customSelected ? 2 : 1,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(
-                  Icons.palette_outlined,
-                  size: 20,
-                  color: customSelected ? cs.primary : cs.onSurfaceVariant,
+      content: AppScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (showBlurb) ...<Widget>[
+              const SizedBox(height: 14),
+              Text(
+                widget.descriptionText!.trim(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  height: 1.42,
+                  color: cs.onSurfaceVariant,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    l10n.tagCustomColorLabel,
+              ),
+              const SizedBox(height: 6),
+            ],
+            TextField(
+              controller: _nameCtrl,
+              enabled: !busy,
+              textInputAction: TextInputAction.done,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                hintText: l10n.tagNameHint,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
+                filled: true,
+                fillColor: cs.surface.withValues(alpha: 0.95),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: 20),
+            AppDialogSection(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    l10n.tagDefaultColorLabel,
                     style: theme.textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: customSelected
-                          ? cs.primary
-                          : cs.onSurface.withValues(alpha: 0.78),
+                      color: cs.onSurface.withValues(alpha: 0.65),
                     ),
                   ),
-                ),
-                Container(
-                  key: const Key('tag-custom-color-swatch'),
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: accentSwatchColor(_accent),
-                    border: Border.all(
-                      color: customSelected
-                          ? cs.primary.withValues(alpha: 0.9)
-                          : cs.onSurface.withValues(alpha: 0.18),
-                      width: customSelected ? 2.5 : 1.5,
+                  const SizedBox(height: 12),
+                  ClipRect(
+                    child: SizedBox(
+                      height: 48,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: accentColorPresets.length,
+                        separatorBuilder: (BuildContext context, int index) =>
+                            const SizedBox(width: 12),
+                        itemBuilder: (BuildContext context, int index) {
+                          final Color c = accentColorPresets[index];
+                          final bool selected =
+                              !_isCustom &&
+                              colorArgb32(c) == colorArgb32(_accent);
+                          return GestureDetector(
+                            key: Key('tag-color-preset-$index'),
+                            onTap: busy
+                                ? null
+                                : () => setState(() {
+                                    _accent = c;
+                                    _isCustom = false;
+                                  }),
+                            child: AnimatedContainer(
+                              key: Key('tag-color-preset-swatch-$index'),
+                              duration: const Duration(milliseconds: 160),
+                              curve: Curves.easeOutCubic,
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: accentSwatchColor(c),
+                                border: Border.all(
+                                  color: selected
+                                      ? cs.primary.withValues(alpha: 0.9)
+                                      : cs.onSurface.withValues(alpha: 0.18),
+                                  width: selected ? 3.25 : 1.5,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: busy ? null : _openCustomColorPicker,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      side: BorderSide(
+                        color: customSelected
+                            ? cs.primary.withValues(alpha: 0.9)
+                            : cs.outlineVariant.withValues(alpha: 0.5),
+                        width: customSelected ? 2 : 1,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.palette_outlined,
+                          size: 20,
+                          color: customSelected
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            l10n.tagCustomColorLabel,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: customSelected
+                                  ? cs.primary
+                                  : cs.onSurface.withValues(alpha: 0.78),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          key: const Key('tag-custom-color-swatch'),
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: accentSwatchColor(_accent),
+                            border: Border.all(
+                              color: customSelected
+                                  ? cs.primary.withValues(alpha: 0.9)
+                                  : cs.onSurface.withValues(alpha: 0.18),
+                              width: customSelected ? 2.5 : 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          _previewPanel(l10n, theme, cs, previewText, (previewBg, previewFg)),
-        ],
+            const SizedBox(height: 20),
+            _previewPanel(l10n, theme, cs, previewText, (previewBg, previewFg)),
+          ],
+        ),
       ),
     );
   }

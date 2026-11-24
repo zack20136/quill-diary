@@ -132,12 +132,13 @@ void main() {
     bridge.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await tester.pump();
 
-    await controller.beginPostRestoreStartup();
+    controller.beginPostRestoreStartup();
     controller.endTrustedUnlockBootstrap();
     bridge.didChangeAppLifecycleState(AppLifecycleState.inactive);
     await tester.pump(const Duration(milliseconds: 30));
 
     expect(repository.openTrustedSessionCalls, 0);
+    expect(repository.closeUnlockedResourcesCalls, 0);
     expect(ref.read(appSessionProvider).status, AppLockStatus.unlocking);
   });
 }

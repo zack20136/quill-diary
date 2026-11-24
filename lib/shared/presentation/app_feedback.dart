@@ -56,12 +56,14 @@ class AppFeedbackBanner extends StatelessWidget {
     required this.message,
     this.icon,
     this.tone = AppFeedbackTone.info,
+    this.outlined = false,
     super.key,
   });
 
   final String message;
   final IconData? icon;
   final AppFeedbackTone tone;
+  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,9 @@ class AppFeedbackBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.background,
           borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+          border: outlined
+              ? Border.all(color: colors.foreground.withValues(alpha: 0.28))
+              : null,
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),

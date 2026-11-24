@@ -186,10 +186,7 @@ void main() {
     final pending = await pendingAttachmentsFromDraftRecord(
       record,
       draftKey: 'entry-1',
-      resolvePath: (String relativePath, bool forPreview) async {
-        expect(forPreview, isFalse);
-        return 'C:/drafts/$relativePath';
-      },
+      resolvePath: (relativePath) async => 'C:/drafts/$relativePath',
     );
 
     expect(pending.single.assetId, 'pending-1');

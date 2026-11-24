@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/settings_providers.dart';
@@ -22,10 +23,12 @@ Widget settingsTestScope({
   FakeSessionVaultRepository? repository,
   FakeVaultBackupService? backupService,
   FakeVaultRestoreService? restoreService,
+  AppSessionController Function()? sessionController,
   AppSessionState sessionState = const AppSessionState(
     status: AppLockStatus.locked,
   ),
   RecoveryMetadata? recoveryMetadata,
+  Object? backupStatusError,
   DriveConnectionState? driveConnectionState,
   bool wrapMaterialApp = true,
   bool includeDarkTheme = true,
@@ -49,15 +52,21 @@ Widget settingsTestScope({
       vaultRestoreServiceProvider.overrideWithValue(
         restoreService ?? FakeVaultRestoreService(),
       ),
-      effectiveAppSessionProvider.overrideWith((Ref ref) async => sessionState),
+      if (sessionController != null)
+        appSessionProvider.overrideWith(sessionController)
+      else
+        effectiveAppSessionProvider.overrideWith(
+          (Ref ref) async => sessionState,
+        ),
       recoveryMetadataProvider.overrideWith(
         (Ref ref) async => recoveryMetadata,
       ),
       unlockModeProvider.overrideWith((Ref ref) async => AppUnlockMode.none),
       trustedDeviceAccessProvider.overrideWith((Ref ref) async => false),
-      backupStatusProvider.overrideWith(
-        (Ref ref) async => const BackupStatusSnapshot(),
-      ),
+      backupStatusProvider.overrideWith((Ref ref) async {
+        if (backupStatusError != null) throw backupStatusError;
+        return const BackupStatusSnapshot();
+      }),
       if (driveConnectionState != null)
         settingsDriveConnectionProvider.overrideWith(
           (Ref ref) async => driveConnectionState,

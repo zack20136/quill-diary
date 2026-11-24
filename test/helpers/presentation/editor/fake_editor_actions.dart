@@ -18,7 +18,6 @@ class FakeEditorActions implements EditorActionPort {
     this.existingEntry,
     this.draft,
     List<AssetAttachment>? attachments,
-    this.materializedPreviewPath,
   }) : attachments = List<AssetAttachment>.from(
          attachments ?? defaultAttachments,
        );
@@ -63,7 +62,6 @@ class FakeEditorActions implements EditorActionPort {
   DiaryEntry? existingEntry;
   EditorDraftRecord? draft;
   List<AssetAttachment> attachments;
-  String? materializedPreviewPath;
   int loadEntryCallCount = 0;
   int writeDraftCount = 0;
   int saveEntryCallCount = 0;
@@ -107,11 +105,10 @@ class FakeEditorActions implements EditorActionPort {
   }
 
   @override
-  Future<String> materializePendingFileForPreview(
-    String draftKey,
-    String relativePath,
+  Future<Uint8List> readPendingAttachment(
+    ({String draftKey, String path}) source,
     UnlockedVaultSession session,
-  ) async => materializedPreviewPath ?? 'C:/drafts/preview/$relativePath';
+  ) async => Uint8List(0);
 
   @override
   Future<String> pendingAbsolutePath(

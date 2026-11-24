@@ -1,5 +1,4 @@
 import 'package:cryptography/cryptography.dart';
-import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
 import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
@@ -70,20 +69,6 @@ String friendlySessionErrorMessage(
     return l10n.sessionUnlockFailedMessage;
   }
   return l10n.sessionUnlockFailedMessage;
-}
-
-String snackbarMessageForPostRestore(
-  AppLocalizations l10n,
-  AppLockStatus status,
-) {
-  return switch (status) {
-    AppLockStatus.unlocked => l10n.sessionRestoreSuccessUnlockedMessage,
-    AppLockStatus.locked => l10n.sessionRestoreSuccessLockedMessage,
-    AppLockStatus.recoveryRequired =>
-      l10n.sessionRestoreSuccessRecoveryRequiredMessage,
-    AppLockStatus.fatalError => l10n.sessionRestoreStartupFailedMessage,
-    _ => l10n.sessionRestoreStartupFailedMessage,
-  };
 }
 
 String lockedResumeMessageFor(

@@ -12,65 +12,140 @@ import 'package:quill_diary/infrastructure/ai/ai_transport.dart';
 import '../../helpers/ai/ai_test_helpers.dart';
 
 void main() {
-  test('收到 HTTP 標頭後本文停滯會逾時並關閉連線', () async {
+  Matcher throwsFailure(AiErrorCode code) =>
+      throwsA(isA<AiFailure>().having((failure) => failure.code, '錯誤', code));
+
+  test('HTTP 本文停滯只終止當次請求，之後仍可連線', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((request) async {
+      if (request.uri.path == '/next') {
+        await request.response.close();
+        return;
+      }
       request.response.contentLength = 2;
       request.response.add([65]);
       await request.response.flush();
     });
-    final transport = IoAiTransport();
+    final transport = IoAiTransport(idleTimeout: const Duration(seconds: 1));
     addTearDown(() async {
       transport.close();
       await server.close(force: true);
     });
-    final readingBody = Completer<void>();
-    void Function()? expireBody;
-    var deadlines = 0;
-    await runZoned(
-      () async {
-        final checked = expectLater(
-          transport.request(
-            'GET',
-            Uri.parse('http://127.0.0.1:${server.port}'),
-            {},
-          ),
-          throwsA(
-            isA<AiFailure>().having(
-              (failure) => failure.code,
-              '錯誤',
-              AiErrorCode.timeout,
-            ),
-          ),
-        );
-        await readingBody.future.timeout(const Duration(seconds: 5));
-        expireBody!();
-        await checked;
-      },
-      zoneSpecification: ZoneSpecification(
-        createTimer: (self, parent, zone, duration, callback) {
-          if (duration == const Duration(minutes: 5) && ++deadlines == 2) {
-            expireBody = callback;
-            readingBody.complete();
-          }
-          return parent.createTimer(zone, duration, callback);
-        },
-      ),
-    );
     await expectLater(
       transport.request(
         'GET',
         Uri.parse('http://127.0.0.1:${server.port}'),
         {},
       ),
-      throwsA(
-        isA<AiFailure>().having(
-          (failure) => failure.code,
-          '錯誤',
-          AiErrorCode.network,
-        ),
+      throwsFailure(AiErrorCode.timeout),
+    );
+    final next = await transport.request(
+      'GET',
+      Uri.parse('http://127.0.0.1:${server.port}/next'),
+      {},
+    );
+    expect(next.status, HttpStatus.ok);
+  });
+
+  test('SSE 等待標頭逾時不會中斷並行請求', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final release = Completer<void>();
+    final waiting = Completer<void>();
+    server.listen((request) async {
+      if (request.uri.path == '/concurrent') {
+        request.response.contentLength = 2;
+        request.response.add([65]);
+        await request.response.flush();
+        waiting.complete();
+        await release.future;
+        request.response.add([66]);
+        await request.response.close();
+      }
+    });
+    final transport = IoAiTransport(idleTimeout: const Duration(seconds: 5));
+    addTearDown(() async {
+      if (!release.isCompleted) release.complete();
+      transport.close();
+      await server.close(force: true);
+    });
+    final uri = Uri.parse('http://127.0.0.1:${server.port}');
+    final concurrent = transport.request('GET', uri.resolve('/concurrent'), {});
+    await waiting.future.timeout(const Duration(seconds: 5));
+    await runZoned(
+      () async {
+        await expectLater(
+          transport.stream(uri.resolve('/stall'), {}, {}).toList(),
+          throwsFailure(AiErrorCode.timeout),
+        );
+      },
+      zoneSpecification: ZoneSpecification(
+        createTimer: (self, parent, zone, duration, callback) =>
+            parent.createTimer(
+              zone,
+              duration == const Duration(seconds: 5)
+                  ? const Duration(milliseconds: 100)
+                  : duration,
+              callback,
+            ),
       ),
     );
+    release.complete();
+    expect((await concurrent).bytes, [65, 66]);
+  });
+
+  test('一般回應以上傳服務解壓後的資料大小為準', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((request) async {
+      request.response.headers.set(HttpHeaders.contentEncodingHeader, 'gzip');
+      request.response.add(gzip.encode(List.filled(512, 65)));
+      await request.response.close();
+    });
+    final transport = IoAiTransport(responseMaxBytes: 128);
+    addTearDown(() async {
+      transport.close();
+      await server.close(force: true);
+    });
+    await expectLater(
+      transport.request(
+        'GET',
+        Uri.parse('http://127.0.0.1:${server.port}'),
+        {},
+      ),
+      throwsFailure(AiErrorCode.response),
+    );
+  });
+
+  test('SSE 限制單行、單事件和單次回應大小', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((request) async {
+      request.response.headers.contentType = ContentType(
+        'text',
+        'event-stream',
+      );
+      request.response.write(switch (request.uri.path) {
+        '/line' => 'data: ${List.filled(30, 'a').join()}\n\n',
+        '/event' => 'data: aaaa\ndata: bbbb\ndata: cccc\n\n',
+        _ => List.filled(9, 'data: aaaa\n\n').join(),
+      });
+      await request.response.close();
+    });
+    final transport = IoAiTransport(
+      lineMaxBytes: 24,
+      eventMaxBytes: 28,
+      streamMaxBytes: 85,
+    );
+    addTearDown(() async {
+      transport.close();
+      await server.close(force: true);
+    });
+    for (final path in ['line', 'event', 'total']) {
+      await expectLater(
+        transport
+            .stream(Uri.parse('http://127.0.0.1:${server.port}/$path'), {}, {})
+            .toList(),
+        throwsFailure(AiErrorCode.response),
+      );
+    }
   });
 
   Map<String, Object?> result(AiApiProtocol protocol) => switch (protocol) {

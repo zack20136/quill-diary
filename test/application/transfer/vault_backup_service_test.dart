@@ -12,6 +12,38 @@ import '../../helpers/vault/vault_test_harness.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('檢視超額備份不刪檔，交付成功後才保留新檔與最新四份', () async {
+    final harness = await VaultTestHarness.create();
+    addTearDown(harness.dispose);
+    await harness.repository.setupRecoveryKey();
+    final backups = VaultBackupService(
+      backupIo: harness.createTransferIo().backup,
+      driveBackupService: GoogleDriveBackupService(),
+      externalDirectoryStore: ExternalDirectoryStore(harness.pathStrategy),
+      pathStrategy: harness.pathStrategy,
+    );
+    final directory = await harness.pathStrategy.localBackupsDirectory();
+    await directory.create(recursive: true);
+    final names = List.generate(6, (index) => 'older_$index.zip');
+    final now = DateTime.now();
+    for (final (index, name) in names.indexed) {
+      final file = await File('${directory.path}/$name').writeAsBytes([index]);
+      await file.setLastModified(now.add(Duration(days: index + 1)));
+    }
+
+    expect(await backups.listAppLocalBackups(), hasLength(names.length));
+    expect(await directory.list().length, names.length);
+
+    final result = await backups.saveBackupToAppLocal();
+    expect(result.status, BackupPersistStatus.success);
+    final retained = await backups.listAppLocalBackups();
+    final saved = retained.singleWhere((file) => file.path == result.savedPath);
+    expect(
+      retained.map((file) => file.name),
+      unorderedEquals([saved.name, ...names.skip(2)]),
+    );
+  });
+
   test('本機備份同名時保留舊備份，複製中斷也不發布半成品', () async {
     final harness = await VaultTestHarness.create();
     addTearDown(harness.dispose);

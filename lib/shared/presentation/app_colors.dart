@@ -17,9 +17,6 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.outlineMuted,
     required this.outlineVariant,
     required this.calendarGridLine,
-    required this.accentDialogGradientStart,
-    required this.accentDialogGradientEnd,
-    required this.accentDialogBorder,
     required this.heroGradientStart,
     required this.heroGradientEnd,
     required this.healthOkFill,
@@ -55,9 +52,6 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color outlineMuted;
   final Color outlineVariant;
   final Color calendarGridLine;
-  final Color accentDialogGradientStart;
-  final Color accentDialogGradientEnd;
-  final Color accentDialogBorder;
   final Color heroGradientStart;
   final Color heroGradientEnd;
   final Color healthOkFill;
@@ -130,13 +124,6 @@ class AppColors extends ThemeExtension<AppColors> {
       ),
       outlineVariant: scheme.outlineVariant,
       calendarGridLine: scheme.outlineVariant.withValues(alpha: 0.22),
-      accentDialogGradientStart: Color.lerp(
-        scheme.primary,
-        scheme.surface,
-        0.92,
-      )!,
-      accentDialogGradientEnd: scheme.surface,
-      accentDialogBorder: scheme.primary.withValues(alpha: 0.14),
       heroGradientStart: Color.alphaBlend(
         scheme.primary.withValues(alpha: 0.12),
         scheme.surface,
@@ -200,9 +187,6 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? outlineMuted,
     Color? outlineVariant,
     Color? calendarGridLine,
-    Color? accentDialogGradientStart,
-    Color? accentDialogGradientEnd,
-    Color? accentDialogBorder,
     Color? heroGradientStart,
     Color? heroGradientEnd,
     Color? healthOkFill,
@@ -238,11 +222,6 @@ class AppColors extends ThemeExtension<AppColors> {
       outlineMuted: outlineMuted ?? this.outlineMuted,
       outlineVariant: outlineVariant ?? this.outlineVariant,
       calendarGridLine: calendarGridLine ?? this.calendarGridLine,
-      accentDialogGradientStart:
-          accentDialogGradientStart ?? this.accentDialogGradientStart,
-      accentDialogGradientEnd:
-          accentDialogGradientEnd ?? this.accentDialogGradientEnd,
-      accentDialogBorder: accentDialogBorder ?? this.accentDialogBorder,
       heroGradientStart: heroGradientStart ?? this.heroGradientStart,
       heroGradientEnd: heroGradientEnd ?? this.heroGradientEnd,
       healthOkFill: healthOkFill ?? this.healthOkFill,
@@ -293,18 +272,6 @@ class AppColors extends ThemeExtension<AppColors> {
       outlineMuted: lerpColor(outlineMuted, other.outlineMuted)!,
       outlineVariant: lerpColor(outlineVariant, other.outlineVariant)!,
       calendarGridLine: lerpColor(calendarGridLine, other.calendarGridLine)!,
-      accentDialogGradientStart: lerpColor(
-        accentDialogGradientStart,
-        other.accentDialogGradientStart,
-      )!,
-      accentDialogGradientEnd: lerpColor(
-        accentDialogGradientEnd,
-        other.accentDialogGradientEnd,
-      )!,
-      accentDialogBorder: lerpColor(
-        accentDialogBorder,
-        other.accentDialogBorder,
-      )!,
       heroGradientStart: lerpColor(heroGradientStart, other.heroGradientStart)!,
       heroGradientEnd: lerpColor(heroGradientEnd, other.heroGradientEnd)!,
       healthOkFill: lerpColor(healthOkFill, other.healthOkFill)!,

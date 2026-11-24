@@ -5,10 +5,12 @@ import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/domain/recovery/recovery_key.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/app_typography.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/sensitive_clipboard.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 Future<bool> showRecoveryKeyCreationDialog(
@@ -77,8 +79,15 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
               ? _buildDialog(context, snapshot.data)
               : AppDialogShell(
                   title: context.l10n.settingsRecoveryKeyCreateButton,
-                  content: Text(
-                    userFacingErrorMessage(error, l10n: context.l10n),
+                  content: AppScrollView(
+                    child: AppFeedbackBanner(
+                      message: userFacingErrorMessage(
+                        error,
+                        l10n: context.l10n,
+                      ),
+                      tone: AppFeedbackTone.error,
+                      outlined: true,
+                    ),
                   ),
                 ),
         );
@@ -105,49 +114,19 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
       title: confirming
           ? l10n.settingsRecoveryKeySaveNewDialogTitle
           : l10n.settingsRecoveryKeySaveDialogTitle,
-      icon: confirming
-          ? Icon(Icons.key_outlined, color: colorScheme.primary)
-          : null,
-      accent: confirming,
       closeEnabled: !creating,
       content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
+          spacing: 12,
           children: <Widget>[
-            Text(
-              confirming
+            AppDialogSummary(
+              icon: Icons.key_outlined,
+              title: confirming
                   ? l10n.settingsRecoveryKeySaveBeforeUpdateHint
                   : l10n.settingsRecoveryKeySaveDialogHint,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                height: 1.45,
-              ),
             ),
-            const SizedBox(height: 16),
-            if (confirming) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.history_rounded,
-                    size: 18,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l10n.settingsRecoveryKeyKeepOldBackupKey,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
             Material(
               color: colorScheme.primaryContainer,
               shape: RoundedRectangleBorder(
@@ -225,47 +204,18 @@ class _RecoveryKeySaveDialogState extends State<RecoveryKeySaveDialog> {
                 },
               ),
             ),
-            if (confirming) ...[
-              const SizedBox(height: 12),
-              Semantics(
-                checked: _saved,
-                child: InkWell(
-                  onTap: () => setState(() => _saved = !_saved),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, animation) =>
-                              ScaleTransition(
-                                scale: animation,
-                                child: FadeTransition(
-                                  opacity: animation,
-                                  child: child,
-                                ),
-                              ),
-                          child: Icon(
-                            _saved
-                                ? Icons.check_box_rounded
-                                : Icons.check_box_outline_blank_rounded,
-                            key: ValueKey<bool>(_saved),
-                            size: 24,
-                            color: _saved
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.settingsRecoveryKeySavedCheckbox,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            if (confirming) ...<Widget>[
+              AppFeedbackBanner(
+                icon: Icons.history_rounded,
+                message: l10n.settingsRecoveryKeyKeepOldBackupKey,
+                tone: AppFeedbackTone.warning,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: AppConfirmationCheckbox(
+                  label: l10n.settingsRecoveryKeySavedCheckbox,
+                  value: _saved,
+                  onChanged: (bool value) => setState(() => _saved = value),
                 ),
               ),
             ],

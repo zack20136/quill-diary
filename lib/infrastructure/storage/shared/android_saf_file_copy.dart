@@ -2,16 +2,15 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-/// Android SAF：將本機檔案串流複製到使用者授權的資料夾樹。
+/// Android SAF：將匯出檔案串流複製到使用者授權的資料夾樹。
 abstract final class AndroidSafFileCopy {
   static const MethodChannel _channel = MethodChannel(
     'quill_diary/saf_file_copy',
   );
 
-  /// 透過 [DocumentsContract.createDocument] 寫入 [treeUri]，回傳新檔 content URI。
-  static Future<String> copyFileToTree({
+  static Future<String> copyToTree({
     required String treeUri,
-    required File sourceFile,
+    required FileSystemEntity source,
     required String fileName,
     required String mimeType,
   }) async {
@@ -20,7 +19,7 @@ abstract final class AndroidSafFileCopy {
         'copyFileToTree',
         <String, String>{
           'treeUri': treeUri,
-          'sourcePath': sourceFile.absolute.path,
+          'sourcePath': source.absolute.path,
           'fileName': fileName,
           'mimeType': mimeType,
         },

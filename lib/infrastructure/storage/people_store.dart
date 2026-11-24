@@ -30,6 +30,10 @@ class PeopleStore {
     final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
       await file.readAsBytes(),
     );
+    if (parsed.header.fileId != documentId ||
+        parsed.header.contentType != 'application/json') {
+      throw const FormatException('人物名冊身分不符。');
+    }
     final List<int> plain = await _cryptoService.decryptBytes(
       headerBytes: parsed.headerBytes,
       ciphertextBytes: parsed.ciphertextBytes,

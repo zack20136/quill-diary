@@ -53,9 +53,9 @@ API Key 只留在裝置安全儲存。每組 Custom 連線依穩定連線 ID 與
 
 模型目錄人工指定每個官方模型的 Thinking profile、可選強度與預設值，再由 `thinkingRequestFields()` 轉成請求欄位。支援範圍應依該模型與 API 的官方文件維護，例如 [OpenAI reasoning effort](https://developers.openai.com/api/docs/models/gpt-6.1-terra)、[Claude Sonnet 5.5 thinking](https://platform.claude.com/docs/en/models/sonnet-5-5/whats-new-sonnet-5-5)、[xAI reasoning](https://docs.x.ai/developers/model-capabilities/text/reasoning) 及 [Ollama thinking](https://docs.ollama.com/capabilities/thinking)。App 的預設強度與四個介面選項是產品設定，不代表供應商的預設或全部支援值。
 
-自訂連線新加入的模型預設不傳送 Thinking 參數；既有模型與重複加入保留原設定。手動模型可從 Thinking 選單開啟設定，沿用關閉／低／中／高，停用不支援的檔位並指定有效預設。格式只保留不傳送參數、沿用目前協定及手動 JSON。手動模式以目前協定對照作為初始欄位，既有自訂 JSON 則原樣載入；切換模式保留尚未套用的輸入。手動 JSON 直接併入請求，除了 Thinking 也可能改變輸出長度或其他行為並增加服務費用，請依該模型官方文件設定。沒有覆寫時仍使用既有協定規則，不自動查詢或確認模型能力。
+自訂連線新加入的模型預設不傳送 Thinking 參數；既有模型與重複加入保留原設定。手動模型可從 Thinking 選單開啟設定，沿用關閉／低／中／高，停用不支援的檔位並指定有效預設。傳送方式包括沿用協定、不傳送參數及自訂 JSON。自訂模式以目前協定對照作為初始欄位，既有自訂 JSON 則原樣載入；切換模式保留尚未套用的輸入。自訂 JSON 會併入請求，可能影響回覆長度和費用。沒有覆寫時仍使用既有協定規則，不自動查詢或確認模型能力。
 
-手動 JSON 模式直接顯示完整的進階對照，不提供收合；每個啟用檔位可編輯 JSON object，保留字串、數字、布林、null、陣列與巢狀物件；`{}` 表示該檔不傳參數。不傳送模式不提供強度選項，但仍可開啟設定。Ollama 的協定預設以布林值控制 Thinking；需要 low／medium／high 等模型專用格式時，使用手動 JSON 設定。
+自訂 JSON 會直接顯示各強度的編輯欄位。每個啟用的強度可填寫 JSON 物件，`{}` 代表省略該強度的額外參數。視窗上方會預覽預設強度的參數。不傳送模式不提供強度選項，但仍可開啟設定。Ollama 的協定預設以布林值控制 Thinking；需要 low／medium／high 等模型專用格式時，使用自訂 JSON 設定。
 
 `AiModelThinkingOverride` 深度凍結 JSON，覆寫保存在各連線的 `thinking_overrides`，選取強度仍用 `thinking_levels`。進階請求覆寫取代協定產生的 Thinking 欄位，再遞迴合併到請求；禁止覆寫 model、messages、input、instructions、contents、system、systemInstruction、stream 與 store。其餘欄位（例如 max_tokens）會一併送出，可能改變輸出或費用。無效輸入留在欄位並阻止套用，後端拒絕時不自動改參數重試。
 
@@ -66,6 +66,10 @@ API Key 只留在裝置安全儲存。每組 Custom 連線依穩定連線 ID 與
 ### 傳輸與協定
 
 Custom 的 HTTPS 可用指定主機；HTTP 只允許 loopback、IPv4 私有網段及 IPv6 ULA，拒絕主機名稱、link-local 與公網 HTTP。送憑證前由 `validateAiEndpoint` 驗證，不跟隨重新導向、不略過 TLS 驗證。Android 設定見[權限與資料揭露](../google/Android-權限與資料揭露.md)。
+
+儲存包含自訂 HTTP 的設定時，先確認明文傳輸風險。取消保留編輯內容。
+
+解壓後的一般回應上限為 16 MiB。SSE 上限為單行 1 MiB、單事件 4 MiB、單次 32 MiB。等待回應標頭或本文閒置達 60 秒，或整次請求達 10 分鐘時，停止當次請求。取消及超限也只清理當次連線。
 
 Responses 送出 `store: false`，不代表零留存；Custom 的資料使用與留存由該服務決定。API 參考：[OpenAI 圖片](https://developers.openai.com/api/docs/guides/images-vision)、[Responses](https://developers.openai.com/api/reference/resources/responses/methods/create)、[Claude Messages](https://platform.claude.com/docs/en/api/messages/create)、[Gemini](https://ai.google.dev/api/models)、[Ollama](https://docs.ollama.com/api)。
 
@@ -90,6 +94,8 @@ Responses 送出 `store: false`，不代表零留存；Custom 的資料使用與
 預設夥伴先回應對方已說的細節，再補一個相關角度或問一句好回答的開放問題。場景、感受與結果由使用者補充。抱怨先回應困擾，收到明確請求再展開建議或安排。分身依風格卡接話，並以記憶中最近一次可確認的進度回答往事。
 
 生成資料以 `user_turns` 保留目前分支的使用者原話。`assistant_context` 只含緊接在使用者訊息前的完整 AI 回覆，以 `for_user_turn` 標明所對應的訊息，用來理解短答。日記事實採使用者已確認的內容與可辨識的圖片細節。前後對象不同時，分別寫清楚原本差點發生的事和後來完成的行動。資料沒有訊息時間，無從換算的相對日期照原話保留。素材短時可以只寫一句內文，有內容就加上標題。無可記錄的內容時回傳空字串。
+
+「完整 JSON」在提示詞上方，以共用格式呈現聊天與生成請求的模型、參數、遮罩後文字及照片編號。提示詞以對應的卡片標題表示。草稿在聊天請求中標記為 `pending`。生成摘要依同一份生成資料統計訊息則數。
 
 | 使用者意圖 | 生成方式 |
 |------|------|
@@ -241,7 +247,7 @@ Google Play 額外回報及審查存取要求見[上架文件](../google/Google-
 
 只使用本篇內文與本次選定的聊天分支，不帶入原始聊天日記或其他日記。人名判定、代號分配與送出遮罩跟聊天日記共用 [`privacy_names.dart`](../../../lib/domain/ai/privacy_names.dart)。人物隱藏開啟時，可確定的人名換成 `{{PER_NN}}`，不需要先圈選；同一位人物的姓名與別名由 [`privacyTokenForPerson`](../../../lib/domain/shared/privacy_tokens.dart) 共用同一個代號，所以它會在原文重複出現，並另外依出現順序保留每次寫法。重名、手動選取與圖片仍用 `{{PRI_NN}}`。與姓名完全相同的手動選取改記成人物代號；選取若還包住其他文字，整段維持私密代號。整理稿必須保留這些代號的出現次數與先後順序，對照原文只留在本機。編號規則與聊天日記共用：至少兩位的大寫十六進位，超過 `FF` 接續 `100`。圖片引用不送出圖片、附件或引用網址。手動隱藏區間不會因開關重算。開始整理與之後送出讀取當時的人物隱藏開關；已保存的舊手動區間維持原樣，不自動改寫。
 
-預覽列出聊天系統提示詞與整理日記系統提示詞，收合及位置提示規則同[訊息與分支](#訊息與分支)。下方訊息是聊天請求，包含待送內容；整理生成的系統提示詞另列，實際生成只含原始內文及已送出的目前分支。預覽與送出共用遮罩後的請求快照，內容、標記、分支或模型改變時重建，避免把本機還原的私密原文送回 AI。系統提示詞與原始日記內容分卡顯示，資料區塊仍合併於實際 system prompt 中；對話框沿用共用寬度與高度上限。隱藏設定頁不提供預覽。
+「完整 JSON」沿用[聊天日記的預覽格式](#預設提示詞與生成)，兩組請求各以 `diary_body` 顯示遮罩後的原始日記。原始日記另有可展開的卡片，送出時與系統提示詞組成 system prompt。聊天包含待送需求，生成沿用目前分支中的已送出內容。內容、標記、分支或模型改變時重建請求快照。隱藏設定頁不提供預覽。
 
 ### 候選稿與對比
 

@@ -20,6 +20,7 @@ import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
 import 'package:quill_diary/shared/presentation/person_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_color_wheel_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 顯示新增／編輯人物表單；儲存成功回傳人物。
@@ -474,7 +475,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
       key: const Key('person-mention-name-picker'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _sectionDivider(),
+        const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Text(
@@ -817,27 +818,22 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
 
   Widget _formSection({required String title, required List<Widget> children}) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Text(
+    return AppDialogSection(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
             title,
             style: Theme.of(context).textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w800, color: cs.primary),
+                ?.copyWith(color: cs.primary),
           ),
-        ),
-        const SizedBox(height: 14),
-        ...children,
-      ],
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
     );
   }
-
-  Widget _sectionDivider() => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 20),
-    child: Divider(height: 1),
-  );
 
   Widget _formBody(
     AppLocalizations l10n,
@@ -867,7 +863,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               _mentionNamePicker(l10n),
             ],
           ),
-          _sectionDivider(),
+          const SizedBox(height: 12),
           _formSection(
             title: l10n.peopleSectionRelationship,
             children: <Widget>[
@@ -888,7 +884,7 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
               _friendlinessSlider(l10n, cs),
             ],
           ),
-          _sectionDivider(),
+          const SizedBox(height: 12),
           _formSection(
             title: l10n.peopleSectionOther,
             children: <Widget>[
@@ -960,7 +956,6 @@ class _PersonComposerDialogState extends ConsumerState<PersonComposerDialog> {
     required Widget content,
     List<Widget> actions = const <Widget>[],
   }) => AppDialogShell(
-    accent: true,
     icon: const Icon(Icons.person_rounded),
     title: widget.isEditing
         ? context.l10n.peopleEditTitle

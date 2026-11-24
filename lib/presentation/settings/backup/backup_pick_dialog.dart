@@ -1,7 +1,12 @@
+import 'dart:async' show unawaited;
+
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 typedef BackupDeleteConfirm = Future<bool> Function(String fileName);
@@ -22,109 +27,122 @@ Future<BackupPickListItem?> showBackupPickDialog({
   final List<BackupPickListItem> visibleItems = List<BackupPickListItem>.from(
     items,
   );
+  var deleting = false;
+  String? deleteError;
+  final errorKey = GlobalKey();
   return showAppDialog<BackupPickListItem>(
     context: context,
     builder: (BuildContext dialogContext) {
       return StatefulBuilder(
         builder: (BuildContext context, StateSetter setDialogState) {
           final ColorScheme colorScheme = Theme.of(context).colorScheme;
-          final TextTheme textTheme = Theme.of(context).textTheme;
+          final AppLocalizations l10n = context.l10n;
 
-          return AppDialogShell(
-            title: title,
-            content: visibleItems.isEmpty
-                ? Text(emptyMessage)
-                : AppScrollView(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: visibleItems.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (BuildContext context, int index) {
-                        final BackupPickListItem item = visibleItems[index];
-                        return InkWell(
-                          onTap: () => Navigator.of(dialogContext).pop(item),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 4,
+          Future<void> delete(BackupPickListItem item) async {
+            if (deleting) return;
+            setDialogState(() {
+              deleting = true;
+              deleteError = null;
+            });
+            try {
+              if (!await confirmDelete(item.fileName) || !context.mounted) {
+                return;
+              }
+              await item.onDelete!();
+              visibleItems.remove(item);
+            } on Object catch (error) {
+              if (context.mounted) {
+                deleteError = l10n
+                    .settingsBackupDeleteFailed(
+                      userFacingErrorMessage(error, l10n: l10n, fallback: ''),
+                    )
+                    .trim();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (errorKey.currentContext case final bannerContext?) {
+                    unawaited(Scrollable.ensureVisible(bannerContext));
+                  }
+                });
+              }
+            } finally {
+              if (context.mounted) setDialogState(() => deleting = false);
+            }
+          }
+
+          return PopScope(
+            canPop: !deleting,
+            child: AppDialogShell(
+              title: title,
+              closeEnabled: !deleting,
+              content: AppScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 12,
+                  children: <Widget>[
+                    if (deleteError case final message?)
+                      AppFeedbackBanner(
+                        key: errorKey,
+                        message: message,
+                        tone: AppFeedbackTone.error,
+                        outlined: true,
+                      ),
+                    if (visibleItems.isEmpty)
+                      AppDialogSummary(
+                        icon: Icons.inventory_2_outlined,
+                        title: emptyMessage,
+                      )
+                    else ...<Widget>[
+                      AppDialogSummary(
+                        icon: Icons.info_outline_rounded,
+                        title: l10n.settingsBackupPickInstructions,
+                      ),
+                      for (final BackupPickListItem item in visibleItems)
+                        AppDialogSection(
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.inventory_2_outlined,
+                              color: colorScheme.primary,
                             ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Text(
-                                        item.createdAtLabel,
-                                        style: textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        item.fileName,
-                                        style: textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                      if (item.sizeLabel != null) ...<Widget>[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          item.sizeLabel!,
-                                          style: textTheme.bodySmall,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                if (item.onDelete != null) ...<Widget>[
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    width: 44,
-                                    height: 44,
-                                    child: IconButton(
-                                      tooltip: deleteTooltip,
-                                      padding: EdgeInsets.zero,
-                                      visualDensity: VisualDensity.compact,
-                                      icon: Icon(
-                                        Icons.delete_outline_rounded,
-                                        color: colorScheme.error,
-                                        size: 22,
-                                      ),
-                                      onPressed: actionsDisabled
-                                          ? null
-                                          : () async {
-                                              final bool confirmed =
-                                                  await confirmDelete(
-                                                    item.fileName,
-                                                  );
-                                              if (!confirmed) {
-                                                return;
-                                              }
-                                              await item.onDelete!();
-                                              setDialogState(() {
-                                                visibleItems.removeAt(index);
-                                              });
-                                            },
+                            title: Text(
+                              item.createdAtLabel,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            subtitle: Text(
+                              <String>[
+                                item.fileName,
+                                if (item.sizeLabel case final String size) size,
+                              ].join('\n'),
+                            ),
+                            onTap: deleting
+                                ? null
+                                : () => Navigator.of(dialogContext).pop(item),
+                            trailing: item.onDelete == null
+                                ? null
+                                : IconButton(
+                                    tooltip: deleteTooltip,
+                                    color: colorScheme.error,
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
                                     ),
+                                    onPressed: actionsDisabled || deleting
+                                        ? null
+                                        : () => delete(item),
                                   ),
-                                ],
-                              ],
-                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(context.l10n.commonActionCancel),
+                        ),
+                    ],
+                  ],
+                ),
               ),
-            ],
+              actions: <Widget>[
+                TextButton(
+                  onPressed: deleting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: Text(context.l10n.commonActionCancel),
+                ),
+              ],
+            ),
           );
         },
       );

@@ -91,19 +91,28 @@ void main() {
       expect(coordinator.canHandleLifecycleResume(unlockedState, null), isTrue);
     });
 
-    test('protected task 完成後會通知重設 watchdog 並做 cleanup', () async {
+    test('受保護作業內重設啟動狀態仍會延後資源清理', () async {
       final _RecordingWatchdog watchdog = _RecordingWatchdog();
       final SessionResumeCoordinator coordinator = SessionResumeCoordinator(
         inactivityWatchdog: watchdog,
       );
       var onUnlockedCalls = 0;
       var cleanupCalls = 0;
+      Future<void> cleanup() => coordinator.cleanupUnlockedResourcesIfPossible(
+        () async => cleanupCalls++,
+      );
 
       final String result = await coordinator.runProtectedTask<String>(
-        action: () async => 'done',
+        action: () async {
+          coordinator.reset();
+          coordinator.markPendingCleanup();
+          await cleanup();
+          expect(cleanupCalls, 0);
+          return 'done';
+        },
         isSessionStillUnlocked: () => true,
         onUnlockedStateStillActive: () => onUnlockedCalls++,
-        cleanupUnlockedResourcesIfPossible: () async => cleanupCalls++,
+        cleanupUnlockedResourcesIfPossible: cleanup,
       );
 
       expect(result, 'done');

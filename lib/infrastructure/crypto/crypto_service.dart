@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:cipherlib/cipherlib.dart' show AES;
 import 'package:cryptography/cryptography.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_key.dart';
@@ -420,17 +422,8 @@ class LocalCryptoService implements CryptoService {
       throw const FormatException('Encrypted document is too short.');
     }
 
-    final String magic = ascii.decode(bytes.sublist(0, 4));
-    if (magic != kEncryptedDocumentMagic) {
-      throw const FormatException('不支援的加密檔案格式。');
-    }
-
-    final ByteData data = ByteData.sublistView(bytes, 4, 8);
-    final int headerLength = data.getUint32(0, Endian.big);
-    final int headerEnd = 8 + headerLength;
-    if (headerLength <= 0 ||
-        headerLength > 64 * 1024 ||
-        headerEnd >= bytes.lengthInBytes) {
+    final int headerEnd = 8 + _readHeaderLength(bytes);
+    if (headerEnd >= bytes.lengthInBytes) {
       throw const FormatException('加密檔案標頭長度不正確。');
     }
 
@@ -444,6 +437,111 @@ class LocalCryptoService implements CryptoService {
       headerBytes: headerBytes,
       ciphertextBytes: ciphertextBytes,
     );
+  }
+
+  int _readHeaderLength(Uint8List prefix) {
+    if (prefix.length < 8 ||
+        ascii.decode(prefix.sublist(0, 4)) != kEncryptedDocumentMagic) {
+      throw const FormatException('不支援的加密檔案格式。');
+    }
+    final length = ByteData.sublistView(prefix, 4, 8).getUint32(0, Endian.big);
+    if (length == 0 || length > 64 * 1024) {
+      throw const FormatException('加密檔案標頭長度不正確。');
+    }
+    return length;
+  }
+
+  Future<EncryptedDocumentHeader> verifyFile(
+    File file,
+    DecryptionContext context,
+  ) async {
+    final content = await _openFile(file, context);
+    await content.read().drain<void>();
+    return content.header;
+  }
+
+  /// 呼叫端須在整次讀取期間獨占此密文副本。
+  Stream<List<int>> readAuthenticatedFile(
+    File file,
+    DecryptionContext context, {
+    required String documentId,
+    required String contentType,
+  }) async* {
+    final content = await _openFile(file, context);
+    if (content.header.fileId != documentId ||
+        content.header.contentType != contentType) {
+      throw const FormatException('加密附件身分不符。');
+    }
+    // 套件到串流末尾才驗證 GCM 標籤，先讀完並丟棄第一遍的明文。
+    await content.read().drain<void>();
+    yield* content.read();
+  }
+
+  Future<({EncryptedDocumentHeader header, Stream<List<int>> Function() read})>
+  _openFile(File file, DecryptionContext context) async {
+    final input = await file.open();
+    try {
+      final headerLength = _readHeaderLength(await input.read(8));
+      final headerBytes = await input.read(headerLength);
+      if (headerBytes.length != headerLength) {
+        throw const FormatException('加密檔案標頭不完整。');
+      }
+      final header = _parseHeader(headerBytes);
+      _validateHeader(header);
+      if (header.vaultId != context.vaultId ||
+          context.recoveryWrapKey == null) {
+        throw SecretBoxAuthenticationError();
+      }
+      final start = 8 + headerLength;
+      final length = await input.length();
+      final ciphertextLength = length - start - _gcmTagLength;
+      if (ciphertextLength < 0 || ciphertextLength > (1 << 36) - 32) {
+        throw const FormatException('密文長度不正確。');
+      }
+      final fileKey = await _unwrapRecoveryKey(
+        wrappingKey: context.recoveryWrapKey!,
+        slot: header.keySlots.firstWhere((slot) => slot.slotType == 'recovery'),
+      );
+      return (
+        header: header,
+        read: () => _readGcm(
+          file.openRead(start, length),
+          fileKey,
+          base64Decode(header.nonceBase64),
+          headerBytes,
+        ),
+      );
+    } finally {
+      await input.close();
+    }
+  }
+
+  Stream<Uint8List> _readGcm(
+    Stream<List<int>> sealed,
+    List<int> key,
+    Uint8List nonce,
+    Uint8List header,
+  ) async* {
+    final decryptor = AES(Uint8List.fromList(key))
+        .gcm(nonce, aad: header)
+        .decryptor;
+    const chunkSize = 64 * 1024;
+    var buffer = Uint8List(chunkSize);
+    var used = 0;
+    try {
+      await for (final block in decryptor.bind(sealed)) {
+        buffer.setRange(used, used + block.length, block);
+        used += block.length;
+        if (used == chunkSize) {
+          yield buffer;
+          buffer = Uint8List(chunkSize);
+          used = 0;
+        }
+      }
+    } on StateError {
+      throw SecretBoxAuthenticationError();
+    }
+    if (used > 0) yield Uint8List.sublistView(buffer, 0, used);
   }
 
   Future<EncryptionKeySlot> _createRecoverySlot({

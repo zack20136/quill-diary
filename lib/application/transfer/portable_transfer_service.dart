@@ -70,7 +70,6 @@ class PortableTransferService {
     return _writeTempAndDeliver(
       dialogTitle: l10n.vaultTransferPickMarkdownDirectoryTitle,
       fileName: fileName,
-      l10n: l10n,
       writeTarget: (File target) {
         return _exportIo.writeMarkdownZip(
           session: session,
@@ -99,10 +98,30 @@ class PortableTransferService {
     final String fileName = VaultBackupPolicy.htmlPortableFileName(
       DateTime.now(),
     );
+    if (options.externalAssets) {
+      final work = await createWorkingDirectory(_pathStrategy, 'html_bundle');
+      try {
+        await _exportIo.writeSelectedHtmlBundle(
+          session: session,
+          entryIds: entryIds,
+          target: work,
+          options: options,
+        );
+        return await deliverToExternalDirectory(
+          dialogTitle: l10n.vaultTransferPickHtmlDirectoryTitle,
+          fileName: p.basenameWithoutExtension(fileName),
+          source: work,
+          resolveInitialDirectory:
+              _externalDirectoryStore.resolveInitialDirectory,
+          rememberDirectory: _externalDirectoryStore.rememberDirectory,
+        );
+      } finally {
+        await deleteWorkingDirectory(work);
+      }
+    }
     return _writeTempAndDeliver(
       dialogTitle: l10n.vaultTransferPickHtmlDirectoryTitle,
       fileName: fileName,
-      l10n: l10n,
       writeTarget: (File target) {
         return _exportIo.writeSelectedHtmlExport(
           session: session,
@@ -247,8 +266,8 @@ class PortableTransferService {
         confirmPreview: confirmPreview,
       );
     } finally {
-      if (ownedTempRoot != null && ownedTempRoot.existsSync()) {
-        await ownedTempRoot.delete(recursive: true);
+      if (ownedTempRoot != null) {
+        await deleteWorkingDirectory(ownedTempRoot);
       }
       if (materialized.shouldDeleteAfterUse) {
         await deleteFileIfExists(materialized.file.path);
@@ -307,9 +326,7 @@ class PortableTransferService {
         confirmPreview: confirmPreview,
       );
     } finally {
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
+      await deleteWorkingDirectory(tempRoot);
     }
   }
 
@@ -354,7 +371,6 @@ class PortableTransferService {
   Future<String?> _writeTempAndDeliver({
     required String dialogTitle,
     required String fileName,
-    required AppLocalizations l10n,
     required Future<void> Function(File target) writeTarget,
   }) async {
     final Directory workDirectory = await _pathStrategy.transferWorkDirectory();
@@ -369,7 +385,7 @@ class PortableTransferService {
       return await deliverToExternalDirectory(
         dialogTitle: dialogTitle,
         fileName: fileName,
-        sourceFile: tempFile,
+        source: tempFile,
         resolveInitialDirectory:
             _externalDirectoryStore.resolveInitialDirectory,
         rememberDirectory: _externalDirectoryStore.rememberDirectory,

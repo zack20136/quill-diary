@@ -33,6 +33,7 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 
@@ -234,9 +235,7 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
         confirmLabel: restart
             ? l10n.commonActionConfirm
             : l10n.commonActionDelete,
-        confirmStyle: restart
-            ? AppConfirmStyle.primary
-            : AppConfirmStyle.destructive,
+        confirmStyle: AppConfirmStyle.destructive,
       ),
     );
     if (confirmed != true ||
@@ -679,8 +678,13 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
       () => _dialog<void>(
         AppDialogShell(
           title: context.l10n.organizationReplyTitle,
-          content: SelectionArea(
-            child: Text(controller.draft?.visibleGenerationReply ?? ''),
+          content: AppScrollView(
+            child: AppDialogSection(
+              padding: const EdgeInsets.all(12),
+              child: SelectionArea(
+                child: Text(controller.draft?.visibleGenerationReply ?? ''),
+              ),
+            ),
           ),
           actions: [
             TextButton(

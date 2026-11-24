@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:quill_diary/application/transfer/vault_backup_service.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
+import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/vault_backup_policy.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
@@ -64,24 +65,24 @@ class VaultRestoreService {
     );
   }
 
-  Future<void> verifyBackupRecoveryKey(
+  Future<VerifiedBackupKey> verifyBackupRecoveryKey(
     File backupFile,
     String recoveryKey,
-  ) async {
-    await _backupIo.verifyBackupRecoveryKey(backupFile, recoveryKey);
-  }
+  ) => _backupIo.verifyBackupRecoveryKey(backupFile, recoveryKey);
 
-  Future<void> restoreFromBackupFile(
+  Future<UnlockedVaultSession> restoreFromBackupFile(
     File backupFile, {
     bool preserveTrustedDeviceAccess = false,
+    BackupRecoveryPreview? expectedPreview,
+    VerifiedBackupKey? verifiedKey,
     BackupTaskProgressListener? onProgress,
-  }) async {
-    await _backupIo.restoreBackupZip(
-      backupFile,
-      preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
-      onProgress: onProgress,
-    );
-  }
+  }) => _backupIo.restoreBackupZip(
+    backupFile,
+    preserveTrustedDeviceAccess: preserveTrustedDeviceAccess,
+    expectedPreview: expectedPreview,
+    verifiedKey: verifiedKey,
+    onProgress: onProgress,
+  );
 
   Future<File> downloadDriveBackupToTempFile(
     DriveBackupFile backup, {

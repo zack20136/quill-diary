@@ -143,19 +143,38 @@ Future<OpenedZipArchive> openZipArchive(
   }
 }
 
-Uint8List? readZipEntry(Archive archive, {required String relativePath}) {
+Uint8List? readZipEntry(
+  Archive archive, {
+  required String relativePath,
+  int? maxBytes,
+}) {
   for (final ArchiveFile file in archive.files) {
     if (!file.isFile || safeArchiveRelativePath(file.name) != relativePath) {
       continue;
     }
     return _readEntryBytes(
       file,
-      maxBytes: relativePath == 'recovery.json'
-          ? 65536
-          : ArchiveExtractionBudget.standard.maxEntryBytes,
+      maxBytes:
+          maxBytes ??
+          (relativePath == 'recovery.json'
+              ? 65536
+              : ArchiveExtractionBudget.standard.maxEntryBytes),
     );
   }
   return null;
+}
+
+void writeZipEntry(ArchiveFile file, OutputStream destination) {
+  final output = _BudgetedArchiveOutput(
+    destination,
+    file,
+    ArchiveExtractionBudget.standard,
+    (_) {},
+  );
+  file.writeContent(output);
+  if (output.length != file.size) {
+    throw const FormatException('ZIP 實際輸出大小不符');
+  }
 }
 
 Uint8List _readEntryBytes(ArchiveFile file, {required int maxBytes}) {
@@ -178,36 +197,13 @@ Uint8List _readEntryBytes(ArchiveFile file, {required int maxBytes}) {
   return memory.getBytes();
 }
 
-/// 讀取 manifest.json.enc，否則取第一篇 .md.enc 作為加密樣本。
-Uint8List? readEncryptedSampleBytes(Archive archive) {
-  final Uint8List? manifest = readZipEntry(
-    archive,
-    relativePath: 'manifest.json.enc',
-  );
-  if (manifest != null) {
-    return manifest;
-  }
-  for (final ArchiveFile file in archive.files) {
-    if (!file.isFile) {
-      continue;
-    }
-    final String path = safeArchiveRelativePath(file.name);
-    if (path.startsWith('entries/') && path.endsWith('.md.enc')) {
-      return _readEntryBytes(
-        file,
-        maxBytes: ArchiveExtractionBudget.standard.maxEntryBytes,
-      );
-    }
-  }
-  return null;
-}
-
 /// 驗證路徑後，將 [zip] 串流解壓至 [targetDirectory]。
 Future<void> extractArchiveToDirectory({
   required OpenedZipArchive zip,
   required Directory targetDirectory,
   BackupTaskProgressListener? onProgress,
   ArchiveExtractionBudget budget = ArchiveExtractionBudget.standard,
+  bool Function(String path, bool isFile)? include,
 }) async {
   ensureArchiveExtractionBudget(zip.archive, budget: budget);
   final List<ArchiveFile> files = zip.archive.files;
@@ -224,6 +220,7 @@ Future<void> extractArchiveToDirectory({
       );
     }
     final String safeRelativePath = safeArchiveRelativePath(archiveFile.name);
+    if (include?.call(safeRelativePath, archiveFile.isFile) == false) continue;
     final String outputPath = p.join(targetDirectory.path, safeRelativePath);
     if (archiveFile.isFile) {
       await File(outputPath).parent.create(recursive: true);

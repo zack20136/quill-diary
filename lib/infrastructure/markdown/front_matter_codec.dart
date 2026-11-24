@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
@@ -28,31 +30,30 @@ class FrontMatterCodec {
   }) {
     final List<String> lines = <String>[
       '---',
-      'id: "${entry.id}"',
-      'title: ${_encodeScalar(entry.normalizedTitle)}',
-      'date: "${entry.date}"',
-      'created_at: "${entry.createdAt.toIso8601String()}"',
-      'updated_at: "${entry.updatedAt.toIso8601String()}"',
+      'id: ${jsonEncode(entry.id)}',
+      'title: ${jsonEncode(entry.title)}',
+      'date: ${jsonEncode(entry.date.value)}',
+      'created_at: ${jsonEncode(entry.createdAt.toIso8601String())}',
+      'updated_at: ${jsonEncode(entry.updatedAt.toIso8601String())}',
       if (entry.tags.isEmpty) 'tags: []' else 'tags:',
-      ...entry.tags.map((String tag) => '  - "${_escape(tag)}"'),
+      ...entry.tags.map((String tag) => '  - ${jsonEncode(tag)}'),
       if (entry.attachmentIds.isEmpty)
         'attachment_ids: []'
       else
         'attachment_ids:',
       ...entry.attachmentIds.map(
-        (String assetId) => '  - "${_escape(assetId)}"',
+        (String assetId) => '  - ${jsonEncode(assetId)}',
       ),
       if (attachments.isEmpty) 'attachments: []' else 'attachments:',
       ...attachments.map((AssetAttachment asset) {
         final String path =
             attachmentPathBuilder?.call(asset) ??
             '../assets/${entry.date.yearString}/${entry.date.monthPadded}/${asset.safeFilename}';
-        return '  - "${_escape(path)}"';
+        return '  - ${jsonEncode(path)}';
       }),
       '---',
       '',
-      entry.markdownBody.trimRight(),
-      '',
+      entry.markdownBody,
     ];
     return lines.join('\n');
   }
@@ -73,7 +74,7 @@ class FrontMatterCodec {
       entry: DiaryEntry(
         id: (frontMatter['id'] ?? generateEntryId()).toString(),
         vaultId: (frontMatter['vault_id'] ?? 'vlt_LOCAL').toString(),
-        title: _nullableString(frontMatter['title']),
+        title: frontMatter['title']?.toString(),
         date: DateOnly.parse((frontMatter['date'] ?? '1970-01-01').toString()),
         createdAt:
             DateTime.tryParse('${frontMatter['created_at'] ?? ''}') ??
@@ -96,17 +97,26 @@ class FrontMatterCodec {
   ({Map<String, Object?> frontMatter, String body}) _splitDocument(
     String document,
   ) {
-    if (!document.startsWith('---\n')) {
-      return (frontMatter: <String, Object?>{}, body: document.trim());
+    final opening = RegExp(r'^\uFEFF?---\r?\n').firstMatch(document);
+    if (opening == null) {
+      return (frontMatter: <String, Object?>{}, body: document);
     }
 
-    final int secondMarker = document.indexOf('\n---\n', 4);
-    if (secondMarker == -1) {
-      return (frontMatter: <String, Object?>{}, body: document.trim());
+    final closing = RegExp(
+      r'^---(?:\r?\n|$)',
+      multiLine: true,
+    ).firstMatch(document.substring(opening.end));
+    if (closing == null) {
+      return (frontMatter: <String, Object?>{}, body: document);
     }
 
-    final String yamlSource = document.substring(4, secondMarker).trim();
-    final String body = document.substring(secondMarker + 5).trim();
+    final String yamlSource = document.substring(
+      opening.end,
+      opening.end + closing.start,
+    );
+    final String body = document
+        .substring(opening.end + closing.end)
+        .replaceFirst(RegExp(r'^\r?\n'), '');
     final Object? loaded = loadYaml(yamlSource);
     final Map<String, Object?> frontMatter = <String, Object?>{};
 
@@ -152,25 +162,9 @@ class FrontMatterCodec {
       return const <String>[];
     }
     return value
-        .map((Object? item) => '$item')
+        .where((item) => item != null)
+        .map((item) => item.toString())
         .where((String item) => item.isNotEmpty)
         .toList();
   }
-
-  String? _nullableString(Object? value) {
-    final String stringValue = '${value ?? ''}'.trim();
-    if (stringValue.isEmpty || stringValue == 'null') {
-      return null;
-    }
-    return stringValue;
-  }
-
-  String _encodeScalar(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'null';
-    }
-    return '"${_escape(value.trim())}"';
-  }
-
-  String _escape(String input) => input.replaceAll('"', r'\"');
 }

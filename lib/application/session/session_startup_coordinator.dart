@@ -314,51 +314,6 @@ class SessionStartupCoordinator {
     }
   }
 
-  Future<AppSessionState> resumeSessionAfterRestore(
-    UnlockedVaultSession priorSession, {
-    required Future<AppSessionState> Function(AppSessionState next) applyState,
-    required Future<void> Function(AppSessionState next) activateUnlockedState,
-    required Future<String> Function(
-      Object error, {
-      bool afterRestoreTrustedUnlock,
-    })
-    friendlyErrorMessage,
-    required Future<void> Function() disarmSessionWatchdog,
-  }) async {
-    final VaultRepository repository = _ref.read(vaultRepositoryProvider);
-    try {
-      await repository.initialize();
-      final UnlockedVaultSession session = await repository
-          .resumeUnlockedSessionAfterRestore(priorSession);
-      await repository.ensureIndexReady(session, reconcileEntryFiles: false);
-      await repository.rebuildIndex(session);
-      final AppSessionState next = AppSessionState(
-        status: AppLockStatus.unlocked,
-        session: session,
-      );
-      await activateUnlockedState(next);
-      return next;
-    } catch (error) {
-      if (error is SecretBoxAuthenticationError ||
-          isUnreadableEncryptedIndexError(error)) {
-        await repository.clearTrustedDeviceAccess();
-      }
-      final AppSessionState next = AppSessionState(
-        status: AppLockStatus.recoveryRequired,
-        message: await friendlyErrorMessage(
-          error,
-          afterRestoreTrustedUnlock: true,
-        ),
-        failure: isUnreadableEncryptedIndexError(error)
-            ? SessionFailure.unreadableIndex
-            : null,
-      );
-      await applyState(next);
-      await disarmSessionWatchdog();
-      return next;
-    }
-  }
-
   Future<UnlockOutcome> _handleTrustedDeviceFailure({
     required UnlockRequestSource source,
     required Future<AppSessionState> Function(AppSessionState next) applyState,

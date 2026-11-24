@@ -21,10 +21,6 @@ Future<T?> showAdaptivePanel<T>({
           maxWidth: 480,
           child: Dialog(
             insetPadding: EdgeInsets.zero,
-            backgroundColor: colors.surfaceContainerHigh,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(PageStyle.radiusCard),
-            ),
             clipBehavior: Clip.antiAlias,
             child: builder(dialogContext),
           ),

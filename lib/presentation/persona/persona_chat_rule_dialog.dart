@@ -9,6 +9,7 @@ import 'package:quill_diary/presentation/persona/persona_speaker_role_dropdown.d
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 內建格式失敗後，整份原文匯入。取消回傳 null。
@@ -175,75 +176,84 @@ class _PersonaChatRuleDialogState extends State<PersonaChatRuleDialog> {
           ),
         ),
       ),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            l.personaChatRuleIntro,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.45,
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: [
+            if (!_canImport)
+              AppFeedbackBanner(
+                message: l.personaChatRuleEmpty,
+                tone: AppFeedbackTone.warning,
+              ),
+            AppDialogSummary(
+              icon: Icons.info_outline_rounded,
+              title: l.personaChatRuleIntroTitle,
+              details: [l.personaChatRuleIntro],
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(l.personaChatRuleNames, style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          for (final name in _names) ...[
-            PersonaSpeakerRoleCard(
-              label: name.label,
-              role: name.role,
-              onChanged: (role) => setState(() => name.role = role),
-            ),
-            const SizedBox(height: 8),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _addedName,
-                  decoration: InputDecoration(
-                    labelText: l.personaChatRuleNameHint,
-                    isDense: true,
+            AppDialogSection(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 8,
+                children: [
+                  Text(
+                    l.personaChatRuleNames,
+                    style: theme.textTheme.titleSmall,
                   ),
-                  onSubmitted: (_) => _addName(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: _addName,
-                child: Text(l.personaChatRuleAddName),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: AppScrollbar(
-              controller: _scroll,
-              track: AppScrollbarTrack.frame,
-              reserveGutter: true,
-              child: TextField(
-                controller: _text,
-                scrollController: _scroll,
-                readOnly: true,
-                expands: true,
-                minLines: null,
-                maxLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.all(12),
-                ),
+                  TextField(
+                    controller: _addedName,
+                    decoration: InputDecoration(
+                      labelText: l.personaChatRuleNameHint,
+                      suffixIcon: IconButton(
+                        tooltip: l.personaChatRuleAddName,
+                        onPressed: _addName,
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                    ),
+                    onSubmitted: (_) => _addName(),
+                  ),
+                ],
               ),
             ),
-          ),
-          if (!_canImport) ...[
-            const SizedBox(height: 12),
-            AppFeedbackBanner(
-              message: l.personaChatRuleEmpty,
-              tone: AppFeedbackTone.warning,
+            for (final name in _names)
+              PersonaSpeakerRoleCard(
+                label: name.label,
+                role: name.role,
+                onChanged: (role) => setState(() => name.role = role),
+              ),
+            AppDialogSection(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 8,
+                children: [
+                  Text(
+                    l.personaChatRulePreview,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  AppScrollbar(
+                    controller: _scroll,
+                    track: AppScrollbarTrack.frame,
+                    reserveGutter: true,
+                    child: TextField(
+                      controller: _text,
+                      scrollController: _scroll,
+                      readOnly: true,
+                      minLines: 3,
+                      maxLines: 10,
+                      textAlignVertical: TextAlignVertical.top,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.all(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
-        ],
+        ),
       ),
       actions: [
         TextButton(

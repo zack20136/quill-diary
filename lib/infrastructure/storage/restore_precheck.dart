@@ -6,10 +6,17 @@ import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 /// 可進入還原流程時一定具備可解析的 [metadata]；缺少或無效時應在
 /// [prepareRestorePreview] 等上游驗證階段直接失敗。
 class BackupRecoveryPreview {
-  const BackupRecoveryPreview({required this.metadata});
+  const BackupRecoveryPreview({required this.metadata, this.backupId});
 
   final RecoveryMetadata metadata;
+  final String? backupId;
 }
+
+typedef VerifiedBackupKey = ({
+  BackupRecoveryPreview preview,
+  List<int> wrapKey,
+  String recoveryKey,
+});
 
 /// 還原前比對備份與目前裝置的結果。
 class RestorePrecheck {
@@ -36,15 +43,10 @@ class RestorePrecheck {
       sameVaultId &&
       localMetadata?.hasSameRecoveryGenerationAs(preview.metadata) == false;
 
-  bool get expectsTrustedUnlockAfterRestore =>
-      localHasTrustedDevice &&
-      localMetadata?.hasSameRecoveryGenerationAs(preview.metadata) == true;
-
-  bool get expectsRecoveryKeyAfterRestore => !expectsTrustedUnlockAfterRestore;
-
   /// 同一日記庫還原後能否沿用還原前已解鎖 session（免再次裝置驗證）。
   bool canResumeTrustedSession(UnlockedVaultSession? priorSession) =>
-      expectsTrustedUnlockAfterRestore &&
+      localHasTrustedDevice &&
+      localMetadata?.hasSameRecoveryGenerationAs(preview.metadata) == true &&
       priorSession?.canUseRecovery == true &&
       priorSession!.vaultId == backupVaultId;
 }

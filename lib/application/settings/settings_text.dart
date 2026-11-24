@@ -1,4 +1,3 @@
-import 'package:quill_diary/application/session/session_messages.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/session/session_timeout_policy.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
@@ -237,23 +236,4 @@ String settingsFindingDateLabel(AppLocalizations l10n, VaultFinding finding) {
   final DateOnly? date = finding.entryDate;
   if (date == null) return l10n.settingsInspectVaultEntryDateUnknown;
   return DisplayFormat.formatDateOnly(l10n, date);
-}
-
-/// Drive 還原成功時併入備份名稱；沒有備份名稱時只顯示鎖定狀態提示。
-String driveAwarePostRestoreSnackBarMessage({
-  required AppLocalizations l10n,
-  required AppLockStatus status,
-  String? driveBackupName,
-}) {
-  final String statusMessage = snackbarMessageForPostRestore(l10n, status);
-  if (driveBackupName == null || driveBackupName.trim().isEmpty) {
-    return statusMessage;
-  }
-  final String driveMessage = l10n.settingsDriveBackupRestoreSuccess(
-    driveBackupName.trim(),
-  );
-  if (status == AppLockStatus.unlocked) {
-    return driveMessage;
-  }
-  return '$driveMessage\n$statusMessage';
 }

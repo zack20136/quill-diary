@@ -223,7 +223,14 @@ class FakeAiClient extends AiClient {
         'test-key',
         transport: RecordingAiTransport(),
       );
-  final calls = <({String prompt, List<AiInputMessage> messages})>[];
+  final calls =
+      <
+        ({
+          String prompt,
+          List<AiInputMessage> messages,
+          PreparedAiRequest request,
+        })
+      >[];
   String output = '回覆';
   Future<void> Function(AiRemoteFile)? onDeleteFile;
   @override
@@ -264,6 +271,7 @@ class FakeAiClient extends AiClient {
     calls.add((
       prompt: request.internalSystemPrompt,
       messages: request.internalMessages,
+      request: request,
     ));
     if (failure != null) throw failure!;
     if (response != null) {
@@ -285,9 +293,6 @@ class EmptyEditorDraftStore implements EditorDraftStore {
     String draftKey,
     UnlockedVaultSession session,
   ) async => null;
-
-  @override
-  Future<void> clearAllMaterializedPendingFiles() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

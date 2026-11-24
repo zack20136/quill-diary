@@ -646,25 +646,23 @@ class GoogleDriveBackupService implements DriveBackupService {
         protectedId != null &&
         protectedId.isNotEmpty &&
         all.any((DriveBackupFile file) => file.id == protectedId);
-    final List<DriveBackupFile> candidates = keepExists
-        ? all.where((DriveBackupFile file) => file.id != protectedId).toList()
-        : all;
-    final int othersRetain = keepExists ? retainCount - 1 : retainCount;
-    final List<DriveBackupFile> toDelete = othersRetain <= 0
-        ? sortDriveBackupsNewestFirst(candidates)
-        : driveBackupsToPrune(candidates, retainCount: othersRetain);
-    final List<String> failures = <String>[];
+    if (!keepExists) return const <DriveBackupFile>[];
+    final candidates = all.where((file) => file.id != protectedId).toList();
+    final toDelete = sortDriveBackupsNewestFirst(candidates)
+        .skip(retainCount - 1)
+        .toList();
+    var failedCount = 0;
     for (final DriveBackupFile backup in toDelete) {
       try {
         await deleteBackup(backup.id, interactive: interactive);
-      } on Object catch (error) {
-        failures.add('${backup.id}: $error');
+      } on Object {
+        failedCount++;
       }
     }
-    if (failures.isNotEmpty) {
+    if (failedCount > 0) {
       throw GoogleDriveException(
         GoogleDriveErrorCode.pruneFailed,
-        failedCount: failures.length,
+        failedCount: failedCount,
         totalCount: toDelete.length,
       );
     }
@@ -728,24 +726,6 @@ List<DriveBackupFile> sortDriveBackupsNewestFirst(
 ) {
   return List<DriveBackupFile>.from(backups)
     ..sort(compareDriveBackupsNewestFirst);
-}
-
-List<DriveBackupFile> driveBackupsToPrune(
-  Iterable<DriveBackupFile> backups, {
-  required int retainCount,
-}) {
-  if (retainCount < 1) {
-    throw ArgumentError.value(
-      retainCount,
-      'retainCount',
-      'retainCount must be positive.',
-    );
-  }
-  final List<DriveBackupFile> sorted = sortDriveBackupsNewestFirst(backups);
-  if (sorted.length <= retainCount) {
-    return const <DriveBackupFile>[];
-  }
-  return sorted.skip(retainCount).toList();
 }
 
 int compareDriveBackupsNewestFirst(DriveBackupFile a, DriveBackupFile b) {

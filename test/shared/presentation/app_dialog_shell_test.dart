@@ -54,6 +54,42 @@ void main() {
     expect(find.text('內容'), findsNothing);
   });
 
+  testWidgets('長確認內容可捲動，操作按鈕仍可按下', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 420));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      _app(
+        dialogBuilder: (_) => AppConfirmDialog(
+          title: '刪除選取項目',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              for (var index = 0; index < 40; index++) Text('項目 $index'),
+            ],
+          ),
+          cancelLabel: '返回',
+          confirmLabel: '刪除',
+          confirmStyle: AppConfirmStyle.destructive,
+        ),
+      ),
+    );
+    await _open(tester);
+
+    final confirm = find.widgetWithText(FilledButton, '刪除');
+    expect(confirm.hitTestable(), findsOneWidget);
+    expect(find.text('項目 39').hitTestable(), findsNothing);
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -800),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('項目 39').hitTestable(), findsOneWidget);
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(confirm, findsNothing);
+  });
+
   testWidgets('showClose 為 false 時不顯示關閉 X', (WidgetTester tester) async {
     await tester.pumpWidget(
       _app(
@@ -114,29 +150,58 @@ void main() {
     expect(find.text('內容'), findsOneWidget);
   });
 
-  testWidgets('leading 按鈕顯示在操作列並可點擊', (WidgetTester tester) async {
-    var tapped = 0;
+  testWidgets('放大字級時依實際寬度分列，左右操作仍可點擊', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 800);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.8;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    var leadingTapped = false;
+    var applied = false;
+    final leading = find.byKey(const Key('shell-leading'));
+    final cancel = find.byKey(const Key('shell-cancel'));
+    final apply = find.byKey(const Key('shell-apply'));
     await tester.pumpWidget(
       _app(
         dialogBuilder: (_) => AppDialogShell(
           title: '測試標題',
           content: const Text('內容'),
-          leading: IconButton(
+          leading: TextButton(
             key: const Key('shell-leading'),
-            onPressed: () => tapped++,
-            icon: const Icon(Icons.visibility),
+            onPressed: () => leadingTapped = true,
+            child: const Text('Default'),
           ),
-          actions: const <Widget>[Text('確定')],
+          actions: [
+            TextButton(
+              key: const Key('shell-cancel'),
+              onPressed: () {},
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              key: const Key('shell-apply'),
+              onPressed: () => applied = true,
+              child: const Text('Apply'),
+            ),
+          ],
         ),
       ),
     );
     await _open(tester);
+    expect(tester.getCenter(leading).dy, tester.getCenter(apply).dy);
 
-    await tester.tap(find.byKey(const Key('shell-leading')));
+    tester.view.physicalSize = const Size(320, 800);
     await tester.pumpAndSettle();
+    final left = tester.getRect(leading);
+    final right = tester.getRect(apply);
+    expect(left.left, lessThan(right.left));
+    expect(left.bottom, lessThan(tester.getTopLeft(cancel).dy));
+    expect(tester.getRect(cancel).right, closeTo(right.right, 0.1));
 
-    expect(tapped, 1);
-    expect(find.text('內容'), findsOneWidget);
+    await tester.tap(leading);
+    await tester.tap(apply);
+    expect(leadingTapped, isTrue);
+    expect(applied, isTrue);
   });
 
   testWidgets('很高的內容不超過表面的 90%，短內容不會被拉高', (WidgetTester tester) async {

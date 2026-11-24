@@ -82,10 +82,7 @@ void main() {
       createdAt: DateTime(2026, 6, 18, 8),
       updatedAt: DateTime(2026, 6, 18, 9),
     );
-    final FakeEditorActions actions = FakeEditorActions(
-      draft: draft,
-      materializedPreviewPath: pendingAttachment.sourcePath,
-    );
+    final FakeEditorActions actions = FakeEditorActions(draft: draft);
     const UnlockedVaultSession session = UnlockedVaultSession(
       vaultId: 'vault-1',
       trustedDevice: true,

@@ -180,7 +180,7 @@ void main() {
     actions.firstWrite.complete();
     await Future.wait([first, second, last]);
     expect(actions.writtenBodies, ['第一版', '最後版']);
-    expect(persisted, ['第一版', '最後版']);
+    expect(persisted, ['最後版']);
   });
 
   test('離開編輯器仍保存已擷取的最後快照且不再回呼畫面', () async {
@@ -227,7 +227,7 @@ void main() {
     expect(callbacks, 0);
   });
 
-  test('草稿寫入失敗後會保留最後快照供下一次變更重試', () async {
+  test('草稿寫入失敗後可直接 flush 重試原快照', () async {
     final actions = _FailOnceDraftActions();
     final container = ProviderContainer(
       overrides: [
@@ -244,10 +244,10 @@ void main() {
       session.persistDraft(_draftRequest('寫入失敗')),
       throwsStateError,
     );
-    await session.persistDraft(_draftRequest('重試成功'));
+    await session.flushDrafts();
 
-    expect(actions.writtenBodies, <String>['寫入失敗', '重試成功']);
-    expect(actions.writtenDraft?.markdownBody, '重試成功');
+    expect(actions.writtenBodies, <String>['寫入失敗', '寫入失敗']);
+    expect(actions.writtenDraft?.markdownBody, '寫入失敗');
   });
 
   test('預覽連續勾選會依序提交，最後狀態不會被舊寫入覆蓋', () async {
@@ -290,8 +290,6 @@ EditorPersistDraftRequest _draftRequest(String body) =>
         markdownBody: body,
         attachmentIds: const [],
       ),
-      tagsRaw: '',
-      attachmentIds: const [],
       pendingAttachments: const [],
       session: const UnlockedVaultSession(
         vaultId: 'vault-1',

@@ -178,34 +178,6 @@ void main() {
         'unknown',
       ]);
     });
-
-    test('driveBackupsToPrune 會回傳超出保留數的舊備份', () {
-      final List<DriveBackupFile> backups = <DriveBackupFile>[
-        for (int day = 1; day <= 12; day++)
-          DriveBackupFile(
-            id: 'backup_$day',
-            name: 'backup_2026-05-${day.toString().padLeft(2, '0')}.zip',
-            createdAt: DateTime.utc(2026, 5, day),
-          ),
-      ];
-
-      final List<DriveBackupFile> stale = driveBackupsToPrune(
-        backups,
-        retainCount: 10,
-      );
-
-      expect(stale.map((DriveBackupFile file) => file.id), <String>[
-        'backup_2',
-        'backup_1',
-      ]);
-    });
-
-    test('driveBackupsToPrune 會驗證保留數', () {
-      expect(
-        () => driveBackupsToPrune(const <DriveBackupFile>[], retainCount: 0),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
   });
 
   group('GoogleDriveBackupService 連線狀態', () {

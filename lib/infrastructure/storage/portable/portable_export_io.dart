@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
@@ -10,11 +9,11 @@ import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/storage/portable/html_export_person_anonymizer.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_date_text.dart';
-import 'package:quill_diary/infrastructure/storage/portable/portable_io_types.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
@@ -23,15 +22,17 @@ import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 class HtmlExportOptions {
   const HtmlExportOptions({
     this.includeImages = true,
+    bool externalAssets = false,
     this.hidePersonNames = false,
     this.useEnglishPersonLabels = false,
     this.documentTitle = '',
     this.untitledEntryTitle = '',
     this.unembeddedAttachmentsHeading = '',
     this.htmlLang = '',
-  });
+  }) : externalAssets = includeImages && externalAssets;
 
   final bool includeImages;
+  final bool externalAssets;
   final bool hidePersonNames;
   final bool useEnglishPersonLabels;
   final String documentTitle;
@@ -88,7 +89,10 @@ class HtmlExportEstimate {
   );
 
   /// 依是否內嵌圖片估算實際匯出檔大小。
-  int estimatedExportBytes({required bool includeImages}) {
+  int estimatedExportBytes({
+    required bool includeImages,
+    bool externalAssets = false,
+  }) {
     final int textBytes = entries.fold<int>(
       0,
       (int sum, HtmlExportEntrySummary e) => sum + e.textBytes,
@@ -96,7 +100,8 @@ class HtmlExportEstimate {
     if (!includeImages) {
       return textBytes;
     }
-    return textBytes + ((imageBytes * 4 + 2) ~/ 3);
+    return textBytes +
+        (externalAssets ? imageBytes : ((imageBytes * 4 + 2) ~/ 3));
   }
 
   DateOnly? get firstDate {
@@ -324,47 +329,24 @@ class PortableExportIo {
       await encoder.close();
       return target;
     } finally {
-      if (tempRoot.existsSync()) {
-        await tempRoot.delete(recursive: true);
-      }
+      await deleteWorkingDirectory(tempRoot);
     }
   }
 
   Future<HtmlExportEstimate> estimateSelectedHtmlExport({
     required Set<EntryId> entryIds,
   }) async {
-    final List<HtmlExportDocument> documents =
-        await _loadSelectedHtmlExportDocuments(
-          session: null,
-          entryIds: entryIds,
-          loadEntries: false,
-        );
-
-    final List<HtmlExportEntrySummary> summaries = <HtmlExportEntrySummary>[];
-    for (final HtmlExportDocument document in documents) {
-      final DiaryEntry? entry = document.entry;
-      final DiaryEntrySummary record = document.record;
-      final int textBytes;
-      final String? title;
-      if (entry != null) {
-        title = entry.normalizedTitle;
-        textBytes = utf8
-            .encode(
-              '${entry.normalizedTitle ?? ''}\n${entry.tags.join(',')}\n${entry.markdownBody}',
-            )
-            .length;
-      } else {
-        title = record.title;
-        textBytes =
-            utf8
-                .encode('${record.title ?? ''}\n${record.tags.join(',')}\n')
-                .length +
-            record.charCount;
-      }
+    final summaries = <HtmlExportEntrySummary>[];
+    for (final record in await _selectedHtmlEntries(entryIds)) {
+      final title = record.title;
+      final textBytes =
+          utf8.encode('${title ?? ''}\n${record.tags.join(',')}\n').length +
+          record.charCount;
+      final attachments = await _repository.loadAttachments(record.id);
 
       var entryImageCount = 0;
       var entryImageBytes = 0;
-      for (final AssetAttachment attachment in document.attachments) {
+      for (final AssetAttachment attachment in attachments) {
         if (_isImageAttachment(attachment)) {
           entryImageCount++;
           entryImageBytes += attachment.byteSize;
@@ -428,20 +410,28 @@ class PortableExportIo {
     required File target,
     HtmlExportOptions options = const HtmlExportOptions(),
   }) async {
-    final List<HtmlExportDocument> documents =
-        await _loadSelectedHtmlExportDocuments(
-          session: session,
-          entryIds: entryIds,
-          loadEntries: true,
-        );
-
-    final String html = await _buildSelectedHtmlDocument(
+    await _writeHtml(
       session: session,
-      documents: documents,
+      entryIds: entryIds,
+      target: target,
       options: options,
     );
-    await target.parent.create(recursive: true);
-    await target.writeAsString(html, flush: true);
+    return target;
+  }
+
+  Future<Directory> writeSelectedHtmlBundle({
+    required UnlockedVaultSession session,
+    required Set<EntryId> entryIds,
+    required Directory target,
+    required HtmlExportOptions options,
+  }) async {
+    await _writeHtml(
+      session: session,
+      entryIds: entryIds,
+      target: File(p.join(target.path, 'diary.html')),
+      assets: Directory(p.join(target.path, 'assets')),
+      options: options,
+    );
     return target;
   }
 
@@ -490,64 +480,53 @@ class PortableExportIo {
     return results;
   }
 
-  Future<List<HtmlExportDocument>> _loadSelectedHtmlExportDocuments({
-    required UnlockedVaultSession? session,
-    required Set<EntryId> entryIds,
-    required bool loadEntries,
-  }) async {
-    if (entryIds.isEmpty) {
-      return const <HtmlExportDocument>[];
-    }
-
-    final Set<EntryId> selected = entryIds
-        .map((EntryId id) => id.trim())
-        .toSet();
-    final List<DiaryEntrySummary> records =
-        (await _repository.listEntries())
-            .where((DiaryEntrySummary record) => selected.contains(record.id))
-            .toList()
-          ..sort(compareEntriesNewestFirst);
-
-    final UnlockedVaultSession? exportSession = loadEntries
-        ? session ?? (throw StateError('缺少匯出 HTML 所需的解鎖 session。'))
-        : null;
-    final List<HtmlExportDocument?> documents =
-        await Future.wait<HtmlExportDocument?>(
-          records.map(
-            (DiaryEntrySummary record) => _loadHtmlExportDocument(
-              record: record,
-              session: exportSession,
-              loadEntry: loadEntries,
-            ),
-          ),
-        );
-    return documents.whereType<HtmlExportDocument>().toList(growable: false);
+  Future<List<DiaryEntrySummary>> _selectedHtmlEntries(
+    Set<EntryId> entryIds,
+  ) async {
+    final selected = entryIds.map((id) => id.trim()).toSet();
+    return (await _repository.listEntries())
+        .where((record) => selected.contains(record.id))
+        .toList()
+      ..sort(compareEntriesNewestFirst);
   }
 
-  Future<HtmlExportDocument?> _loadHtmlExportDocument({
-    required DiaryEntrySummary record,
-    required UnlockedVaultSession? session,
-    required bool loadEntry,
-  }) async {
-    final List<Object?> loaded = await Future.wait<Object?>(<Future<Object?>>[
-      if (loadEntry) _repository.loadEntry(session!, record.id),
-      _repository.loadAttachments(record.id),
-    ]);
-    final DiaryEntry? entry = loadEntry ? loaded[0] as DiaryEntry? : null;
-    if (loadEntry && entry == null) {
-      return null;
-    }
-    return HtmlExportDocument(
-      record: record,
-      entry: entry,
-      attachments: loaded[loadEntry ? 1 : 0] as List<AssetAttachment>,
-    );
-  }
-
-  Future<String> _buildSelectedHtmlDocument({
+  Future<void> _writeHtml({
     required UnlockedVaultSession session,
-    required List<HtmlExportDocument> documents,
+    required Set<EntryId> entryIds,
+    required File target,
     required HtmlExportOptions options,
+    Directory? assets,
+  }) => _repository.runVaultMutation(() async {
+    final work = await createWorkingDirectory(_pathStrategy, 'html_assets');
+    try {
+      await target.parent.create(recursive: true);
+      final sink = target.openWrite();
+      sink.done.ignore();
+      try {
+        await _writeHtmlDocument(
+          sink: sink,
+          session: session,
+          entryIds: entryIds,
+          options: options,
+          work: work,
+          assets: assets,
+        );
+        await sink.flush();
+      } finally {
+        await sink.close();
+      }
+    } finally {
+      await deleteWorkingDirectory(work);
+    }
+  });
+
+  Future<void> _writeHtmlDocument({
+    required IOSink sink,
+    required UnlockedVaultSession session,
+    required Set<EntryId> entryIds,
+    required HtmlExportOptions options,
+    required Directory work,
+    Directory? assets,
   }) async {
     HtmlExportPersonAnonymizer? anonymizer;
     if (options.hidePersonNames) {
@@ -558,11 +537,14 @@ class PortableExportIo {
       );
     }
 
+    sink.write(_htmlHeader(options));
     var imageOrdinal = 1;
     var fileOrdinal = 1;
-    final StringBuffer body = StringBuffer();
-    for (final HtmlExportDocument document in documents) {
-      final DiaryEntry entry = document.entry!;
+    final crypto = LocalCryptoService();
+    final context = vaultDecryptionContext(session);
+    for (final record in await _selectedHtmlEntries(entryIds)) {
+      final entry = await _repository.loadEntry(session, record.id);
+      if (entry == null) throw StateError('找不到要匯出的日記。');
       final String? rawTitle =
           entry.normalizedTitle ??
           (options.untitledEntryTitle.trim().isEmpty
@@ -578,49 +560,97 @@ class PortableExportIo {
           anonymizer?.anonymizeMarkdownBody(entry.markdownBody) ??
           entry.markdownBody;
 
-      body.writeln('<article class="entry">');
-      body.writeln('<header class="entry-header">');
-      body.writeln(
+      sink.writeln('<article class="entry">');
+      sink.writeln('<header class="entry-header">');
+      sink.writeln(
         '<p class="entry-date">${_escapeHtml(formatQuillDiaryExportEntryDateTime(entry))}</p>',
       );
       if (title != null && title.isNotEmpty) {
-        body.writeln('<h2>${_escapeHtml(title)}</h2>');
+        sink.writeln('<h2>${_escapeHtml(title)}</h2>');
       }
       if (tags.isNotEmpty) {
-        body.writeln('<ul class="tags">');
+        sink.writeln('<ul class="tags">');
         for (final String tag in tags) {
-          body.writeln('<li>${_escapeHtml(tag)}</li>');
+          sink.writeln('<li>${_escapeHtml(tag)}</li>');
         }
-        body.writeln('</ul>');
+        sink.writeln('</ul>');
       }
-      body.writeln('</header>');
-      body.writeln('<section class="entry-body">');
-      body.writeln(_markdownToExportHtml(markdownBody));
-      body.writeln('</section>');
-      body.writeln(
-        await _htmlAttachmentsSection(
-          session: session,
-          entry: entry,
-          attachments: document.attachments,
-          includeImages: options.includeImages,
-          nextImageLabel: (AssetAttachment attachment) {
-            final String extension = extensionFromMimeType(attachment.mimeType);
-            final String label = 'image-$imageOrdinal.$extension';
-            imageOrdinal += 1;
-            return label;
-          },
-          nextFileLabel: (AssetAttachment attachment) {
-            final String extension = extensionFromMimeType(attachment.mimeType);
-            final String label = 'file-$fileOrdinal.$extension';
-            fileOrdinal += 1;
-            return label;
-          },
-          unembeddedAttachmentsHeading: options.unembeddedAttachmentsHeading,
-        ),
-      );
-      body.writeln('</article>');
+      sink.writeln('</header>');
+      sink.writeln('<section class="entry-body">');
+      sink.writeln(exportMarkdownBodyToHtml(markdownBody));
+      sink.writeln('</section>');
+      if (options.includeImages) {
+        final attachments = await _repository.loadAttachments(entry.id);
+        final images = attachments.where(_isImageAttachment);
+        if (images.isNotEmpty) {
+          sink.writeln('<section class="embedded-images">');
+          for (final attachment in images) {
+            final label =
+                'image-${imageOrdinal++}.${extensionFromMimeType(attachment.mimeType)}';
+            final source = File(
+              await _pathStrategy.attachmentAbsolutePath(
+                date: entry.date,
+                attachment: attachment,
+              ),
+            );
+            final fixed = await source.copy(p.join(work.path, 'source.enc'));
+            try {
+              final bytes = crypto.readAuthenticatedFile(
+                fixed,
+                context,
+                documentId: attachment.id,
+                contentType: attachment.mimeType,
+              );
+              final alt = _escapeHtmlAttribute(label);
+              sink.write('<figure><img src="');
+              if (assets == null) {
+                final mime = _escapeHtmlAttribute(attachment.mimeType);
+                sink.write('data:$mime;base64,');
+                await sink.addStream(
+                  base64.encoder.bind(bytes).transform(utf8.encoder),
+                );
+              } else {
+                await assets.create(recursive: true);
+                await writeByteStreamToFile(
+                  bytes,
+                  File(p.join(assets.path, label)),
+                );
+                sink.write('assets/$label');
+              }
+              sink.writeln('" alt="$alt"></figure>');
+            } finally {
+              await deleteFileIfExists(fixed.path);
+            }
+          }
+          sink.writeln('</section>');
+        }
+        final files = attachments.where(
+          (attachment) => !_isImageAttachment(attachment),
+        );
+        if (files.isNotEmpty) {
+          sink.writeln('<section class="attachment-list">');
+          final heading = options.unembeddedAttachmentsHeading.trim();
+          if (heading.isNotEmpty) {
+            sink.writeln('<h3>${_escapeHtml(heading)}</h3>');
+          }
+          sink.writeln('<ul>');
+          for (final attachment in files) {
+            final label =
+                'file-${fileOrdinal++}.${extensionFromMimeType(attachment.mimeType)}';
+            sink.writeln(
+              '<li>$label · ${_escapeHtml(attachment.mimeType)} · ${_formatBytes(attachment.byteSize)}</li>',
+            );
+          }
+          sink.writeln('</ul></section>');
+        }
+      }
+      sink.writeln('</article>');
+      await sink.flush();
     }
+    sink.writeln('</main></body></html>');
+  }
 
+  String _htmlHeader(HtmlExportOptions options) {
     final String htmlLang = _nonBlankOr(options.htmlLang, 'zh-Hant');
     final String documentTitle = _nonBlankOr(
       options.documentTitle,
@@ -773,85 +803,8 @@ class PortableExportIo {
 </head>
 <body>
   <main>
-    ${body.toString()}
-  </main>
-</body>
-</html>
 ''';
   }
-
-  Future<String> _htmlAttachmentsSection({
-    required UnlockedVaultSession session,
-    required DiaryEntry entry,
-    required List<AssetAttachment> attachments,
-    required bool includeImages,
-    required String Function(AssetAttachment attachment) nextImageLabel,
-    required String Function(AssetAttachment attachment) nextFileLabel,
-    required String unembeddedAttachmentsHeading,
-  }) async {
-    // 關閉「匯出圖片與附件」時略過全部附件。
-    if (!includeImages || attachments.isEmpty) {
-      return '';
-    }
-
-    final StringBuffer images = StringBuffer();
-    final List<({AssetAttachment attachment, String label})> listed =
-        <({AssetAttachment attachment, String label})>[];
-    for (final AssetAttachment attachment in attachments) {
-      if (!_isImageAttachment(attachment)) {
-        listed.add((attachment: attachment, label: nextFileLabel(attachment)));
-        continue;
-      }
-
-      final String encryptedPath = await _pathStrategy.assetAbsolutePath(
-        date: entry.date,
-        assetId: attachment.id,
-        extension: p.extension(attachment.safeFilename).replaceFirst('.', ''),
-      );
-      final Uint8List? bytes = await _repository.readDecryptedAssetBytes(
-        session,
-        encryptedPath,
-        maxEncryptedFileBytes: 1 << 62,
-      );
-      if (bytes == null) {
-        listed.add((attachment: attachment, label: nextImageLabel(attachment)));
-        continue;
-      }
-
-      final String label = nextImageLabel(attachment);
-      images.writeln('<figure>');
-      images.writeln(
-        '<img src="data:${_escapeHtmlAttribute(attachment.mimeType)};base64,${base64Encode(bytes)}" alt="${_escapeHtmlAttribute(label)}">',
-      );
-      images.writeln('</figure>');
-    }
-
-    final StringBuffer html = StringBuffer();
-    if (images.isNotEmpty) {
-      html.writeln('<section class="embedded-images">');
-      html.write(images.toString());
-      html.writeln('</section>');
-    }
-    if (listed.isNotEmpty) {
-      html.writeln('<section class="attachment-list">');
-      final String heading = unembeddedAttachmentsHeading.trim();
-      if (heading.isNotEmpty) {
-        html.writeln('<h3>${_escapeHtml(heading)}</h3>');
-      }
-      html.writeln('<ul>');
-      for (final ({AssetAttachment attachment, String label}) item in listed) {
-        html.writeln(
-          '<li>${_escapeHtml(item.label)} · ${_escapeHtml(item.attachment.mimeType)} · ${_formatBytes(item.attachment.byteSize)}</li>',
-        );
-      }
-      html.writeln('</ul>');
-      html.writeln('</section>');
-    }
-    return html.toString();
-  }
-
-  String _markdownToExportHtml(String markdown) =>
-      exportMarkdownBodyToHtml(markdown);
 
   bool _isImageAttachment(AssetAttachment attachment) {
     return attachment.mimeType.toLowerCase().startsWith('image/');

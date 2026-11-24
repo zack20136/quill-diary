@@ -17,13 +17,13 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_labels.dart';
 import 'package:quill_diary/presentation/ai/ai_model_thinking_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_settings_dialog.dart';
-import 'package:quill_diary/presentation/ai/ai_settings_theme.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_menu_style.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_option_field.dart';
 
@@ -157,6 +157,19 @@ class _AiConnectionSettingsDialogState
   }
 
   Future<void> _load() async {
+    setState(() {
+      _isLoadingSettings = true;
+      _settingsLoaded = false;
+      _inspection = null;
+    });
+    for (final draft in _drafts.values) {
+      draft.dispose();
+    }
+    _drafts.clear();
+    _credentials.clear();
+    _snapshotDraft?.dispose();
+    _snapshotDraft = null;
+    _initialTargetMatches = false;
     try {
       final session = ref.read(appSessionProvider).session;
       if (session == null) throw StateError('尚未解鎖');
@@ -230,7 +243,6 @@ class _AiConnectionSettingsDialogState
     } on Object {
       if (mounted) {
         setState(() => _isLoadingSettings = false);
-        _showError(AiErrorCode.storage);
       }
     }
   }
@@ -272,18 +284,10 @@ class _AiConnectionSettingsDialogState
           .read(aiSettingsStoreProvider)
           .replaceUnreadableWithDefaults(session, expected: inspection);
       if (!mounted || ref.read(appSessionProvider).session != session) return;
-      for (final draft in _drafts.values) {
-        draft.dispose();
-      }
-      _drafts.clear();
-      _credentials.clear();
       _credentialsPendingDeletion.clear();
       ref.invalidate(aiConnectionReadyProvider);
       ref.invalidate(aiEnabledProvider);
       _removedConnectionIds.clear();
-      _snapshotDraft?.dispose();
-      _snapshotDraft = null;
-      _initialTargetMatches = false;
       await _load();
     } on Object {
       if (mounted && ref.read(appSessionProvider).session == session) {
@@ -602,23 +606,28 @@ class _AiConnectionSettingsDialogState
   Widget _settingsIntro(AppLocalizations l10n) {
     final TextTheme text = Theme.of(context).textTheme;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
       children: [
-        Text(l10n.aiSettingsLead, style: text.bodyMedium),
-        const SizedBox(height: 8),
-        _settingsNote(Icons.key_outlined, l10n.aiSettingsKeyNote),
-        _settingsNote(Icons.lock_outline, l10n.aiSettingsBackupNote),
-        _settingsNote(Icons.send_outlined, l10n.aiSettingsSendNote),
         if (!_hasSelectableChatModel())
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              l10n.aiSettingsNeedConnection,
-              style: text.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
+          AppFeedbackBanner(
+            message: l10n.aiSettingsNeedConnection,
+            tone: AppFeedbackTone.error,
+            outlined: true,
           ),
+        AppDialogSection(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.aiSettingsLead, style: text.bodyMedium),
+              const SizedBox(height: 8),
+              _settingsNote(Icons.key_outlined, l10n.aiSettingsKeyNote),
+              _settingsNote(Icons.lock_outline, l10n.aiSettingsBackupNote),
+              _settingsNote(Icons.send_outlined, l10n.aiSettingsSendNote),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -640,7 +649,7 @@ class _AiConnectionSettingsDialogState
   }
 
   Future<void> _save() async {
-    if (!_settingsLoaded) return;
+    if (!_settingsLoaded || _isSavingSettings) return;
     final available = _availableModels();
     if (available.isEmpty &&
         widget.initialConnection == null &&
@@ -668,15 +677,50 @@ class _AiConnectionSettingsDialogState
         return;
       }
     }
-    setState(() => _isSavingSettings = true);
     try {
+      final httpEndpoints = <Uri>{};
       for (final id in _drafts.keys) {
         _capture(id);
         final config = _edited(id);
         if (config.effectiveBaseUrl.isNotEmpty) {
-          validateAiEndpoint(config);
+          final uri = validateAiEndpoint(config);
+          if (uri.scheme == 'http') httpEndpoints.add(uri);
         }
       }
+      final session = ref.read(appSessionProvider).session;
+      if (session == null) throw StateError('尚未解鎖');
+      if (httpEndpoints.isNotEmpty) {
+        final l10n = context.l10n;
+        final accepted = await showAppConfirmDialog(
+          context: context,
+          title: l10n.aiHttpConfirmTitle,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
+            children: <Widget>[
+              AppFeedbackBanner(
+                icon: Icons.lock_open_outlined,
+                message: l10n.aiHttpNotice,
+                tone: AppFeedbackTone.warning,
+              ),
+              AppDialogSection(
+                padding: const EdgeInsets.all(12),
+                child: Text(httpEndpoints.join('\n')),
+              ),
+            ],
+          ),
+          cancelLabel: l10n.commonActionCancel,
+          confirmLabel: l10n.aiSaveSettings,
+          wrapContent: false,
+        );
+        if (!accepted ||
+            !mounted ||
+            ref.read(appSessionProvider).session != session) {
+          return;
+        }
+      }
+      setState(() => _isSavingSettings = true);
       final snapshot = _snapshotDraft;
       if (snapshot != null) {
         final config = snapshot.edited;
@@ -693,8 +737,6 @@ class _AiConnectionSettingsDialogState
         }
       }
       final store = ref.read(aiSettingsStoreProvider);
-      final session = ref.read(appSessionProvider).session;
-      if (session == null) throw StateError('尚未解鎖');
       for (final credential in _credentials.values) {
         await store.saveApiKey(credential.connectionConfig, credential.apiKey);
       }
@@ -740,7 +782,9 @@ class _AiConnectionSettingsDialogState
     } on Object {
       if (mounted) _showError(AiErrorCode.storage);
     } finally {
-      if (mounted) setState(() => _isSavingSettings = false);
+      if (mounted && _isSavingSettings) {
+        setState(() => _isSavingSettings = false);
+      }
     }
   }
 
@@ -952,14 +996,6 @@ class _AiConnectionSettingsDialogState
                   : 'https://example.com/v1',
             ),
           ),
-          if (Uri.tryParse(config.effectiveBaseUrl)?.scheme == 'http')
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                l10n.aiHttpNotice,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
         ],
         const SizedBox(height: 10),
         TextField(
@@ -1086,6 +1122,7 @@ class _AiConnectionSettingsDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final needsReset = _inspection?.status == AiSettingsStatus.unreadable;
     if (_isBackgrounded) {
       return AppDialogShell(
         title: l10n.aiSettings,
@@ -1097,139 +1134,130 @@ class _AiConnectionSettingsDialogState
         ),
       );
     }
-    final Widget dialog = AiSettingsTheme(
-      child: AppDialogShell(
-        title: l10n.aiSettings,
-        content: _isLoadingSettings
-            ? const Center(child: CircularProgressIndicator())
-            : !_settingsLoaded
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(l10n.aiSettingsResetHint),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _isConfirmingReset
-                        ? null
-                        : () => unawaited(
-                            _inspection?.status == AiSettingsStatus.unreadable
-                                ? _resetSettings()
-                                : _load(),
-                          ),
-                    child: Text(
-                      _inspection?.status == AiSettingsStatus.unreadable
-                          ? l10n.aiSettingsReset
-                          : l10n.commonActionRetry,
-                    ),
-                  ),
-                ],
-              )
-            : AppScrollbar(
+    final Widget dialog = AppDialogShell(
+      title: l10n.aiSettings,
+      content: _isLoadingSettings
+          ? const Center(child: CircularProgressIndicator())
+          : !_settingsLoaded
+          ? AppScrollView(
+              child: AppFeedbackBanner(
+                message: needsReset
+                    ? l10n.aiSettingsResetHint
+                    : l10n.aiSettingsReadFailed,
+                tone: AppFeedbackTone.error,
+                outlined: true,
+              ),
+            )
+          : AppScrollbar(
+              controller: _settingsScroll,
+              reserveGutter: true,
+              child: SingleChildScrollView(
+                key: const ValueKey('ai-settings-scroll'),
                 controller: _settingsScroll,
-                reserveGutter: true,
-                child: SingleChildScrollView(
-                  key: const ValueKey('ai-settings-scroll'),
-                  controller: _settingsScroll,
-                  physics: _settingsScrollLocked
-                      ? const NeverScrollableScrollPhysics()
-                      : const ClampingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _settingsIntro(l10n),
-                      const SizedBox(height: 12),
-                      _hidePeopleCard(l10n),
-                      const SizedBox(height: 12),
-                      AiSettingsSurface(
-                        child: ListTile(
-                          key: const ValueKey('ai-prompt-settings'),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                          ),
-                          leading: const Icon(Icons.notes_outlined, size: 22),
-                          minLeadingWidth: 22,
-                          horizontalTitleGap: 12,
-                          titleTextStyle: Theme.of(context)
-                              .textTheme
-                              .bodyMedium,
-                          title: Text(l10n.aiPromptsTitle),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: _isBusy ? null : _openPromptSettings,
+                physics: _settingsScrollLocked
+                    ? const NeverScrollableScrollPhysics()
+                    : const ClampingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _settingsIntro(l10n),
+                    const SizedBox(height: 12),
+                    _hidePeopleCard(l10n),
+                    const SizedBox(height: 12),
+                    AppDialogSection(
+                      child: ListTile(
+                        key: const ValueKey('ai-prompt-settings'),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
                         ),
+                        leading: const Icon(Icons.notes_outlined, size: 22),
+                        minLeadingWidth: 22,
+                        horizontalTitleGap: 12,
+                        titleTextStyle: Theme.of(context).textTheme.bodyMedium,
+                        title: Text(l10n.aiPromptsTitle),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: _isBusy ? null : _openPromptSettings,
                       ),
-                      const SizedBox(height: 12),
-                      _sectionCard(
-                        title: l10n.aiModel,
-                        children: [_modelCatalog(l10n)],
-                      ),
-                      const SizedBox(height: 12),
-                      _sectionCard(
-                        title: l10n.aiApiSection,
-                        children: [
-                          for (final provider in aiCatalogProviders)
-                            if (provider != AiProvider.custom) ...[
-                              if (provider != AiProvider.openai)
-                                const Divider(height: 28),
-                              _connectionSection(l10n, provider.name),
-                            ],
-                          if (_snapshotDraft case final snapshot?) ...[
-                            const Divider(height: 28),
-                            Text(l10n.aiCurrentChatConnection),
-                            Text(snapshot.config.effectiveBaseUrl),
-                            TextField(
-                              controller: snapshot.apiKey,
-                              enabled: !_isBusy,
-                              obscureText: true,
-                              decoration: InputDecoration(
-                                labelText: l10n.aiApiKey,
-                              ),
-                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    _sectionCard(
+                      title: l10n.aiModel,
+                      children: [_modelCatalog(l10n)],
+                    ),
+                    const SizedBox(height: 12),
+                    _sectionCard(
+                      title: l10n.aiApiSection,
+                      children: [
+                        for (final provider in aiCatalogProviders)
+                          if (provider != AiProvider.custom) ...[
+                            if (provider != AiProvider.openai)
+                              const Divider(height: 28),
+                            _connectionSection(l10n, provider.name),
                           ],
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _sectionCard(
-                        title: l10n.aiProviderCustom,
-                        children: [
-                          for (final draft in _drafts.values)
-                            if (draft.config.provider == AiProvider.custom)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _customConnectionCard(l10n, draft),
-                              ),
-                          OutlinedButton.icon(
-                            key: const ValueKey('ai-add-connection'),
-                            onPressed: _isBusy ? null : _addCustomConnection,
-                            icon: const Icon(Icons.add),
-                            label: Text(l10n.aiConnectionAdd),
+                        if (_snapshotDraft case final snapshot?) ...[
+                          const Divider(height: 28),
+                          Text(l10n.aiCurrentChatConnection),
+                          Text(snapshot.config.effectiveBaseUrl),
+                          TextField(
+                            controller: snapshot.apiKey,
+                            enabled: !_isBusy,
+                            obscureText: true,
+                            decoration: InputDecoration(
+                              labelText: l10n.aiApiKey,
+                            ),
                           ),
                         ],
-                      ),
-                      if (_isBusy && !_isTestingConnection)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 12),
-                          child: LinearProgressIndicator(),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _sectionCard(
+                      title: l10n.aiProviderCustom,
+                      children: [
+                        for (final draft in _drafts.values)
+                          if (draft.config.provider == AiProvider.custom)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _customConnectionCard(l10n, draft),
+                            ),
+                        OutlinedButton.icon(
+                          key: const ValueKey('ai-add-connection'),
+                          onPressed: _isBusy ? null : _addCustomConnection,
+                          icon: const Icon(Icons.add),
+                          label: Text(l10n.aiConnectionAdd),
                         ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    if (_isBusy && !_isTestingConnection)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 12),
+                        child: LinearProgressIndicator(),
+                      ),
+                  ],
                 ),
               ),
-        actions: [
-          TextButton(
-            onPressed: _isBusy ? null : () => Navigator.pop(context),
-            child: Text(l10n.commonActionCancel),
-          ),
+            ),
+      actions: [
+        TextButton(
+          onPressed: _isBusy ? null : () => Navigator.pop(context),
+          child: Text(l10n.commonActionCancel),
+        ),
+        if (_settingsLoaded)
           FilledButton(
-            onPressed:
-                !_settingsLoaded ||
-                    _isBusy ||
-                    _drafts.values.any((d) => !d.keyLoaded)
+            onPressed: _isBusy || _drafts.values.any((d) => !d.keyLoaded)
                 ? null
                 : _save,
             child: Text(l10n.aiSaveSettings),
+          )
+        else if (!_isLoadingSettings)
+          FilledButton(
+            onPressed: _isConfirmingReset
+                ? null
+                : () => unawaited(needsReset ? _resetSettings() : _load()),
+            child: Text(
+              needsReset ? l10n.aiSettingsReset : l10n.commonActionRetry,
+            ),
           ),
-        ],
-      ),
+      ],
     );
     // 根節點型別固定：鎖定切換時若增減 MediaQuery 會重掛整棵 dialog，
     // 新舊 ScrollPosition 短暫共用 _settingsScroll 而觸發 AppScrollbar 斷言。
@@ -1243,7 +1271,7 @@ class _AiConnectionSettingsDialogState
   }
 
   Widget _hidePeopleCard(AppLocalizations l10n) {
-    return AiSettingsSurface(
+    return AppDialogSection(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
         child: Column(
@@ -1268,7 +1296,7 @@ class _AiConnectionSettingsDialogState
   }
 
   Widget _sectionCard({required String title, required List<Widget> children}) {
-    return AiSettingsSurface(
+    return AppDialogSection(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         child: Column(
@@ -1655,57 +1683,55 @@ class _AiModelCatalogDialogState extends State<_AiModelCatalogDialog> {
             ),
         ),
     ];
-    return AiSettingsTheme(
-      child: AppDialogShell(
-        fillHeight: true,
-        title: l10n.aiModel,
-        content: AppScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final section in sections) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-                  child: Text(
-                    aiConnectionLabel(l10n, section.config),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+    return AppDialogShell(
+      fillHeight: true,
+      title: l10n.aiModel,
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final section in sections) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+                child: Text(
+                  aiConnectionLabel(l10n, section.config),
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-                for (var index = 0; index < section.rows.length; index++) ...[
-                  if (index > 0) const SizedBox(height: 6),
-                  _AiModelTile(
-                    entry: section.rows[index],
-                    showProvider: false,
-                    busy: busy,
-                    onEnabled: (id, model, {required bool enabled}) {
-                      widget.onEnabled(id, model, enabled: enabled);
-                      setState(() {});
-                    },
-                    onThinking: (id, model, level) {
-                      widget.onThinking(id, model, level);
-                      setState(() {});
-                    },
-                    onRemove: (id, model) {
-                      widget.onRemove(id, model);
-                      setState(() {});
-                    },
-                    onEditThinking: (id, model) async {
-                      await widget.onEditThinking(id, model);
-                      if (mounted) setState(() {});
-                    },
-                  ),
-                ],
+              ),
+              for (var index = 0; index < section.rows.length; index++) ...[
+                if (index > 0) const SizedBox(height: 6),
+                _AiModelTile(
+                  entry: section.rows[index],
+                  showProvider: false,
+                  busy: busy,
+                  onEnabled: (id, model, {required bool enabled}) {
+                    widget.onEnabled(id, model, enabled: enabled);
+                    setState(() {});
+                  },
+                  onThinking: (id, model, level) {
+                    widget.onThinking(id, model, level);
+                    setState(() {});
+                  },
+                  onRemove: (id, model) {
+                    widget.onRemove(id, model);
+                    setState(() {});
+                  },
+                  onEditThinking: (id, model) async {
+                    await widget.onEditThinking(id, model);
+                    if (mounted) setState(() {});
+                  },
+                ),
               ],
             ],
-          ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.commonActionClose),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.commonActionClose),
+        ),
+      ],
     );
   }
 }

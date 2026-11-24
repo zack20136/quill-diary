@@ -9,6 +9,7 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/presentation/settings/pages/settings_page.dart';
 import 'package:quill_diary/shared/app_identifiers.dart';
+import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
@@ -70,11 +71,13 @@ void main() {
     required FakeVaultBackupService backupService,
     FakeVaultRestoreService? restoreService,
     AppSessionState? sessionState,
+    Object? backupStatusError,
   }) async {
     await tester.pumpWidget(
       settingsTestScope(
         backupService: backupService,
         restoreService: restoreService,
+        backupStatusError: backupStatusError,
         driveConnectionState: connectedState,
         recoveryMetadata: recoveryMetadata,
         sessionState:
@@ -228,6 +231,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(temp.existsSync(), isFalse);
     expect(source.readAsStringSync(), 'backup');
+  });
+
+  testWidgets('需要解鎖時，備份狀態讀取失敗仍可輸入復原金鑰', (tester) async {
+    await pumpSettingsActionsPage(
+      tester,
+      backupService: FakeVaultBackupService(connectionState: connectedState),
+      sessionState: const AppSessionState(
+        status: AppLockStatus.recoveryRequired,
+      ),
+      backupStatusError: const FileSystemException('備份狀態無法讀取'),
+    );
+    expect(find.byType(RecoveryKeyTextField).hitTestable(), findsOneWidget);
   });
 
   testWidgets('雲端還原失敗時會刪除暫存備份檔', (WidgetTester tester) async {

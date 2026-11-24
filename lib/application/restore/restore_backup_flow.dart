@@ -2,13 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quill_diary/application/restore/post_restore_session.dart';
-import 'package:quill_diary/application/session/app_session_controller.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/vault_transfer_capabilities.dart';
 import 'package:quill_diary/application/transfer/vault_backup_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
-import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 
@@ -32,79 +30,45 @@ class RestoreBackupFlow {
     ).ensureCanRestore();
   }
 
-  Future<void> verifyBackupRecoveryKey(
+  Future<VerifiedBackupKey> verifyBackupRecoveryKey(
     File backupFile,
     String recoveryKey,
-  ) async {
-    await ref
-        .read(vaultRestoreServiceProvider)
-        .verifyBackupRecoveryKey(backupFile, recoveryKey);
-  }
+  ) => ref
+      .read(vaultRestoreServiceProvider)
+      .verifyBackupRecoveryKey(backupFile, recoveryKey);
 
-  Future<UnlockedVaultSession?> executeRestore({
+  Future<void> executeRestoreAndFinishSession({
     required File backupFile,
     required RestorePreparedContext prepared,
     BackupTaskProgressListener? onProgress,
   }) async {
-    final transferService = ref.read(vaultRestoreServiceProvider);
-    final AppSessionController sessionController = ref.read(
-      appSessionProvider.notifier,
-    );
-    final AppSessionState liveState = ref.read(appSessionProvider);
-    final UnlockedVaultSession? liveSession = liveState.isUnlocked
-        ? liveState.session
-        : null;
-    final bool hasActiveSession = liveSession != null;
-    final UnlockedVaultSession? livePriorSession =
-        prepared.precheck.canResumeTrustedSession(liveSession)
-        ? liveSession
-        : null;
+    final state = ref.read(appSessionProvider);
+    final controller = ref.read(appSessionProvider.notifier);
+    final transfer = ref.read(vaultRestoreServiceProvider);
 
-    Future<void> restoreBackup() async {
-      await transferService.restoreFromBackupFile(
+    Future<void> restore() async {
+      final restored = await transfer.restoreFromBackupFile(
         backupFile,
+        expectedPreview: prepared.precheck.preview,
+        verifiedKey: prepared.verifiedKey,
         preserveTrustedDeviceAccess:
-            prepared.precheck.expectsTrustedUnlockAfterRestore,
+            prepared.verifiedKey == null &&
+            prepared.precheck.canResumeTrustedSession(state.session),
         onProgress: onProgress,
       );
+      onProgress?.call(BackupTaskProgress.startingAfterRestore);
+      return finishRestoreSession(ref, restored);
     }
 
-    if (hasActiveSession) {
-      await sessionController.runSensitiveTask((_) => restoreBackup());
-    } else {
-      await sessionController.runBackgroundSafeTask(() async {
-        await ref.read(vaultRepositoryProvider).closeUnlockedResources();
-        await restoreBackup();
-      });
-    }
-    return livePriorSession;
-  }
-
-  Future<AppSessionState> executeRestoreAndFinishSession({
-    required File backupFile,
-    required RestorePreparedContext prepared,
-    BackupTaskProgressListener? onProgress,
-  }) async {
-    final UnlockedVaultSession? livePriorSession = await executeRestore(
-      backupFile: backupFile,
-      prepared: prepared,
-      onProgress: onProgress,
-    );
-    onProgress?.call(BackupTaskProgress.startingAfterRestore);
-    return finishRestoreSession(
-      ref,
-      prepared: prepared,
-      livePriorSession: livePriorSession,
-    );
+    return state.isUnlocked && state.session != null
+        ? controller.runSensitiveTask((_) => restore())
+        : controller.runBackgroundSafeTask(restore);
   }
 }
 
 class RestorePreparedContext {
-  const RestorePreparedContext({
-    required this.precheck,
-    this.backupRecoveryKey,
-  });
+  const RestorePreparedContext({required this.precheck, this.verifiedKey});
 
   final RestorePrecheck precheck;
-  final String? backupRecoveryKey;
+  final VerifiedBackupKey? verifiedKey;
 }

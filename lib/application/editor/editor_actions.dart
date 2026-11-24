@@ -43,9 +43,8 @@ abstract interface class EditorActionPort {
     UnlockedVaultSession session,
   );
 
-  Future<String> materializePendingFileForPreview(
-    String draftKey,
-    String relativePath,
+  Future<Uint8List> readPendingAttachment(
+    ({String draftKey, String path}) source,
     UnlockedVaultSession session,
   );
 
@@ -120,16 +119,11 @@ class EditorActions implements EditorActionPort {
   }
 
   @override
-  Future<String> materializePendingFileForPreview(
-    String draftKey,
-    String relativePath,
+  Future<Uint8List> readPendingAttachment(
+    ({String draftKey, String path}) source,
     UnlockedVaultSession session,
   ) {
-    return _draftStore.materializePendingFileForPreview(
-      draftKey,
-      relativePath,
-      session,
-    );
+    return _draftStore.readPendingAttachment(source, session);
   }
 
   @override

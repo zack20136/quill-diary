@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+
+import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 
 /// Dialog 的可見寬度尺寸。
 enum AppDialogSize { standard, compact }
@@ -146,7 +150,6 @@ class AppDialogScope extends InheritedWidget {
 
 /// 提供一致標題、圖示、內容與操作列的標準 dialog 外殼。
 ///
-/// [accent] 為選色、人物、標籤等表單使用的漸層底色與邊框。
 /// 標題列右上角預設有關閉 X；[leading] 放在操作列左下角，與取消、確認同列。
 class AppDialogShell extends StatelessWidget {
   const AppDialogShell({
@@ -156,7 +159,6 @@ class AppDialogShell extends StatelessWidget {
     this.titleTrailing,
     this.leading,
     this.actions = const <Widget>[],
-    this.accent = false,
     this.fillHeight = false,
     this.showClose = true,
     this.onClose,
@@ -170,7 +172,6 @@ class AppDialogShell extends StatelessWidget {
   final Widget? titleTrailing;
   final Widget? leading;
   final List<Widget> actions;
-  final bool accent;
 
   /// 卡片直接用到可用高度的 90%。內容在這層裡捲動，短內容不會把卡片縮短。
   final bool fillHeight;
@@ -194,40 +195,10 @@ class AppDialogShell extends StatelessWidget {
     );
   }
 
-  Widget _actionBar() {
-    if (leading == null) {
-      return OverflowBar(
-        alignment: MainAxisAlignment.end,
-        spacing: 8,
-        overflowSpacing: 8,
-        overflowAlignment: OverflowBarAlignment.end,
-        children: actions,
-      );
-    }
-    // 外層 Wrap 讓 leading 與按鈕組同列；放不下時整組按鈕換到下一行，
-    // 避免 leading 吃掉寬度把按鈕擠扁。內層 Wrap 依內容寬度計算，才能判斷是否放得下。
-    return SizedBox(
-      width: double.infinity,
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.end,
-        spacing: 8,
-        runSpacing: 8,
-        children: <Widget>[
-          leading!,
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8,
-            runSpacing: 8,
-            children: actions,
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final compactTitle = media.size.width < media.textScaler.scale(310);
     final Widget? closeButton = showClose
         ? IconButton(
             tooltip: context.l10n.commonCloseTooltip,
@@ -240,7 +211,19 @@ class AppDialogShell extends StatelessWidget {
     final Widget titleRow = Row(
       children: <Widget>[
         if (icon != null) ...<Widget>[icon!, const SizedBox(width: 12)],
-        Expanded(child: Text(title)),
+        Expanded(
+          child: compactTitle
+              ? Tooltip(
+                  message: title,
+                  excludeFromSemantics: true,
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              : Text(title),
+        ),
         if (titleTrailing != null) ...<Widget>[
           const SizedBox(width: 8),
           titleTrailing!,
@@ -251,68 +234,200 @@ class AppDialogShell extends StatelessWidget {
         ],
       ],
     );
-    if (!accent) {
-      return AlertDialog(
-        insetPadding: EdgeInsets.zero,
-        constraints: appDialogConstraints(context, fillHeight: fillHeight),
-        titlePadding: AppDialogInsets.title,
-        contentPadding: AppDialogInsets.content,
-        actionsPadding: AppDialogInsets.actions,
-        title: titleRow,
-        content: _contentSlot(content),
-        actions: leading == null ? actions : <Widget>[_actionBar()],
-      );
-    }
-    // Dialog 的外層會撐滿路由。漸層必須畫在卡片內容上，否則短內容也會鋪滿螢幕。
-    final colors = context.appColors;
-    final TextStyle titleStyle =
-        DialogTheme.of(context).titleTextStyle ??
-        Theme.of(context).textTheme.titleLarge!;
-    return Dialog(
+    return AlertDialog(
       insetPadding: EdgeInsets.zero,
       constraints: appDialogConstraints(context, fillHeight: fillHeight),
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      shadowColor: Colors.transparent,
-      elevation: 0,
-      clipBehavior: Clip.none,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              colors.accentDialogGradientStart,
-              colors.accentDialogGradientEnd,
+      titlePadding: AppDialogInsets.title,
+      contentPadding: AppDialogInsets.content,
+      actionsPadding: AppDialogInsets.actions,
+      actionsOverflowAlignment: OverflowBarAlignment.end,
+      actionsOverflowButtonSpacing: 8,
+      title: titleRow,
+      content: _contentSlot(content),
+      actions: switch (leading) {
+        null => actions,
+        final Widget leading => [
+          _DialogActionLayout(
+            children: [
+              leading,
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: actions,
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: colors.accentDialogBorder),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withValues(alpha: 0.12),
-              blurRadius: 28,
-              offset: const Offset(0, 16),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: fillHeight ? MainAxisSize.max : MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: AppDialogInsets.title,
-              child: DefaultTextStyle(style: titleStyle, child: titleRow),
-            ),
-            Flexible(
-              child: Padding(
-                padding: AppDialogInsets.content,
-                child: _contentSlot(content),
+        ],
+      },
+    );
+  }
+}
+
+class _DialogActionLayout extends MultiChildRenderObjectWidget {
+  const _DialogActionLayout({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderDialogActionLayout(Directionality.of(context));
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderDialogActionLayout renderObject,
+  ) {
+    renderObject.textDirection = Directionality.of(context);
+  }
+}
+
+class _DialogActionParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderDialogActionLayout extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _DialogActionParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _DialogActionParentData> {
+  _RenderDialogActionLayout(this._textDirection);
+
+  static const double _gap = 8;
+  TextDirection _textDirection;
+
+  set textDirection(TextDirection value) {
+    if (_textDirection == value) return;
+    _textDirection = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _DialogActionParentData) {
+      child.parentData = _DialogActionParentData();
+    }
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => math.max(
+    firstChild!.getMinIntrinsicWidth(height),
+    lastChild!.getMinIntrinsicWidth(height),
+  );
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      firstChild!.getMaxIntrinsicWidth(height) +
+      _gap +
+      lastChild!.getMaxIntrinsicWidth(height);
+
+  ({Size size, bool stacked}) _measure(
+    BoxConstraints constraints,
+    Size leading,
+    Size trailing,
+  ) {
+    final totalWidth = leading.width + _gap + trailing.width;
+    final stacked = totalWidth > constraints.maxWidth;
+    final width = constraints.hasBoundedWidth
+        ? constraints.maxWidth
+        : totalWidth;
+    final height = stacked
+        ? leading.height + _gap + trailing.height
+        : math.max(leading.height, trailing.height);
+    return (size: constraints.constrain(Size(width, height)), stacked: stacked);
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final available = constraints.loosen();
+    return _measure(
+      constraints,
+      firstChild!.getDryLayout(available),
+      lastChild!.getDryLayout(available),
+    ).size;
+  }
+
+  @override
+  void performLayout() {
+    final available = constraints.loosen();
+    final leading = firstChild!..layout(available, parentUsesSize: true);
+    final trailing = lastChild!..layout(available, parentUsesSize: true);
+    final result = _measure(constraints, leading.size, trailing.size);
+    size = result.size;
+    final rtl = _textDirection == TextDirection.rtl;
+    (leading.parentData! as _DialogActionParentData).offset = Offset(
+      rtl ? size.width - leading.size.width : 0,
+      result.stacked ? 0 : (size.height - leading.size.height) / 2,
+    );
+    (trailing.parentData! as _DialogActionParentData).offset = Offset(
+      rtl ? 0 : size.width - trailing.size.width,
+      result.stacked
+          ? leading.size.height + _gap
+          : (size.height - trailing.size.height) / 2,
+    );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
+}
+
+class AppConfirmationCheckbox extends StatelessWidget {
+  const AppConfirmationCheckbox({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    super.key,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return MergeSemantics(
+      child: Semantics(
+        checked: value,
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                spacing: 8,
+                children: <Widget>[
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, animation) => ScaleTransition(
+                      scale: animation,
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
+                    child: Icon(
+                      value
+                          ? Icons.check_box_rounded
+                          : Icons.check_box_outline_blank_rounded,
+                      key: ValueKey<bool>(value),
+                      size: 24,
+                      color: value
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (actions.isNotEmpty || leading != null)
-              Padding(padding: AppDialogInsets.actions, child: _actionBar()),
-          ],
+          ),
         ),
       ),
     );
@@ -330,6 +445,7 @@ class AppConfirmDialog extends StatelessWidget {
     required this.confirmLabel,
     this.confirmStyle = AppConfirmStyle.primary,
     this.icon,
+    this.wrapContent = true,
     super.key,
   });
 
@@ -339,31 +455,32 @@ class AppConfirmDialog extends StatelessWidget {
   final String confirmLabel;
   final AppConfirmStyle confirmStyle;
   final Widget? icon;
+  final bool wrapContent;
 
   @override
   Widget build(BuildContext context) => AppDialogShell(
     title: title,
-    content: content,
+    content: AppScrollView(
+      child: wrapContent
+          ? AppDialogSection(padding: const EdgeInsets.all(12), child: content)
+          : content,
+    ),
     icon: icon,
     actions: <Widget>[
       TextButton(
         onPressed: () => Navigator.of(context).pop(false),
         child: Text(cancelLabel),
       ),
-      switch (confirmStyle) {
-        AppConfirmStyle.primary => FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(confirmLabel),
-        ),
-        AppConfirmStyle.destructive => FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-            foregroundColor: Theme.of(context).colorScheme.onError,
-          ),
-          child: Text(confirmLabel),
-        ),
-      },
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(true),
+        style: confirmStyle == AppConfirmStyle.destructive
+            ? FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              )
+            : null,
+        child: Text(confirmLabel),
+      ),
     ],
   );
 }
@@ -378,6 +495,7 @@ Future<bool> showAppConfirmDialog({
   AppConfirmStyle confirmStyle = AppConfirmStyle.primary,
   AppDialogSize size = AppDialogSize.compact,
   Widget? icon,
+  bool wrapContent = true,
 }) async =>
     await showAppDialog<bool>(
       context: context,
@@ -389,6 +507,7 @@ Future<bool> showAppConfirmDialog({
         confirmLabel: confirmLabel,
         confirmStyle: confirmStyle,
         icon: icon,
+        wrapContent: wrapContent,
       ),
     ) ??
     false;

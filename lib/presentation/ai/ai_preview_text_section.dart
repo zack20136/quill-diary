@@ -12,11 +12,13 @@ class AiPreviewTextSection extends StatefulWidget {
     super.key,
     required this.title,
     required this.text,
+    this.description,
     this.initiallyExpanded = false,
   });
 
   final String title;
   final String text;
+  final String? description;
   final bool initiallyExpanded;
 
   @override
@@ -76,7 +78,18 @@ class _AiPreviewTextSectionState extends State<AiPreviewTextSection> {
                   controller: _scrollController,
                   primary: false,
                   padding: const EdgeInsets.fromLTRB(12, 0, 0, 12),
-                  child: _PreviewText(widget.text),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 8,
+                    children: [
+                      if (widget.description case final description?)
+                        Text(
+                          description,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      _PreviewText(widget.text),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -89,8 +89,7 @@ EditorDraftSnapshot buildEditorDraftSnapshot({
 Future<List<PendingAttachment>> pendingAttachmentsFromDraftRecord(
   EditorDraftRecord record, {
   required String draftKey,
-  required Future<String> Function(String relativePath, bool forPreview)
-  resolvePath,
+  required Future<String> Function(String relativePath) resolvePath,
 }) async {
   final List<PendingAttachment> pending = <PendingAttachment>[];
   for (final EditorDraftPendingAttachment attachment
@@ -98,15 +97,11 @@ Future<List<PendingAttachment>> pendingAttachmentsFromDraftRecord(
     final String mimeType = attachment.mimeType == 'application/octet-stream'
         ? mimeTypeFromFileName(attachment.originalFilename)
         : attachment.mimeType;
-    final bool forPreview = mimeType.startsWith('image/');
-    final String path = await resolvePath(attachment.relativePath, forPreview);
+    final String path = await resolvePath(attachment.relativePath);
     pending.add(
       PendingAttachment(
         assetId: attachment.assetId,
-        sourcePath: forPreview ? path : null,
-        encryptedDraftSource: forPreview
-            ? null
-            : (draftKey: draftKey, path: path),
+        encryptedDraftSource: (draftKey: draftKey, path: path),
         pendingRelativePath: attachment.relativePath,
         mimeType: mimeType,
         originalFilename: attachment.originalFilename,

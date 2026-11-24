@@ -187,12 +187,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                 children: [
                   Text(context.l10n.homeDeleteTagsConfirm(labels.length)),
                   const SizedBox(height: 12),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.sizeOf(context).height * 0.3,
-                    ),
-                    child: AppScrollView(child: Text(labels.join('\n'))),
-                  ),
+                  Text(labels.join('\n')),
                 ],
               )
             : Text(context.l10n.homeDeleteTagConfirm(labels.single)),

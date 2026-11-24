@@ -12,6 +12,7 @@ import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class TagPickerDialog extends ConsumerStatefulWidget {
@@ -170,7 +171,6 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
     );
 
     return AppDialogShell(
-      accent: true,
       icon: const Icon(Icons.label_rounded),
       title: context.l10n.editorTagsStudioTitle,
       onClose: widget.onDismiss,
@@ -195,24 +195,23 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            if (_chosenByNorm.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  context.l10n.editorTagsStudioEmptyChosen,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-              ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                for (final String t in _chosenByNorm.values)
-                  _chosenTagChip(t, theme, accentArgbByNorm, colors),
-              ],
+            AppDialogSection(
+              padding: const EdgeInsets.all(12),
+              child: _chosenByNorm.isEmpty
+                  ? Text(
+                      context.l10n.editorTagsStudioEmptyChosen,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: <Widget>[
+                        for (final String tag in _chosenByNorm.values)
+                          _chosenTagChip(tag, theme, accentArgbByNorm, colors),
+                      ],
+                    ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -238,28 +237,31 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
                       ),
               ),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.start,
-              children: <Widget>[
-                if (pool.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                    child: Text(
+            const SizedBox(height: 12),
+            AppDialogSection(
+              padding: const EdgeInsets.all(12),
+              child: pool.isEmpty
+                  ? Text(
                       qlow.isEmpty
                           ? context.l10n.editorTagPoolEmpty
                           : context.l10n.commonNoTagSearchResults,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontStyle: FontStyle.italic,
-                        color: theme.colorScheme.outline,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: <Widget>[
+                        for (final item in pool.take(60))
+                          _suggestionChip(
+                            item.label,
+                            theme,
+                            accentArgbByNorm,
+                            colors,
+                          ),
+                      ],
                     ),
-                  ),
-                for (final TagCatalogUsageItem item in pool.take(60))
-                  _suggestionChip(item.label, theme, accentArgbByNorm, colors),
-              ],
             ),
           ],
         ),

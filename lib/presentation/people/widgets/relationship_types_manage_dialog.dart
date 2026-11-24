@@ -16,6 +16,7 @@ import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 /// 人物頁頂列與管理 dialog 共用的關係圖示。
@@ -422,7 +423,6 @@ class _RelationshipTypesManageDialogState
     final bool canReorder = !_busy && _renamingId == null && types.length > 1;
 
     return AppDialogShell(
-      accent: true,
       icon: const Icon(kPeopleRelationshipsIcon),
       title: l10n.peopleManageRelationshipsTitle,
       closeEnabled: !_busy,
@@ -456,10 +456,7 @@ class _RelationshipTypesManageDialogState
             ),
             const SizedBox(height: 16),
             types.isEmpty
-                ? Material(
-                    color: cs.surface.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(18),
-                    clipBehavior: Clip.antiAlias,
+                ? AppDialogSection(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -477,10 +474,7 @@ class _RelationshipTypesManageDialogState
                 : AppScrollbar(
                     controller: _scroll,
                     reserveGutter: true,
-                    child: Material(
-                      color: cs.surface.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(18),
-                      clipBehavior: Clip.antiAlias,
+                    child: AppDialogSection(
                       child: ReorderableListView.builder(
                         scrollController: _scroll,
                         shrinkWrap: true,

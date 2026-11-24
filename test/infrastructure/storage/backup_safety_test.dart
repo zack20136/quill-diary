@@ -7,6 +7,7 @@ import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
+import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
@@ -59,9 +60,23 @@ void main() {
     File(p.join(vaultRoot.path, 'quarantine', 'damaged.bin'))
       ..createSync(recursive: true)
       ..writeAsBytesSync(const <int>[8, 8, 8]);
-    File(p.join(vaultRoot.path, 'assets', '2026', '06', 'photo.png.enc'))
-      ..createSync(recursive: true)
-      ..writeAsBytesSync(const <int>[7, 7, 7]);
+    final asset = File(
+      p.join(vaultRoot.path, 'assets', '2026', '06', 'photo.png.enc'),
+    );
+    await asset.create(recursive: true);
+    final metadata = (await harness.repository.readRecoveryMetadata())!;
+    final now = DateTime.now();
+    final encrypted = await LocalCryptoService().encryptBytes(
+      documentId: generateAssetId(),
+      vaultId: setup.session.vaultId,
+      plaintextBytes: [7, 7, 7],
+      contentType: 'image/png',
+      recoveryWrapKey: setup.session.recoveryWrapKey!,
+      recoverySlotKdf: metadata.kdf,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await asset.writeAsBytes(encrypted.toFileBytes());
 
     final File backupFile = File(p.join(harness.tempDir.path, 'no_index.zip'));
     await archiveIo.backup.writeBackupZip(backupFile);

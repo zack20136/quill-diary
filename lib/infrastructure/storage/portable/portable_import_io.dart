@@ -406,7 +406,7 @@ class PortableImportIo {
       document,
     );
     final Map<String, Object?> frontMatter = decoded.frontMatter;
-    final String body = decoded.body.trimRight();
+    final String body = decoded.body;
 
     final List<String> attachmentReferences = <String>{
       ...decoded.attachmentPaths,

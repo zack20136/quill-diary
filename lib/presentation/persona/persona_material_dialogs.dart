@@ -12,8 +12,8 @@ import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
 class PersonaMaskDialog extends ConsumerStatefulWidget {
@@ -307,24 +307,27 @@ class _PersonaChatDateEditorDialogState
               : Icons.visibility_off,
         ),
       ),
-      content: messages.isEmpty
-          ? Text(l10n.personaNoChatMessages)
-          : AppScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var index = 0; index < messages.length; index++) ...[
-                    if (index > 0) const SizedBox(height: 8),
-                    _PersonaChatDateMessageEditor(
-                      key: ValueKey(messages[index].messageId),
-                      message: messages[index],
-                      controller: _controllers[messages[index].messageId]!,
-                      onDelete: () => _deleteMessage(messages[index].messageId),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 8,
+          children: [
+            if (messages.isEmpty)
+              AppDialogSummary(
+                icon: Icons.forum_outlined,
+                title: l10n.personaNoChatMessages,
+              )
+            else
+              for (final message in messages)
+                _PersonaChatDateMessageEditor(
+                  key: ValueKey(message.messageId),
+                  message: message,
+                  controller: _controllers[message.messageId]!,
+                  onDelete: () => _deleteMessage(message.messageId),
+                ),
+          ],
+        ),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -352,57 +355,58 @@ class _PersonaChatDateMessageEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: message.speaker,
-                      style: TextStyle(color: colors.primary),
-                    ),
-                    TextSpan(text: ' · ${_messageTime(message.sentAtLocal)}'),
-                  ],
-                ),
-                style: textTheme.labelSmall?.copyWith(
-                  color: colors.onSurfaceVariant,
+    return AppDialogSection(
+      padding: const EdgeInsets.fromLTRB(12, 4, 8, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: message.speaker,
+                        style: TextStyle(color: colors.primary),
+                      ),
+                      TextSpan(text: ' · ${_messageTime(message.sentAtLocal)}'),
+                    ],
+                  ),
+                  style: textTheme.labelSmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-            IconButton(
-              tooltip: context.l10n.commonActionDelete,
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              color: colors.onSurfaceVariant,
-              iconSize: 18,
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline),
-            ),
-          ],
-        ),
-        TextField(
-          controller: controller,
-          style: textTheme.bodyLarge?.copyWith(height: 1.4),
-          minLines: 1,
-          maxLines: null,
-          textAlignVertical: TextAlignVertical.top,
-          decoration: const InputDecoration(
-            filled: false,
-            isCollapsed: true,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            disabledBorder: InputBorder.none,
-            errorBorder: InputBorder.none,
-            focusedErrorBorder: InputBorder.none,
+              IconButton(
+                tooltip: context.l10n.commonActionDelete,
+                visualDensity: VisualDensity.compact,
+                color: colors.error,
+                iconSize: 18,
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
           ),
-        ),
-      ],
+          TextField(
+            controller: controller,
+            style: textTheme.bodyLarge?.copyWith(height: 1.4),
+            minLines: 1,
+            maxLines: null,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              filled: false,
+              isCollapsed: true,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -429,18 +433,15 @@ class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     return AppDialogShell(
       fillHeight: true,
       title: l10n.personaPaste,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.personaPrivacyHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          AppFeedbackBanner(
+            icon: Icons.visibility_off_outlined,
+            message: l10n.personaPrivacyHint,
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -498,18 +499,22 @@ class _PersonaRolesDialogState extends State<PersonaRolesDialog> {
     );
     return AppDialogShell(
       title: l.personaRoles,
+      icon: const Icon(Icons.groups_outlined),
       content: AppScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
           children: [
+            if (!canConfirm)
+              AppDialogSummary(
+                icon: Icons.info_outline_rounded,
+                title: l.personaRolesRequireSubject,
+              ),
             for (final speaker in widget.chat.speakers)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: PersonaSpeakerRoleCard(
-                  label: speaker.label,
-                  role: speaker.role,
-                  onChanged: (role) => setState(() => speaker.role = role),
-                ),
+              PersonaSpeakerRoleCard(
+                label: speaker.label,
+                role: speaker.role,
+                onChanged: (role) => setState(() => speaker.role = role),
               ),
           ],
         ),
@@ -629,7 +634,7 @@ class _ExportPlatformCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return AppInsetPanel(
+    return AppDialogSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -684,7 +689,7 @@ class PersonaChatExportHelpDialog extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppInsetPanel(
+            AppDialogSection(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -864,7 +869,11 @@ class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
           children: [
             _materialHeader(l, source, chat, messages),
             const SizedBox(height: 12),
-            if (messages.isEmpty) Text(l.personaNoChatMessages),
+            if (messages.isEmpty)
+              AppDialogSummary(
+                icon: Icons.forum_outlined,
+                title: l.personaNoChatMessages,
+              ),
             ..._dateSections(source, chat, messages),
           ],
         ),
@@ -882,61 +891,76 @@ class _PersonaChatMaterialPageState extends State<PersonaChatMaterialPage> {
         .where((message) => !source.excluded.contains(message.id))
         .length;
     final canPickDate = chat.messages.isNotEmpty;
-    return AppCard(
+    final count = Row(
+      spacing: 10,
+      children: [
+        Icon(
+          Icons.forum_outlined,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        Expanded(
+          child: Text(
+            l.personaIncludedCount(includedCount),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+      ],
+    );
+    final roles = OutlinedButton.icon(
+      onPressed: () async {
+        await widget.onEditRoles();
+        if (mounted) setState(() {});
+      },
+      icon: const Icon(Icons.people_outline, size: 18),
+      label: Text(l.personaRoles),
+    );
+    final dates = [
+      _dateFilter(
+        label: l.personaFromDate,
+        value: source.fromDate,
+        emptyLabel: l.personaAllDates,
+        enabled: canPickDate,
+        start: true,
+      ),
+      _dateFilter(
+        label: l.personaToDate,
+        value: source.toDate,
+        emptyLabel: l.personaAllDates,
+        enabled: canPickDate,
+        start: false,
+      ),
+    ];
+    return AppDialogSection(
       padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact =
+              constraints.maxWidth <
+              MediaQuery.textScalerOf(context).scale(280);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 8,
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Theme.of(context).colorScheme.primary
-                    .withValues(alpha: 0.12),
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                child: const Icon(Icons.forum_outlined, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  l.personaIncludedCount(includedCount),
-                  style: Theme.of(context).textTheme.titleSmall,
+              if (compact) ...[
+                count,
+                Align(alignment: AlignmentDirectional.centerEnd, child: roles),
+                ...dates,
+              ] else ...[
+                Row(
+                  spacing: 8,
+                  children: [
+                    Expanded(child: count),
+                    Flexible(child: roles),
+                  ],
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  await widget.onEditRoles();
-                  if (mounted) setState(() {});
-                },
-                icon: const Icon(Icons.people_outline, size: 18),
-                label: Text(l.personaRoles),
-              ),
+                Row(
+                  spacing: 8,
+                  children: [for (final date in dates) Expanded(child: date)],
+                ),
+              ],
             ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _dateFilter(
-                  label: l.personaFromDate,
-                  value: source.fromDate,
-                  emptyLabel: l.personaAllDates,
-                  enabled: canPickDate,
-                  start: true,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _dateFilter(
-                  label: l.personaToDate,
-                  value: source.toDate,
-                  emptyLabel: l.personaAllDates,
-                  enabled: canPickDate,
-                  start: false,
-                ),
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

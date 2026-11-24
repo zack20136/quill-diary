@@ -266,7 +266,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.getSize(find.byType(AppDialogShell)).width, greaterThan(480));
-    expect(find.byType(Divider), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 

@@ -7,8 +7,8 @@ import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
-import 'package:quill_diary/presentation/ai/ai_settings_theme.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class AiPromptSettingsDialog extends StatefulWidget {
@@ -66,7 +66,7 @@ class _AiPromptSettingsDialogState extends State<AiPromptSettingsDialog> {
       final edited = await showAiPromptDialog(
         context,
         title: variant.label,
-        help: help ?? (l) => l.aiPromptReadOnlyHelp,
+        help: help,
         defaultPrompt: variant.prompt,
         fieldKey: fieldKey,
         readOnly: onEdit == null,
@@ -99,9 +99,9 @@ class _AiPromptSettingsDialogState extends State<AiPromptSettingsDialog> {
 
   Widget _chatPrompt(
     ChatDiaryPromptPurpose purpose,
-    String Function(AppLocalizations) label,
-    String Function(AppLocalizations) help,
-  ) {
+    String Function(AppLocalizations) label, {
+    String Function(AppLocalizations)? help,
+  }) {
     final custom = switch (purpose) {
       ChatDiaryPromptPurpose.personality => _chat.personalityOverride,
       ChatDiaryPromptPurpose.conversationGuidance => _chat.guidanceOverride,
@@ -159,9 +159,7 @@ class _AiPromptSettingsDialogState extends State<AiPromptSettingsDialog> {
           ? 'organization-generation-prompt'
           : 'organization-conversation-prompt',
     ),
-    help: generate
-        ? (l) => l.organizationGenerationHelp
-        : (l) => l.organizationConversationHelp,
+    help: generate ? (l) => l.organizationGenerationHelp : null,
     custom: generate
         ? _organization.generationOverride
         : _organization.conversationOverride,
@@ -187,7 +185,7 @@ class _AiPromptSettingsDialogState extends State<AiPromptSettingsDialog> {
         padding: const EdgeInsets.only(top: 12, bottom: 8),
         child: Text(title, style: Theme.of(context).textTheme.titleSmall),
       ),
-      AiSettingsSurface(
+      AppDialogSection(
         child: Column(
           children: [
             for (final (index, tile) in tiles.indexed) ...[
@@ -201,207 +199,198 @@ class _AiPromptSettingsDialogState extends State<AiPromptSettingsDialog> {
   );
 
   @override
-  Widget build(BuildContext context) => AiSettingsTheme(
-    child: AppDialogShell(
-      title: _l10n.aiPromptsTitle,
-      fillHeight: true,
-      content: AppScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _section(_l10n.chatDiaryTitle, [
-              _fullPreview('chat-full-prompt', [
-                (
-                  label: (l) => l.aiRequestPreviewChat,
-                  prompt: (language) => resolveChatDiaryPrompt(
-                    ChatDiaryPromptPurpose.conversation,
-                    language,
-                    _chat,
-                  ),
+  Widget build(BuildContext context) => AppDialogShell(
+    title: _l10n.aiPromptsTitle,
+    fillHeight: true,
+    content: AppScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _section(_l10n.chatDiaryTitle, [
+            _fullPreview('chat-full-prompt', [
+              (
+                label: (l) => l.aiRequestPreviewChat,
+                prompt: (language) => resolveChatDiaryPrompt(
+                  ChatDiaryPromptPurpose.conversation,
+                  language,
+                  _chat,
                 ),
-                (
-                  label: (l) => l.chatDiaryGenerateDiary,
-                  prompt: (language) => resolveChatDiaryPrompt(
-                    ChatDiaryPromptPurpose.generation,
-                    language,
-                    _chat,
-                  ),
-                ),
-              ]),
-              _chatPrompt(
-                ChatDiaryPromptPurpose.conversationRules,
-                (l) => l.chatDiaryRulesLabel,
-                (l) => l.chatDiaryRulesHelp,
               ),
-              _chatPrompt(
-                ChatDiaryPromptPurpose.conversationGuidance,
-                (l) => l.chatDiaryGuidanceLabel,
-                (l) => l.chatDiaryGuidanceHelp,
-              ),
-              _chatPrompt(
-                ChatDiaryPromptPurpose.personality,
-                (l) => l.chatDiaryPersonalityLabel,
-                (l) => l.chatDiaryPersonalityHelp,
-              ),
-              _chatPrompt(
-                ChatDiaryPromptPurpose.generationRules,
-                (l) => l.chatDiaryGenerationRulesLabel,
-                (l) => l.chatDiaryGenerationRulesHelp,
-              ),
-              _chatPrompt(
-                ChatDiaryPromptPurpose.generationGuidance,
-                (l) => l.chatDiaryGenerationGuidanceLabel,
-                (l) => l.chatDiaryGenerationGuidanceHelp,
-              ),
-            ]),
-            _section(_l10n.organizationTitle, [
-              _fullPreview('organization-full-prompt', [
-                for (final generate in [false, true])
-                  (
-                    label: generate
-                        ? (l) => l.organizationGenerationLabel
-                        : (l) => l.organizationConversationLabel,
-                    prompt: (language) => resolveDiaryOrganizationInstructions(
-                      generate: generate,
-                      language: language,
-                      settings: _organization,
-                    ),
-                  ),
-              ]),
-              _tile(
-                (
-                  label: (l) => l.chatDiaryRulesLabel,
-                  prompt: (language) => [
-                    localizationsFor(language).organizationRules,
-                    localizationsFor(language)
-                        .organizationDiscussionRulesPrompt,
-                    localizationsFor(language).organizationDraftRulesPrompt,
-                  ].join('\n\n'),
-                ),
-                fieldKey: const ValueKey('organization-rules-prompt'),
-                help: (l) => l.organizationRulesHelp,
-              ),
-              _organizationPrompt(generate: false),
-              _organizationPrompt(generate: true),
-              _readOnly(
-                'organization-quick-prompts',
-                (l) => l.aiPromptQuickRequests,
-                (l) => [
-                  '${l.organizationPolish}\n${l.organizationPolishRequest}',
-                  '${l.organizationCondense}\n${l.organizationCondenseRequest}',
-                  '${l.organizationStructure}\n${l.organizationStructureRequest}',
-                  '${l.organizationElaborate}\n${l.organizationElaborateRequest}',
-                ].join('\n\n'),
-              ),
-            ]),
-            _section(_l10n.personaTitle, [
-              _fullPreview('persona-full-prompt', [
-                (
-                  label: (l) => l.aiRequestPreviewChat,
-                  prompt: (language) {
-                    final l = localizationsFor(language);
-                    return personaConversationInstructions(
-                      l,
-                      instructions: personaFixedInstructions(
-                        l10n: l,
-                        guidance: _chat.guidanceOverride,
-                      ),
-                      subject: '〈${l.personaSubjectHeading}〉',
-                      memory: '〈${l.personaMemory}〉',
-                      tone: '〈${l.personaTone}〉',
-                    );
-                  },
-                ),
-                for (final target in PersonaUpdateTarget.values) ...[
-                  (
-                    label: (l) => l.aiPromptStageTarget(
-                      l.personaIntegrating,
-                      _targetName(l, target),
-                    ),
-                    prompt: (language) => personaGenerationInstructions(
-                      localizationsFor(language),
-                      target,
-                    ),
-                  ),
-                  (
-                    label: (l) => l.aiPromptStageTarget(
-                      l.personaExtracting,
-                      _targetName(l, target),
-                    ),
-                    prompt: (language) => personaExtractionInstructions(
-                      localizationsFor(language),
-                      target,
-                    ),
-                  ),
-                  (
-                    label: (l) => l.aiPromptStageTarget(
-                      l.aiPromptBatchRetry,
-                      _targetName(l, target),
-                    ),
-                    prompt: (language) => personaExtractionInstructions(
-                      localizationsFor(language),
-                      target,
-                      retry: true,
-                    ),
-                  ),
-                  (
-                    label: (l) => l.aiPromptStageTarget(
-                      l.personaCompacting,
-                      _targetName(l, target),
-                    ),
-                    prompt: (language) => personaGenerationInstructions(
-                      localizationsFor(language),
-                      target,
-                      compact: true,
-                    ),
-                  ),
-                ],
-              ]),
-              _readOnly(
-                'persona-conversation-prompt',
-                (l) => l.personaBaseLabel,
-                (l) => personaFixedInstructions(l10n: l),
-              ),
-              _readOnly(
-                'persona-memory-prompt',
-                (l) => l.personaMemory,
-                (l) => l.personaMemoryUpdatePrompt,
-              ),
-              _readOnly(
-                'persona-tone-prompt',
-                (l) => l.personaTone,
-                (l) => l.personaToneUpdatePrompt,
-              ),
-              _readOnly(
-                'persona-batch-prompt',
-                (l) => l.personaBatchSystemPrompt,
-                (l) => l.personaExtractionRules,
-              ),
-              _readOnly(
-                'persona-output-prompt',
-                (l) => l.aiPromptOutputFormat,
-                (l) => l.personaOutputRules(
-                  PersonaLimits.memoryCodeUnits,
-                  PersonaLimits.toneCodeUnits,
+              (
+                label: (l) => l.chatDiaryGenerateDiary,
+                prompt: (language) => resolveChatDiaryPrompt(
+                  ChatDiaryPromptPurpose.generation,
+                  language,
+                  _chat,
                 ),
               ),
             ]),
-            _section(_l10n.aiApiSection, [
-              _readOnly(
-                'connection-test-prompt',
-                (l) => l.aiTestConnection,
-                (_) => aiConnectionTestPrompt,
-              ),
+            _chatPrompt(
+              ChatDiaryPromptPurpose.conversationRules,
+              (l) => l.chatDiaryRulesLabel,
+            ),
+            _chatPrompt(
+              ChatDiaryPromptPurpose.conversationGuidance,
+              (l) => l.chatDiaryGuidanceLabel,
+              help: (l) => l.chatDiaryGuidanceHelp,
+            ),
+            _chatPrompt(
+              ChatDiaryPromptPurpose.personality,
+              (l) => l.chatDiaryPersonalityLabel,
+              help: (l) => l.chatDiaryPersonalityHelp,
+            ),
+            _chatPrompt(
+              ChatDiaryPromptPurpose.generationRules,
+              (l) => l.chatDiaryGenerationRulesLabel,
+            ),
+            _chatPrompt(
+              ChatDiaryPromptPurpose.generationGuidance,
+              (l) => l.chatDiaryGenerationGuidanceLabel,
+              help: (l) => l.chatDiaryGenerationGuidanceHelp,
+            ),
+          ]),
+          _section(_l10n.organizationTitle, [
+            _fullPreview('organization-full-prompt', [
+              for (final generate in [false, true])
+                (
+                  label: generate
+                      ? (l) => l.organizationGenerationLabel
+                      : (l) => l.organizationConversationLabel,
+                  prompt: (language) => resolveDiaryOrganizationInstructions(
+                    generate: generate,
+                    language: language,
+                    settings: _organization,
+                  ),
+                ),
             ]),
-          ],
-        ),
+            _tile((
+              label: (l) => l.chatDiaryRulesLabel,
+              prompt: (language) => [
+                localizationsFor(language).organizationRules,
+                localizationsFor(language).organizationDiscussionRulesPrompt,
+                localizationsFor(language).organizationDraftRulesPrompt,
+              ].join('\n\n'),
+            ), fieldKey: const ValueKey('organization-rules-prompt')),
+            _organizationPrompt(generate: false),
+            _organizationPrompt(generate: true),
+            _readOnly(
+              'organization-quick-prompts',
+              (l) => l.aiPromptQuickRequests,
+              (l) => [
+                '${l.organizationPolish}\n${l.organizationPolishRequest}',
+                '${l.organizationCondense}\n${l.organizationCondenseRequest}',
+                '${l.organizationStructure}\n${l.organizationStructureRequest}',
+                '${l.organizationElaborate}\n${l.organizationElaborateRequest}',
+              ].join('\n\n'),
+            ),
+          ]),
+          _section(_l10n.personaTitle, [
+            _fullPreview('persona-full-prompt', [
+              (
+                label: (l) => l.aiRequestPreviewChat,
+                prompt: (language) {
+                  final l = localizationsFor(language);
+                  return personaConversationInstructions(
+                    l,
+                    instructions: personaFixedInstructions(
+                      l10n: l,
+                      guidance: _chat.guidanceOverride,
+                    ),
+                    subject: '〈${l.personaSubjectHeading}〉',
+                    memory: '〈${l.personaMemory}〉',
+                    tone: '〈${l.personaTone}〉',
+                  );
+                },
+              ),
+              for (final target in PersonaUpdateTarget.values) ...[
+                (
+                  label: (l) => l.aiPromptStageTarget(
+                    l.personaIntegrating,
+                    _targetName(l, target),
+                  ),
+                  prompt: (language) => personaGenerationInstructions(
+                    localizationsFor(language),
+                    target,
+                  ),
+                ),
+                (
+                  label: (l) => l.aiPromptStageTarget(
+                    l.personaExtracting,
+                    _targetName(l, target),
+                  ),
+                  prompt: (language) => personaExtractionInstructions(
+                    localizationsFor(language),
+                    target,
+                  ),
+                ),
+                (
+                  label: (l) => l.aiPromptStageTarget(
+                    l.aiPromptBatchRetry,
+                    _targetName(l, target),
+                  ),
+                  prompt: (language) => personaExtractionInstructions(
+                    localizationsFor(language),
+                    target,
+                    retry: true,
+                  ),
+                ),
+                (
+                  label: (l) => l.aiPromptStageTarget(
+                    l.personaCompacting,
+                    _targetName(l, target),
+                  ),
+                  prompt: (language) => personaGenerationInstructions(
+                    localizationsFor(language),
+                    target,
+                    compact: true,
+                  ),
+                ),
+              ],
+            ]),
+            _readOnly(
+              'persona-conversation-prompt',
+              (l) => l.personaBaseLabel,
+              (l) => personaFixedInstructions(l10n: l),
+            ),
+            _readOnly(
+              'persona-memory-prompt',
+              (l) => l.personaMemory,
+              (l) => l.personaMemoryUpdatePrompt,
+            ),
+            _readOnly(
+              'persona-tone-prompt',
+              (l) => l.personaTone,
+              (l) => l.personaToneUpdatePrompt,
+            ),
+            _readOnly(
+              'persona-batch-prompt',
+              (l) => l.personaBatchSystemPrompt,
+              (l) => l.personaExtractionRules,
+            ),
+            _readOnly(
+              'persona-output-prompt',
+              (l) => l.aiPromptOutputFormat,
+              (l) => l.personaOutputRules(
+                PersonaLimits.memoryCodeUnits,
+                PersonaLimits.toneCodeUnits,
+              ),
+            ),
+          ]),
+          _section(_l10n.aiApiSection, [
+            _readOnly(
+              'connection-test-prompt',
+              (l) => l.aiTestConnection,
+              (_) => aiConnectionTestPrompt,
+            ),
+          ]),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(_l10n.commonActionClose),
-        ),
-      ],
     ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(_l10n.commonActionClose),
+      ),
+    ],
   );
 }

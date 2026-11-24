@@ -1899,19 +1899,29 @@ missing asset
     expect((await harness.repository.listEntries()).length, 2);
   });
 
-  test('檢查保留前次程序的暫存，確認修復後才清理', () async {
+  test('檢查維持唯讀，啟動只清理 App 的舊工作目錄', () async {
     final setup = await harness.repository.setupRecoveryKey();
     final workDir = await harness.pathStrategy.transferWorkDirectory();
     final abandoned = File(
-      p.join(workDir.parent.path, 'old_run', 'backup.zip'),
+      p.join(
+        workDir.parent.path,
+        'run_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+        'backup.zip',
+      ),
     );
-    await abandoned.create(recursive: true);
+    final active = File(p.join(workDir.path, 'working.zip'));
+    final unrelated = File(p.join(workDir.parent.path, 'other', 'file'));
+    for (final file in [abandoned, active, unrelated]) {
+      await file.create(recursive: true);
+    }
 
     await harness.repository.inspectVaultWithReport(setup.session);
     expect(abandoned.existsSync(), isTrue);
 
-    await harness.repository.repairVaultWithReport(setup.session);
+    await harness.repository.initialize();
     expect(abandoned.existsSync(), isFalse);
+    expect(active.existsSync(), isTrue);
+    expect(unrelated.existsSync(), isTrue);
   });
 
   test('修復會同步重建人物分析', () async {

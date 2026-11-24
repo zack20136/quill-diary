@@ -3,7 +3,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_option_field.dart';
 
@@ -20,9 +22,9 @@ class AiPromptEdit {
 Future<AiPromptEdit?> showAiPromptDialog(
   BuildContext context, {
   required String Function(AppLocalizations l10n) title,
-  required String Function(AppLocalizations l10n) help,
   required String Function(AppLanguage language) defaultPrompt,
   required Key fieldKey,
+  String Function(AppLocalizations l10n)? help,
   String? customText,
   bool readOnly = false,
   List<AiPromptVariant> variants = const [],
@@ -43,16 +45,16 @@ class AiPromptDialog extends StatefulWidget {
   const AiPromptDialog({
     super.key,
     required this.title,
-    required this.help,
     required this.defaultPrompt,
     required this.fieldKey,
+    this.help,
     this.customText,
     this.readOnly = false,
     this.variants = const [],
   });
 
   final String Function(AppLocalizations l10n) title;
-  final String Function(AppLocalizations l10n) help;
+  final String Function(AppLocalizations l10n)? help;
   final String Function(AppLanguage language) defaultPrompt;
   final Key fieldKey;
   final String? customText;
@@ -67,6 +69,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
     with WidgetsBindingObserver {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
+  final _headerScroll = ScrollController();
   late bool _custom = widget.customText != null;
   String? _locale;
   bool _invalid = false, _obscured = false;
@@ -121,120 +124,122 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                 child: const Icon(Icons.lock_outline),
               ),
             )
-          : LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                const double gap = 12;
-                // 鍵盤開啟時，保留至少一行輸入空間。
-                final double fieldMin = MediaQuery.textScalerOf(context)
-                    .scale(40);
-                final double errorReserve = _invalid ? gap + 20 : 0;
-                final double helpMax = constraints.maxHeight.isFinite
-                    ? (constraints.maxHeight - fieldMin - gap - errorReserve)
-                          .clamp(0, double.infinity)
-                    : double.infinity;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: helpMax),
-                      child: ScrollConfiguration(
-                        behavior: ScrollConfiguration.of(context)
-                            .copyWith(scrollbars: false),
-                        child: SingleChildScrollView(
+          : _promptContent(l10n),
+      leading: widget.readOnly ? null : _restoreButton(l10n),
+      actions: _actions(l10n),
+    );
+  }
+
+  Widget _promptContent(AppLocalizations l10n) {
+    const gap = 12.0;
+    final options = <Widget>[
+      if (widget.help?.call(l10n) case final help?)
+        Text(help, style: Theme.of(context).textTheme.bodyMedium),
+      if (!widget.readOnly && _custom)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton(
+            onPressed: () => showAiPromptDialog(
+              context,
+              title: widget.title,
+              defaultPrompt: widget.defaultPrompt,
+              fieldKey: const ValueKey('prompt-built-in-preview'),
+              readOnly: true,
+            ),
+            child: Text(l10n.aiPromptViewBuiltIn),
+          ),
+        ),
+      if (widget.variants.isNotEmpty)
+        AppOptionField<int>(
+          label: l10n.aiPromptPreviewVariant,
+          value: _variant,
+          options: [
+            for (final (index, variant) in widget.variants.indexed)
+              (index, variant.label(l10n)),
+          ],
+          onChanged: (index) => setState(() {
+            _variant = index;
+            _controller.text = _defaultPrompt();
+            if (_scroll.hasClients) _scroll.jumpTo(0);
+          }),
+        ),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: gap,
+        children: [
+          if (_invalid || options.isNotEmpty)
+            ConstrainedBox(
+              // 鍵盤開啟時保留至少一行輸入空間。
+              constraints: BoxConstraints(
+                maxHeight:
+                    (constraints.maxHeight -
+                            MediaQuery.textScalerOf(context).scale(40) -
+                            gap)
+                        .clamp(0, double.infinity),
+              ),
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context)
+                    .copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  controller: _headerScroll,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: gap,
+                    children: [
+                      if (_invalid)
+                        AppFeedbackBanner(
+                          message: l10n.aiPromptRequired,
+                          tone: AppFeedbackTone.error,
+                          outlined: true,
+                        ),
+                      if (options.isNotEmpty)
+                        AppDialogSection(
+                          padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                widget.help(l10n),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              if (widget.variants.isNotEmpty) ...[
-                                const SizedBox(height: gap),
-                                AppOptionField<int>(
-                                  label: l10n.aiPromptPreviewVariant,
-                                  value: _variant,
-                                  options: [
-                                    for (final (index, variant)
-                                        in widget.variants.indexed)
-                                      (index, variant.label(l10n)),
-                                  ],
-                                  onChanged: (index) => setState(() {
-                                    _variant = index;
-                                    _controller.text = _defaultPrompt();
-                                    if (_scroll.hasClients) _scroll.jumpTo(0);
-                                  }),
-                                ),
-                              ],
-                            ],
+                            spacing: gap,
+                            children: options,
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: gap),
-                    Expanded(
-                      child: AppScrollbar(
-                        controller: _scroll,
-                        track: AppScrollbarTrack.frame,
-                        reserveGutter: true,
-                        child: TextField(
-                          key: widget.fieldKey,
-                          controller: _controller,
-                          scrollController: _scroll,
-                          expands: true,
-                          minLines: null,
-                          maxLines: null,
-                          readOnly: widget.readOnly,
-                          textAlignVertical: TextAlignVertical.top,
-                          keyboardType: TextInputType.multiline,
-                          onChanged: widget.readOnly
-                              ? null
-                              : (_) => setState(() {
-                                  _custom =
-                                      _controller.text != _defaultPrompt();
-                                  _invalid = false;
-                                }),
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            enabledBorder: _invalid ? _errorBorder(1) : null,
-                            focusedBorder: _invalid ? _errorBorder(2) : null,
-                            contentPadding: const EdgeInsets.all(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (_invalid) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.aiPromptRequired,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
                     ],
-                  ],
-                );
-              },
-            ),
-      leading: widget.readOnly
-          ? null
-          : Wrap(
-              children: [
-                _restoreButton(l10n),
-                if (_custom && !_obscured)
-                  TextButton(
-                    onPressed: () => showAiPromptDialog(
-                      context,
-                      title: widget.title,
-                      help: (_) => l10n.aiPromptBuiltIn,
-                      defaultPrompt: widget.defaultPrompt,
-                      fieldKey: const ValueKey('prompt-built-in-preview'),
-                      readOnly: true,
-                    ),
-                    child: Text(l10n.aiPromptViewBuiltIn),
                   ),
-              ],
+                ),
+              ),
             ),
-      actions: _actions(l10n),
+          Expanded(
+            child: AppScrollbar(
+              controller: _scroll,
+              track: AppScrollbarTrack.frame,
+              reserveGutter: true,
+              child: TextField(
+                key: widget.fieldKey,
+                controller: _controller,
+                scrollController: _scroll,
+                expands: true,
+                minLines: null,
+                maxLines: null,
+                readOnly: widget.readOnly,
+                textAlignVertical: TextAlignVertical.top,
+                keyboardType: TextInputType.multiline,
+                onChanged: widget.readOnly
+                    ? null
+                    : (_) => setState(() {
+                        _custom = _controller.text != _defaultPrompt();
+                        _invalid = false;
+                      }),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  enabledBorder: _invalid ? _errorBorder(1) : null,
+                  focusedBorder: _invalid ? _errorBorder(2) : null,
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -268,6 +273,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
       onPressed: () {
         if (_controller.text.trim().isEmpty) {
           setState(() => _invalid = true);
+          if (_headerScroll.hasClients) _headerScroll.jumpTo(0);
           return;
         }
         Navigator.pop(
@@ -286,6 +292,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _scroll.dispose();
+    _headerScroll.dispose();
     _controller.dispose();
     super.dispose();
   }

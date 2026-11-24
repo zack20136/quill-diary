@@ -14,14 +14,11 @@ import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
-import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_platform.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
@@ -230,11 +227,6 @@ class _FakeVaultBackupService extends VaultBackupService {
         backupIo: VaultBackupIo(
           pathStrategy: DummyVaultPathStrategy(),
           repository: FakeSessionVaultRepository(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          editorDraftStore: EditorDraftStore(
-            pathStrategy: DummyVaultPathStrategy(),
-            cryptoService: LocalCryptoService(),
-          ),
         ),
         driveBackupService: const UnusedDriveBackupService(),
         externalDirectoryStore: ExternalDirectoryStore(
@@ -660,29 +652,7 @@ void main() {
     hangingPrune.complete();
   });
 
-  test('新上傳前 prune 未回傳會逾時並繼續建立上傳工作', () async {
-    final Completer<void> hangingPrune = Completer<void>();
-    backupService.pruneFuture = hangingPrune.future;
-    final ProviderContainer container = buildContainer(
-      pruneTimeout: const Duration(milliseconds: 20),
-    );
-    addTearDown(container.dispose);
-    final DriveUploadCoordinator coordinator = container.read(
-      driveUploadCoordinatorProvider.notifier,
-    );
-    await coordinator.refresh();
-    backupService.pruneCalls = 0;
-
-    final BackupPersistResult result = await coordinator
-        .startBackgroundUpload()
-        .timeout(const Duration(seconds: 2));
-    expect(result.status, BackupPersistStatus.success);
-    expect(backupService.pruneCalls, 1);
-    expect(coordinator.job?.phase, DriveUploadPhase.uploading);
-    hangingPrune.complete();
-  });
-
-  test('新背景上傳開始前會 best-effort silent prune', () async {
+  test('新背景上傳驗證完成前不刪除舊備份', () async {
     final identity = RecoveryKeyIdentity(
       vaultId: 'zip-vault',
       kdfFingerprint: 'c' * 64,
@@ -701,7 +671,7 @@ void main() {
     expect(platform.active?.backupIdentity, identity);
     expect(platform.active?.backupPurpose, VaultBackupPurpose.normal);
     expect(result.status, BackupPersistStatus.success);
-    expect(backupService.pruneCalls, 1);
+    expect(backupService.pruneCalls, 0);
     expect(coordinator.job?.phase, DriveUploadPhase.uploading);
   });
 
@@ -728,23 +698,6 @@ void main() {
     await coordinator.startBackgroundUpload();
 
     expect(platform.localeChanges, contains('zh'));
-  });
-
-  test('新上傳前 prune 失敗仍可開始上傳', () async {
-    backupService.pruneError = StateError('pre-upload prune failed');
-    final ProviderContainer container = buildContainer();
-    addTearDown(container.dispose);
-    final DriveUploadCoordinator coordinator = container.read(
-      driveUploadCoordinatorProvider.notifier,
-    );
-    await coordinator.refresh();
-    backupService.pruneCalls = 0;
-
-    final BackupPersistResult result = await coordinator
-        .startBackgroundUpload();
-    expect(result.status, BackupPersistStatus.success);
-    expect(backupService.pruneCalls, 1);
-    expect(coordinator.job?.phase, DriveUploadPhase.uploading);
   });
 
   test('收尾清空後過期的 EventChannel 快照不得回寫 job', () async {

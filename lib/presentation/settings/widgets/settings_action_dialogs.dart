@@ -4,18 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/settings/settings_health.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
-import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/settings/backup/backup_pick_dialog.dart';
-import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
-import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
 import 'package:quill_diary/presentation/settings/vault_finding_presentation.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 Future<bool> showInspectVaultConfirmDialog(
   BuildContext context, {
@@ -33,14 +29,20 @@ Future<bool> showInspectVaultConfirmDialog(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Text(l10n.settingsInspectVaultConfirmBody),
+                AppDialogSummary(
+                  icon: Icons.fact_check_outlined,
+                  title: l10n.settingsInspectVaultConfirmBody,
+                ),
                 const SizedBox(height: 12),
                 const _MaintenanceScope(),
                 const SizedBox(height: 12),
                 if (repairSummary != null)
                   _PreflightLastRepairCard(summary: repairSummary)
                 else
-                  Text(l10n.settingsInspectVaultPreflightNoRepair),
+                  AppDialogSummary(
+                    icon: Icons.history_rounded,
+                    title: l10n.settingsInspectVaultPreflightNoRepair,
+                  ),
                 if (repairSummary != null &&
                     hasRepairDetailContent(repairSummary)) ...<Widget>[
                   const SizedBox(height: 4),
@@ -174,9 +176,8 @@ class _DialogSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return AppInsetPanel(
-      backgroundColor: theme.colorScheme.surfaceContainerLow,
-      radius: 12,
+    return AppDialogSection(
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -201,8 +202,12 @@ class _RepairDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    if (summary == null) return Text(l10n.settingsRepairDetailEmpty);
-    final VaultRepairSummary value = summary!;
+    final empty = AppDialogSummary(
+      icon: Icons.history_rounded,
+      title: l10n.settingsRepairDetailEmpty,
+    );
+    final value = summary;
+    if (value == null) return empty;
     final List<Widget> sections = <Widget>[];
     final List<Widget> completed = <Widget>[
       for (final VaultRepairEntryActionLog log in value.entryActionLogs)
@@ -260,7 +265,7 @@ class _RepairDetailContent extends StatelessWidget {
         ),
       );
     }
-    if (sections.isEmpty) return Text(l10n.settingsRepairDetailEmpty);
+    if (sections.isEmpty) return empty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -368,31 +373,27 @@ Future<bool?> showInspectVaultResultDialog(
   return showAppDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) => AppDialogShell(
-      icon: Icon(
-        groups.isEmpty
-            ? Icons.check_circle_outline_rounded
-            : Icons.warning_amber_rounded,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
       title: l10n.settingsInspectVaultResultTitle,
       content: AppScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              l10n.settingsVaultMaintenanceCheckedEntries(report.entryCount),
+            AppDialogSummary(
+              icon: groups.isEmpty
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.fact_check_outlined,
+              title: groups.isEmpty
+                  ? l10n.settingsInspectVaultResultClean
+                  : l10n.settingsInspectVaultResultWarning(groups.length),
+              details: <String>[
+                l10n.settingsVaultMaintenanceCheckedEntries(report.entryCount),
+              ],
             ),
             if (groups.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               const _MaintenanceScope(showInspect: false, showRepair: true),
             ],
-            const SizedBox(height: 8),
-            Text(
-              groups.isEmpty
-                  ? l10n.settingsInspectVaultResultClean
-                  : l10n.settingsInspectVaultResultWarning(groups.length),
-            ),
             if (groups.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               for (final MapEntry<String, List<VaultFinding>> entry
@@ -479,7 +480,7 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
   late List<MapEntry<String, List<VaultFinding>>> _groups;
   final Map<String, bool> _salvageable = <String, bool>{};
   String? _busyKey;
-  String? _feedback;
+  ({String message, AppFeedbackTone tone})? _feedback;
 
   @override
   void initState() {
@@ -510,7 +511,10 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
     } else {
       setState(() {
         _busyKey = null;
-        _feedback = context.l10n.settingsRepairVaultResultSalvageFailed;
+        _feedback = (
+          message: context.l10n.settingsRepairVaultResultSalvageFailed,
+          tone: AppFeedbackTone.error,
+        );
       });
     }
   }
@@ -535,10 +539,13 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
         _groups.removeWhere(
           (MapEntry<String, List<VaultFinding>> item) => item.key == group.key,
         );
-        _feedback = l10n.settingsAbnormalEntriesDeleteSuccess;
-      } else {
-        _feedback = l10n.settingsAbnormalEntriesDeleteFailed;
       }
+      _feedback = (
+        message: success
+            ? l10n.settingsAbnormalEntriesDeleteSuccess
+            : l10n.settingsAbnormalEntriesDeleteFailed,
+        tone: success ? AppFeedbackTone.success : AppFeedbackTone.error,
+      );
     });
   }
 
@@ -554,19 +561,22 @@ class _RepairVaultResultDialogState extends State<_RepairVaultResultDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(
-              _groups.isEmpty
+            AppDialogSummary(
+              icon: _groups.isEmpty
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.build_outlined,
+              title: _groups.isEmpty
                   ? l10n.settingsRepairVaultResultClean
                   : l10n.settingsRepairVaultResultWarning(_groups.length),
+              details: <String>[
+                l10n.settingsVaultMaintenanceCheckedEntries(
+                  widget.report.entryCount,
+                ),
+              ],
             ),
-            Text(
-              l10n.settingsVaultMaintenanceCheckedEntries(
-                widget.report.entryCount,
-              ),
-            ),
-            if (_feedback != null) ...<Widget>[
+            if (_feedback case final feedback?) ...<Widget>[
               const SizedBox(height: 8),
-              Text(_feedback!),
+              AppFeedbackBanner(message: feedback.message, tone: feedback.tone),
             ],
             const SizedBox(height: 8),
             if (hasRepairDetailContent(detailSummary))
@@ -691,6 +701,7 @@ class VaultFindingSummaryCard extends StatelessWidget {
               if (showActions) ...<Widget>[
                 const SizedBox(height: 8),
                 Wrap(
+                  alignment: WrapAlignment.end,
                   spacing: 8,
                   runSpacing: 8,
                   children: <Widget>[
@@ -702,8 +713,11 @@ class VaultFindingSummaryCard extends StatelessWidget {
                         ),
                       ),
                     if (onDelete != null && presentation.canPermanentlyDelete)
-                      FilledButton.tonal(
+                      TextButton(
                         onPressed: actionsBusy ? null : onDelete,
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                        ),
                         child: Text(l10n.settingsAbnormalEntriesDeleteButton),
                       ),
                   ],
@@ -753,182 +767,6 @@ Future<bool> showAbandonCancelCleanupDialog(BuildContext context) async {
     cancelLabel: l10n.commonActionCancel,
     confirmLabel: l10n.driveUploadAbandonCancelCleanupButton,
     confirmStyle: AppConfirmStyle.destructive,
-  );
-}
-
-Future<bool> showRestoreConfirmDialog(
-  BuildContext context,
-  RestorePrecheck precheck, {
-  String? driveBackupName,
-}) async {
-  return await showAppDialog<bool>(
-        context: context,
-        builder: (BuildContext dialogContext) => _RestoreConfirmDialog(
-          precheck: precheck,
-          driveBackupName: driveBackupName,
-        ),
-      ) ??
-      false;
-}
-
-class _RestoreConfirmDialog extends StatefulWidget {
-  const _RestoreConfirmDialog({required this.precheck, this.driveBackupName});
-
-  final RestorePrecheck precheck;
-  final String? driveBackupName;
-
-  @override
-  State<_RestoreConfirmDialog> createState() => _RestoreConfirmDialogState();
-}
-
-class _RestoreConfirmDialogState extends State<_RestoreConfirmDialog> {
-  bool _overwriteAcknowledged = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
-    final ThemeData theme = Theme.of(context);
-    final RestorePrecheck precheck = widget.precheck;
-    final bool requiresOverwriteAck = precheck.willOverwriteLocalVault;
-    final bool canConfirm = !requiresOverwriteAck || _overwriteAcknowledged;
-    final List<RestorePrecheckSummaryItem> summaryItems =
-        buildRestorePrecheckSummaryItems(l10n, precheck);
-
-    return AppDialogShell(
-      title: widget.driveBackupName == null
-          ? l10n.settingsRestoreDialogConfirmLocalTitle
-          : l10n.settingsRestoreDialogConfirmDriveTitle,
-      content: AppScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (widget.driveBackupName != null) ...<Widget>[
-              Text(
-                l10n.settingsRestoreDialogDriveFileLine(
-                  widget.driveBackupName!,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            AppFeedbackBanner(
-              icon: precheck.willOverwriteLocalVault
-                  ? Icons.warning_amber_rounded
-                  : Icons.info_outline_rounded,
-              message: restoreConfirmHeadline(l10n, precheck),
-              tone: precheck.willOverwriteLocalVault
-                  ? AppFeedbackTone.warning
-                  : AppFeedbackTone.info,
-            ),
-            const SizedBox(height: 12),
-            for (final RestorePrecheckSummaryItem item
-                in summaryItems) ...<Widget>[
-              _RestorePrecheckSummaryTile(item: item),
-              const SizedBox(height: 8),
-            ],
-            if (requiresOverwriteAck) ...<Widget>[
-              const SizedBox(height: 4),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _overwriteAcknowledged,
-                onChanged: (bool? value) {
-                  setState(() => _overwriteAcknowledged = value ?? false);
-                },
-                title: Text(
-                  l10n.settingsRestoreConfirmOverwriteAcknowledgeCheckbox,
-                  style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonActionCancel),
-        ),
-        FilledButton(
-          onPressed: canConfirm ? () => Navigator.of(context).pop(true) : null,
-          child: Text(l10n.settingsActionConfirm),
-        ),
-      ],
-    );
-  }
-}
-
-class _RestorePrecheckSummaryTile extends StatelessWidget {
-  const _RestorePrecheckSummaryTile({required this.item});
-
-  final RestorePrecheckSummaryItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme colorScheme = theme.colorScheme;
-    final Color iconColor = item.isWarning
-        ? colorScheme.error
-        : colorScheme.onSurface;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(item.icon, size: 20, color: iconColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    item.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: iconColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.body,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-Future<BackupPickListItem?> showSettingsBackupPickerDialog({
-  required BuildContext context,
-  required String title,
-  required String emptyMessage,
-  required String deleteTooltip,
-  required bool actionsDisabled,
-  required Future<bool> Function(String fileName) confirmDelete,
-  required List<BackupPickListItem> items,
-}) {
-  return showBackupPickDialog(
-    context: context,
-    title: title,
-    emptyMessage: emptyMessage,
-    deleteTooltip: deleteTooltip,
-    actionsDisabled: actionsDisabled,
-    confirmDelete: confirmDelete,
-    items: items,
   );
 }
 

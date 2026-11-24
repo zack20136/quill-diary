@@ -115,9 +115,6 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
       );
     }
 
-    // 補清先前收尾時留下的多餘舊檔；失敗或逾時不擋本次上傳。
-    await _runAutomaticPrune();
-
     final bool notificationsOk = await _platform
         .requestNotificationPermission();
     final BackupPersistResult prepared = await ref
@@ -356,8 +353,8 @@ class DriveUploadCoordinator extends Notifier<DriveUploadState> {
   }
 
   /// 自動 prune 為 single-flight；逾時只停止等待，底層完成前不重複啟動。
-  Future<void> _runAutomaticPrune({String? keepFileId}) async {
-    if (_automaticPrune != null) {
+  Future<void> _runAutomaticPrune({required String? keepFileId}) async {
+    if (_automaticPrune != null || keepFileId?.trim().isNotEmpty != true) {
       return;
     }
     try {

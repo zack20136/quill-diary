@@ -64,6 +64,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingIntroBack => '上一頁';
 
   @override
+  String get onboardingIntroSkip => '略過';
+
+  @override
   String get onboardingIntroGetStarted => '開始使用';
 
   @override
@@ -446,10 +449,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeUnsavedDraftLabel => '未儲存';
 
   @override
-  String get homeHtmlExportLargeTitle => 'HTML 檔案可能很大';
-
-  @override
-  String get homeHtmlExportEmbeddedHint => '圖片會內嵌在單一 HTML 內，檔案可能較慢開啟或不易分享。';
+  String get homeHtmlExportEmbeddedHint => '大圖可能讓單一 HTML 檔開啟較慢。可改用圖片資料夾。';
 
   @override
   String homeHtmlExportImageSize(String size) {
@@ -775,9 +775,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorAttachmentPendingLabel => '新增';
 
   @override
-  String get editorAddingAttachments => '正在加入附件…';
-
-  @override
   String editorAttachmentFormatMismatch(String fileName) {
     return '「$fileName」的內容與副檔名不符，請確認檔案格式。';
   }
@@ -792,6 +789,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get editorSaveFailed => '無法儲存日記，請再試一次。';
+
+  @override
+  String get editorDraftSaveFailed => '草稿儲存失敗，點此重試';
 
   @override
   String get editorAttachmentDragTooltip => '長按拖曳以調整順序';
@@ -809,20 +809,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorUntitledDraft => '無標題';
 
   @override
-  String editorRestoreDraftOverwrite(String title, String savedAt) {
-    return '草稿：$title\n最後儲存：$savedAt\n\n還原後會覆蓋目前檢視中的內容。';
+  String editorRestoreDraftSavedAt(String savedAt) {
+    return '最後儲存：$savedAt';
   }
 
   @override
-  String editorRestoreDraftPrompt(String title, String savedAt) {
-    return '草稿：$title\n最後儲存：$savedAt\n\n是否要還原這份草稿？';
-  }
+  String get editorRestoreDraftOverwrite => '還原草稿會取代編輯器目前顯示的內容。';
 
   @override
   String get editorDiscardDraftTitle => '捨棄草稿？';
 
   @override
-  String get editorDiscardDraftBody => '目前的修改尚未儲存為日記，確定要捨棄草稿並離開嗎？';
+  String get editorDiscardDraftBody => '離開後，這份草稿和未儲存的修改會被刪除。';
 
   @override
   String get editorDiscardDraftConfirm => '捨棄';
@@ -937,27 +935,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get defaultTagGratitude => '感謝';
-
-  @override
-  String get postRestoreOutcomeTitle => '還原已完成';
-
-  @override
-  String get postRestoreOutcomeNextStepLocked => '目前還差一步：請完成生物驗證或螢幕鎖驗證。';
-
-  @override
-  String get postRestoreOutcomeNextStepRecovery => '目前還差一步：請輸入建立此備份時保存的復原金鑰。';
-
-  @override
-  String get postRestoreOutcomeSecondaryHint => '首次解鎖可能較久，搜尋索引也會重新建立。';
-
-  @override
-  String get postRestoreOutcomePrimaryRetryVerification => '立即重新驗證';
-
-  @override
-  String get postRestoreOutcomePrimaryEnterRecoveryKey => '立即輸入復原金鑰';
-
-  @override
-  String get postRestoreOutcomeUnlockFailedTitle => '還原後仍無法解鎖';
 
   @override
   String get peopleEmptyTitle => '尚未建立人物';
@@ -1339,6 +1316,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get organizationFullText => '整理後全文';
 
   @override
+  String get organizationReplyTitle => 'AI 整理說明';
+
+  @override
+  String get organizationShowReply => '更多';
+
+  @override
   String get organizationBack => '返回聊天';
 
   @override
@@ -1351,14 +1334,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get organizationConversationLabel => '需求對話';
 
   @override
-  String get organizationConversationHelp => '和你討論這篇日記要怎麼改，先不產生全文。儲存後從下一次回覆生效。';
-
-  @override
   String get organizationGenerationLabel => '整理生成';
 
   @override
-  String get organizationGenerationHelp =>
-      '依已確認的需求產生整理稿。仍須輸出含 reply 與 body 的 JSON，並原樣保留保護代號。';
+  String get organizationGenerationHelp => '請保留保護代號，並輸出含 reply 和 body 的 JSON。';
 
   @override
   String get organizationDiscussionRulesPrompt =>
@@ -1389,6 +1368,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get organizationConflict => '原日記已變更，請以最新日記重新整理。舊整理稿仍可查看。';
+
+  @override
+  String get organizationUnsafeCandidate =>
+      '這份整理稿包含目前對話未提供的隱藏內容代號，無法採用。請返回聊天重新生成；已送出的需求會保留。';
 
   @override
   String get organizationEditorDraft => '這篇日記有尚未處理的編輯草稿，請先儲存或捨棄，再繼續整理。';
@@ -1473,9 +1456,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get organizationRulesHelp => '固定規則適用於需求對話與整理生成，無法修改；自訂提示詞仍須遵守這些規則。';
-
-  @override
   String get chatDiaryTitle => '聊天日記';
 
   @override
@@ -1485,20 +1465,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatDiaryRulesLabel => '固定規則';
 
   @override
-  String get chatDiaryRulesHelp =>
-      '每次聊天都會附上，包含事實、隱私、安全與功能界線。這段不能改；對話引導和個性會加在後面。';
-
-  @override
   String get chatDiaryPersonalityLabel => '預設個性';
 
   @override
-  String get chatDiaryPersonalityHelp => '只影響預設夥伴怎麼說話。AI 分身改用自己的人物記憶和聊天風格。';
+  String get chatDiaryPersonalityHelp => '只適用於預設夥伴。';
 
   @override
   String get chatDiaryGuidanceLabel => '對話引導';
 
   @override
-  String get chatDiaryGuidanceHelp => '自訂引導會套用到所有聊天夥伴，包含 AI 分身。';
+  String get chatDiaryGuidanceHelp => '適用所有夥伴，包含 AI 分身。';
 
   @override
   String get chatDiaryGenerationRulesLabel => '生成規則';
@@ -1507,11 +1483,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatDiaryGenerationGuidanceLabel => '生成引導';
 
   @override
-  String get chatDiaryGenerationRulesHelp => '生成時固定套用的來源、事實、隱私與輸出格式規則，無法編輯。';
-
-  @override
-  String get chatDiaryGenerationGuidanceHelp =>
-      '可調整語氣、精簡程度與段落組織，仍須遵守固定規則。既有自訂文字會保留，與固定規則衝突的要求不會套用。儲存後從下一次生成生效。';
+  String get chatDiaryGenerationGuidanceHelp => '可調整語氣和段落，仍須遵守生成規則。';
 
   @override
   String get chatDiaryHidePeople => '隱藏人物姓名';
@@ -1539,6 +1511,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chatDiaryPrivateNotes => '私密補記';
+
+  @override
+  String get chatDiaryPrivateNotesHint =>
+      '未被 AI 引用的私密文字仍會在手機加入「私密補記」；要求 AI 排除不會移除這份補記，可在日記編輯器自行刪除。';
 
   @override
   String get chatDiaryDraftLabel => '草稿';
@@ -1605,7 +1581,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatDiaryArchivedNotice => '這段聊天已保留，包含在完整備份。';
 
   @override
-  String get chatDiaryRequestPreviewHint => '以下為本次請求的提示詞與內容，已套用文字隱藏。照片內容不會遮蔽。';
+  String get chatDiaryRequestPreviewHint => '文字依設定隱藏，照片不遮蔽。';
+
+  @override
+  String get chatDiaryPreviewLocalNotes => '私密補記留在本機。';
+
+  @override
+  String get chatDiaryGenerationDataLabel => '生成日記使用的對話';
+
+  @override
+  String get aiRequestPreviewFullJson => '完整 JSON';
+
+  @override
+  String get aiRequestPreviewJsonHint => '送出前的共用格式預覽。提示詞以卡片名稱表示，照片以編號表示。';
+
+  @override
+  String get chatDiaryGenerationNoSentMessages => '目前沒有可用於生成日記的已送出訊息。';
+
+  @override
+  String chatDiaryGenerationUserCount(int count) {
+    return '你的訊息：$count 則';
+  }
+
+  @override
+  String chatDiaryGenerationContextCount(int count) {
+    return '供參考的 AI 回覆：$count 則';
+  }
 
   @override
   String get chatDiaryPreviewUser => '你';
@@ -1739,6 +1740,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get personaToneDescription => '整理用詞、句長與回應習慣，決定分身如何說話。';
 
   @override
+  String get personaNeutralMemory => '尚無可確認的人物記憶。';
+
+  @override
+  String get personaNeutralTone => '使用自然中性的日常語氣，不刻意加入特定口頭禪。';
+
+  @override
   String get personaUsageHint => '可在聊天日記的「聊天夥伴」中選用。回覆會使用已儲存的內容，不會重新讀取原始材料。';
 
   @override
@@ -1755,10 +1762,21 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String personaRetainedContentTitle(String name) {
+    return '本機保留的$name';
+  }
+
+  @override
   String get personaSystemPrompt => '系統提示詞';
 
   @override
   String get personaBatchHint => '材料較長，會先分批提取證據，需要時再精簡，最後把各批一起整合。同一服務會收到中間證據。';
+
+  @override
+  String get personaToneLocalRetainedHint => '沒有可用的本人原話，將在本機保留已勾選的聊天風格。';
+
+  @override
+  String get personaToneLocalNeutralHint => '沒有可用的本人原話，將在本機建立中性的聊天風格。';
 
   @override
   String get personaManage => '管理';
@@ -1792,6 +1810,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get personaHideHint => '開啟後，以代號取代姓名與別名；其他敏感內容請自行隱藏。';
+
+  @override
+  String get personaIncludeCurrentHint => '只帶入勾選的舊內容；帶入記憶可能保留未選日記的資訊。';
+
+  @override
+  String get personaIncludeCurrentMemory => '帶入目前的人物記憶';
+
+  @override
+  String get personaIncludeCurrentTone => '帶入目前的聊天風格';
 
   @override
   String get personaSourceChangedHint => '有已選日記需要重新檢查，請切換「只看已選」處理。';
@@ -1889,8 +1916,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get personaChatRuleTitle => '無法辨識的聊天';
 
   @override
-  String get personaChatRuleIntro =>
-      '這份檔案沒有對上已知格式，會整份保留、不依日期篩選。反白後可隱藏片段。新增的人名只用來標成自己或目標對象，不會逐句指定說話者。';
+  String get personaChatRuleIntro => '這份檔案會以全文匯入。你可以選取文字後隱藏片段，也可以新增人名來標示角色。';
+
+  @override
+  String get personaChatRuleIntroTitle => '以原始文字匯入';
+
+  @override
+  String get personaChatRulePreview => '原文預覽';
 
   @override
   String get personaChatRuleImport => '匯入';
@@ -2008,6 +2040,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get personaRoles => '確認說話者';
+
+  @override
+  String get personaRolesRequireSubject => '請選至少一位目標對象，再確認說話者。';
 
   @override
   String get personaRoleUser => '自己';
@@ -2142,6 +2177,59 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get personaExtractionRetryPrompt =>
+      '上次回傳的格式或長度不合規。用同一批材料重做。只送指定欄位的字串陣列，刪減例句與枝節，保留日期、歸屬和最新更正。';
+
+  @override
+  String personaBatchProgress(int round, int completed, int total) {
+    return '第 $round 輪 · 已完成 $completed／$total 批';
+  }
+
+  @override
+  String get personaCardLanguageError => '模型整合的卡片未使用台灣繁體中文。可以重試。';
+
+  @override
+  String get personaCardOutputLanguage =>
+      'memory 和 tone 內可閱讀的敘述一律用台灣繁體中文。JSON 鍵維持英文，專名、術語及必要的逐字短引文可保留原文。送出前逐項核對敘述的語言。';
+
+  @override
+  String get personaCardRepairPrompt =>
+      '這次只重整指定卡片。用台灣繁體中文重寫敘述，核對字數上限。JSON 鍵維持英文，專名和必要的短引文可保留原文。';
+
+  @override
+  String get personaExtracting => '分批提取';
+
+  @override
+  String get personaReducing => '精簡證據';
+
+  @override
+  String get personaIntegrating => '整合卡片';
+
+  @override
+  String get personaExtractingActive => '分批提取中';
+
+  @override
+  String get personaReducingActive => '精簡證據中';
+
+  @override
+  String get personaIntegratingActive => '整合卡片中';
+
+  @override
+  String get personaCompactingActive => '重整卡片中';
+
+  @override
+  String get personaCompacting => '重整卡片';
+
+  @override
+  String get personaEvidenceError => '模型回傳的分批證據格式或長度不符。可以重試，或減少材料。';
+
+  @override
+  String get personaCapacityError => '精簡後的材料仍超過請求容量。可以減少材料後重試。';
+
+  @override
+  String get personaCardLengthError => '重整後的卡片仍不符合字數上限。可以減少材料後重試。';
+
+  @override
   String get aiRequestPreviewChat => '聊天';
 
   @override
@@ -2160,7 +2248,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiSettingsResetHint =>
-      'AI 設定無法讀取，可能來自舊版或其他版本。可以確認後重建為預設設定；原本的自訂連線及提示詞將移除，裝置 Key 保留。';
+      '無法辨識已儲存的 AI 設定。重設會移除自訂連線及提示詞，裝置上的 API 金鑰會保留。';
+
+  @override
+  String get aiSettingsReadFailed => '暫時無法讀取 AI 設定。請重試。';
 
   @override
   String get aiOpenSettings => '開啟 AI 設定';
@@ -2209,46 +2300,64 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiThinkingSettingsTitle => 'Thinking 設定';
 
   @override
-  String get aiThinkingFormatHint =>
-      '選擇這個模型的 Thinking 參數傳送方式，支援的格式與強度請以模型官方文件為準。';
+  String get aiThinkingFormatHint => '使用目前協定為這個模型產生 Thinking 參數。';
+
+  @override
+  String get aiThinkingOmitHint => '送出請求時省略 Thinking 參數。';
+
+  @override
+  String get aiThinkingCustomHint => '為模型支援的思考強度指定要傳送的參數。';
 
   @override
   String get aiThinkingAdvancedHint =>
-      '勾選模型支援的強度，並填入對應的 JSON 物件。空物件表示該強度不傳送額外參數。';
+      '勾選要使用的強度，再填入對應的 JSON 物件。填入空物件可省略該強度的額外參數。';
 
   @override
-  String get aiThinkingFormat => '參數格式';
+  String get aiThinkingFormat => '傳送方式';
 
   @override
-  String get aiThinkingInherit => '沿用目前協定';
+  String get aiThinkingInherit => '沿用協定';
 
   @override
-  String get aiThinkingOmit => '不傳送 Thinking 參數';
+  String get aiThinkingOmit => '不傳送參數';
 
   @override
   String get aiThinkingOmitShort => '不傳送';
 
   @override
-  String get aiThinkingCustom => '手動 JSON';
+  String get aiThinkingCustom => '自訂 JSON';
 
   @override
   String get aiThinkingAdvancedOverrideHint =>
-      '為各個強度設定要傳送的 JSON 參數。自訂內容會直接加入請求，也可能影響回覆長度與費用。';
+      '自訂參數會直接加入請求，可能影響回覆長度和費用。請依模型官方文件設定。';
 
   @override
   String get aiThinkingDefault => '預設強度';
 
   @override
-  String get aiThinkingAdvanced => '進階 JSON 對照';
+  String get aiThinkingAdvanced => '各強度的 JSON';
 
   @override
-  String get aiThinkingPreview => '預設強度的參數預覽';
+  String get aiThinkingPreview => 'Thinking 參數預覽';
 
   @override
-  String get aiThinkingPreviewInvalid => '請完成有效的 JSON 對照以顯示預覽。';
+  String aiThinkingPreviewLevel(String level) {
+    return '預覽強度：$level';
+  }
 
   @override
-  String get aiThinkingSelectionRequired => '至少啟用一個檔位，並選擇有效的預設強度。';
+  String get aiThinkingPreviewEmpty => '這個設定會省略額外的 Thinking 參數。';
+
+  @override
+  String get aiThinkingPreviewInvalid => '完成預設強度及 JSON 設定後即可預覽。';
+
+  @override
+  String get aiThinkingSelectionRequired => '請先啟用至少一種強度，再選擇預設強度。';
+
+  @override
+  String aiThinkingJsonLabel(String level) {
+    return '「$level」的 JSON';
+  }
 
   @override
   String get aiThinkingProtectedFields => '只能填參數片段，不能覆寫模型、訊息或請求控制欄位。';
@@ -2315,74 +2424,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiFeaturesDisabledHint => 'AI 功能已關閉，可在設定頁的 AI 區塊重新開啟。';
 
   @override
-  String get personaExtractionRetryPrompt =>
-      '上次回傳的格式或長度不合規。用同一批材料重做。只送指定欄位的字串陣列，刪減例句與枝節，保留日期、歸屬和最新更正。';
-
-  @override
-  String personaBatchProgress(int round, int completed, int total) {
-    return '第 $round 輪 · 已完成 $completed／$total 批';
-  }
-
-  @override
-  String aiGenerationElapsed(String elapsed) {
-    return '已等候 $elapsed';
-  }
-
-  @override
-  String get personaCardLanguageError => '模型整合的卡片未使用台灣繁體中文。可以重試。';
-
-  @override
-  String get personaCardOutputLanguage =>
-      'memory 和 tone 內可閱讀的敘述一律用台灣繁體中文。JSON 鍵維持英文，專名、術語及必要的逐字短引文可保留原文。送出前逐項核對敘述的語言。';
-
-  @override
-  String get personaCardRepairPrompt =>
-      '這次只重整指定卡片。用台灣繁體中文重寫敘述，核對字數上限。JSON 鍵維持英文，專名和必要的短引文可保留原文。';
-
-  @override
-  String get personaExtracting => '分批提取';
-
-  @override
-  String get personaReducing => '精簡證據';
-
-  @override
-  String get personaIntegrating => '整合卡片';
-
-  @override
-  String get personaExtractingActive => '分批提取中';
-
-  @override
-  String get personaReducingActive => '精簡證據中';
-
-  @override
-  String get personaIntegratingActive => '整合卡片中';
-
-  @override
-  String get personaCompactingActive => '重整卡片中';
-
-  @override
-  String get personaCompacting => '重整卡片';
-
-  @override
-  String get personaEvidenceError => '模型回傳的分批證據格式或長度不符。可以重試，或減少材料。';
-
-  @override
-  String get personaCapacityError => '精簡後的材料仍超過請求容量。可以減少材料後重試。';
-
-  @override
-  String get personaCardLengthError => '重整後的卡片仍不符合字數上限。可以減少材料後重試。';
-
-  @override
   String get aiPromptsTitle => '提示詞';
-
-  @override
-  String get aiPromptReadOnlyHelp => '這段提示詞可以查看和複製。';
 
   @override
   String get aiPromptFullPreview => '完整預覽';
 
   @override
-  String get aiPromptPreviewHelp => '依目前設定草稿組裝。要核對本次實際資料，請開啟該功能的請求預覽。';
+  String get aiPromptPreviewHelp => '依目前設定組合。實際送出的內容請看請求預覽。';
 
   @override
   String get aiPromptPreviewVariant => '預覽用途';
@@ -2406,9 +2454,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String aiPromptStageTarget(String stage, String target) {
     return '$stage（$target）';
   }
-
-  @override
-  String get chatDiaryGenerationDataLabel => '生成日記的資料';
 
   @override
   String get aiPromptRestoreDefault => '還原預設';
@@ -2457,6 +2502,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiHttpNotice => '此網址使用 HTTP，文字、圖片與憑證的傳輸未加密，請只使用可信任的區域網路。';
 
   @override
+  String get aiHttpConfirmTitle => '儲存未加密的 AI 連線？';
+
+  @override
   String get aiHideSelection => '對 AI 隱藏';
 
   @override
@@ -2467,6 +2515,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiStopGeneration => '停止生成';
+
+  @override
+  String aiGenerationElapsed(String elapsed) {
+    return '已等候 $elapsed';
+  }
 
   @override
   String get aiErrorConfiguration => '請先填寫服務網址、模型與必要的 API Key。';
@@ -2536,6 +2589,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiErrorUnexpected => '這次沒有完成，內容已保留，請再試一次。';
 
   @override
+  String get aiErrorPrivacy => '無法完成隱私檢查，尚未傳送內容。請檢查設定後重試。';
+
+  @override
   String aiConnectionHttpFailure(int status, String message) {
     return '$message（HTTP $status）';
   }
@@ -2575,10 +2631,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get vaultTransferLocalBackupActionsLockedHint =>
       '請先解鎖日記庫並建立復原金鑰，才能建立或匯出本機備份。';
-
-  @override
-  String get vaultTransferRestoreUnlockFailed =>
-      '備份已還原，但復原金鑰解鎖失敗。請在安全總覽重新輸入復原金鑰。';
 
   @override
   String get vaultTransferPickBackupFileTitle => '選擇備份 ZIP';
@@ -2634,8 +2686,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vaultBackupIssueInvalidArchive => '無法讀取備份檔，請確認檔案未損壞且為有效的 zip 備份。';
 
   @override
-  String get vaultBackupIssueRecoveryKeyMismatch =>
-      '復原金鑰與此備份不相符。請輸入建立該備份時保存的復原金鑰。';
+  String get vaultBackupIssueInvalidBackupIntegrity => '備份完整性驗證失敗。';
+
+  @override
+  String get vaultBackupIssueInvalidBackupContent => '備份有無法讀取或缺漏的正式資料。';
+
+  @override
+  String get settingsRestoreLegacyBackupNotice => '這份舊備份缺少完整性清單，無法確認原始檔案是否齊全。';
+
+  @override
+  String get vaultBackupIssueRecoveryKeyMismatch => '金鑰與這份備份不符，請核對後重試。';
 
   @override
   String get vaultBackupIssueNoEncryptedSample => '備份內找不到可驗證的加密日記檔，無法確認復原金鑰。';
@@ -2651,20 +2711,32 @@ class AppLocalizationsZh extends AppLocalizations {
       '壓縮檔的數量、解壓後大小或壓縮比超過上限，已停止處理。';
 
   @override
-  String get portableExportConfirmTitle => '確認匯出';
+  String get portableExportMarkdownTitle => '匯出 Markdown';
+
+  @override
+  String get portableExportHtmlTitle => '匯出 HTML';
 
   @override
   String get portableExportConfirmAction => '匯出';
 
   @override
-  String get portableExportPlaintextWarning =>
-      '匯出後為明文檔案，日記內文與圖片不再受日記庫加密保護；取得檔案的人都能閱讀。';
+  String get portableExportPlaintextWarning => '匯出檔案為明文。取得檔案的人都能閱讀內容。';
 
   @override
-  String get portableExportMarkdownFormatLabel => '格式：Markdown ZIP';
+  String get portableExportMarkdownFormatLabel => 'Markdown 壓縮檔（ZIP）';
 
   @override
-  String get portableExportHtmlFormatLabel => '格式：HTML';
+  String get portableExportHtmlFormatLabel => '單一 HTML 檔';
+
+  @override
+  String get portableExportHtmlAssetsLabel => 'HTML 與圖片資料夾';
+
+  @override
+  String get portableExportHtmlAssetsHint =>
+      '圖片以原檔另存。移動 HTML 時請一併移動 assets 資料夾。';
+
+  @override
+  String get portableExportHtmlAssetsUnavailableHint => '開啟圖片匯出並選擇含圖片的日記後可使用。';
 
   @override
   String get portableExportHtmlDocumentTitle => 'Quill Diary 匯出';
@@ -2688,8 +2760,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String portableExportDate(String date) {
+    return '日期：$date';
+  }
+
+  @override
   String portableExportDateRange(String start, String end) {
-    return '日期範圍：$start ～ $end';
+    return '日期：$start 至 $end';
   }
 
   @override
@@ -2703,13 +2780,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get portableExportIncludeImagesLabel => '匯出圖片與附件';
+  String get portableExportIncludeImagesLabel => '匯出圖片與附件資訊';
 
   @override
   String get portableExportHidePersonNamesLabel => '隱藏人物名稱';
 
   @override
-  String get portableExportHidePersonNamesHint => '把名冊裡的姓名與別名換成人物A、人物B 等代號。';
+  String get portableExportHidePersonNamesHint => '將姓名與別名替換為「人物 A」等代號。';
 
   @override
   String get portableExportSelectEntriesLabel => '選擇日記';
@@ -2718,6 +2795,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String portableExportSelectEntriesSummary(int selected, int total) {
     return '已選 $selected／$total 篇';
   }
+
+  @override
+  String get portableExportPartialCopy => '無法完成匯出，所選資料夾中可能留有未完成的檔案。';
 
   @override
   String get portableImportConfirmTitle => '確認匯入';
@@ -2958,17 +3038,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionRestoreSuccessUnlockedMessage => '已還原備份，可以正常使用。';
 
   @override
-  String get sessionRestoreSuccessLockedMessage => '已還原備份。請完成生物驗證或螢幕鎖驗證以繼續。';
-
-  @override
-  String get sessionRestoreSuccessRecoveryRequiredMessage =>
-      '已還原備份。請輸入建立此備份時保存的復原金鑰。';
-
-  @override
-  String get sessionRestoreStartupFailedMessage =>
-      '已還原備份，但啟動失敗。請到設定頁重試或輸入復原金鑰。';
-
-  @override
   String get sessionRecoveryKeyMismatchMessage =>
       '復原金鑰不正確。若為更新復原金鑰前的舊備份，請輸入建立該備份時保存的舊金鑰。';
 
@@ -3055,7 +3124,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get settingsActionConfirm => '確認還原';
+  String get settingsActionConfirm => '開始還原';
 
   @override
   String get settingsActionVerifyAndRestore => '驗證並還原';
@@ -3091,10 +3160,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBackupPhaseDownloadingDrive => '正在從 Google Drive 下載…';
 
   @override
-  String get settingsBackupPhaseRestoring => '正在還原備份，請勿關閉 App…';
+  String get settingsBackupPhaseRestoring => '正在檢查並還原備份…';
 
   @override
-  String get settingsBackupStartingAfterRestore => '正在啟動還原後的日記庫…';
+  String get settingsBackupStartingAfterRestore => '正在開啟已還原的日記庫…';
 
   @override
   String get settingsSecurityLockStatusPreparing => '正在準備中…';
@@ -3114,9 +3183,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSecurityLockUnlockWithRecoveryButton => '使用復原金鑰解鎖';
-
-  @override
-  String get settingsSecurityLockRecoveryUnlockHint => '輸入復原金鑰以解鎖日記庫。';
 
   @override
   String get settingsSecurityLockRetryVerificationButton => '重新驗證';
@@ -3185,6 +3251,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsBackupStatusReadFailed => '無法讀取備份提醒狀態，請重試。';
+
+  @override
+  String get settingsBackupStatusUpdateFailedAfterDelivery => '備份狀態更新失敗。';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyReady => '已建立，可用於換機與還原。';
@@ -3427,7 +3496,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsLocalBackupSectionDescriptionEnabled(int retainCount) {
-    return '建立完整本機備份，還原時會以備份內容取代目前日記庫。（本機最多保留 $retainCount 份）';
+    return '建立完整本機備份，還原時會以備份內容取代目前日記庫。本機備份保留目標為 $retainCount 份。';
   }
 
   @override
@@ -3444,6 +3513,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsLocalBackupPickDialogTitle => '選擇本機備份';
+
+  @override
+  String get settingsBackupPickInstructions => '點選備份可預覽還原資訊。';
+
+  @override
+  String settingsBackupDeleteFailed(String message) {
+    return '無法刪除備份。請再點選刪除重試。\n$message';
+  }
 
   @override
   String get settingsLocalBackupNoBackups => '目前沒有本機備份。';
@@ -3487,7 +3564,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String settingsDriveBackupSectionDescriptionEnabled(int retainCount) {
-    return '連結 Google 帳戶後，可建立 Google Drive 備份，或從 Google Drive 備份還原；還原時會以備份內容取代目前日記庫。上傳會在背景完成，可切換 App；請勿強制停止本 App。（Google Drive 最多保留 $retainCount 份）';
+    return '連結 Google 帳戶即可備份或還原。還原會取代目前日記庫。上傳可在背景繼續，請勿強制停止 App。Google Drive 備份保留目標為 $retainCount 份。';
   }
 
   @override
@@ -3568,7 +3645,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDriveBackupUnknownCreatedTime => '無建立時間';
 
   @override
-  String get settingsDriveBackupDeleteConfirmTitle => '刪除 Google Drive 備份？';
+  String get settingsDriveBackupDeleteConfirmTitle => '刪除雲端備份？';
 
   @override
   String settingsDriveBackupDeleteBackupSuccess(String fileName) {
@@ -3598,87 +3675,75 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestoreDialogConfirmDriveTitle => '從 Google Drive 還原？';
 
   @override
-  String get settingsRestoreConfirmOverwriteHeadline => '現有資料將被取代。還原後請依提示完成解鎖。';
+  String get settingsRestoreConfirmOverwriteHeadline => '目前的日記庫將被取代，無法撤銷。';
 
   @override
-  String get settingsRestoreConfirmFreshVaultHeadline => '將以備份內容建立日記庫。';
+  String get settingsRestoreConfirmFreshVaultHeadline => '將從這份備份建立日記庫。';
 
   @override
   String get settingsRestoreConfirmOverwriteAcknowledgeCheckbox =>
-      '我了解現有日記將被備份覆蓋，且無法復原。';
+      '我同意取代目前的日記庫。';
 
   @override
   String get settingsRestorePrecheckSameVaultTitle => '同一日記庫';
 
   @override
-  String get settingsRestorePrecheckSameVaultBody => '此備份與本機為同一日記庫。';
-
-  @override
   String get settingsRestorePrecheckOtherVaultTitle => '其他裝置備份';
 
   @override
-  String get settingsRestorePrecheckOtherVaultBody => '此備份來自其他裝置或不同日記庫。';
+  String get settingsRestorePrecheckOtherVaultBody => '備份和目前的日記庫不同。';
 
   @override
-  String get settingsRestorePrecheckRotatedTitle => '復原金鑰已更新';
+  String get settingsRestorePrecheckRotatedTitle => '需要舊的復原金鑰';
 
   @override
-  String get settingsRestorePrecheckRotatedBody =>
-      '此備份在更新復原金鑰之前建立，需使用當時保存的舊金鑰。';
+  String get settingsRestorePrecheckRotatedBody => '這份備份是在更新金鑰前建立的。';
 
   @override
-  String get settingsRestorePrecheckTrustedUnlockTitle => '可能自動解鎖';
+  String get settingsRestorePrecheckTrustedUnlockBody => '可沿用目前的解鎖狀態。';
 
   @override
-  String get settingsRestorePrecheckTrustedUnlockBody =>
-      '若備份與本機使用同一把復原金鑰，還原後通常可直接使用。';
+  String get settingsRestorePrecheckRecoveryKeyTitle => '需要復原金鑰';
 
   @override
-  String get settingsRestorePrecheckRecoveryKeyTitle => '還原後需輸入復原金鑰';
-
-  @override
-  String get settingsRestorePrecheckRecoveryKeyBody => '請準備建立此備份時保存的復原金鑰。';
+  String get settingsRestorePrecheckRecoveryKeyBody => '下一步會請你輸入這份備份對應的金鑰。';
 
   @override
   String get settingsRestorePrecheckHintTitle => '金鑰提示';
 
   @override
-  String get settingsRestorePrecheckRebuildIndexTitle => '重建搜尋索引';
-
-  @override
-  String get settingsRestorePrecheckRebuildIndexBody => '搜尋索引會在解鎖後重新建立。';
-
-  @override
-  String get settingsRestorePrecheckRewrapTitle => '首次解鎖可能較久';
-
-  @override
-  String get settingsRestorePrecheckRewrapBody => '還原後首次解鎖可能需要較久，請保持 App 開啟。';
-
-  @override
-  String settingsRestoreDialogDriveFileLine(String name) {
-    return '備份：$name';
+  String settingsRestoreKeyEnding(String hint) {
+    return '金鑰末四碼 $hint';
   }
 
   @override
-  String get settingsRestoreDialogRecoveryKeyTitle => '輸入備份復原金鑰';
+  String get settingsRestorePrecheckRebuildIndexTitle => '還原前檢查';
+
+  @override
+  String get settingsRestorePrecheckRebuildIndexBody =>
+      '先檢查備份內容並重建搜尋索引，再還原日記庫。';
+
+  @override
+  String get settingsRestoreSelectedDriveFile => '選取的備份檔';
+
+  @override
+  String get settingsRestoreEnterKeyNext => '下一步';
+
+  @override
+  String get settingsRestoreDialogRecoveryKeyTitle => '輸入復原金鑰';
+
+  @override
+  String get settingsRestoreDialogOlderKeyTitle => '輸入舊的復原金鑰';
 
   @override
   String get settingsRestoreDialogRecoveryKeyEmptyError => '請輸入復原金鑰。';
 
   @override
-  String get settingsRestoreDialogRecoveryKeyVerifyNote => '金鑰正確才會開始還原。';
-
-  @override
   String get settingsRestoreDialogSubtitleRotatedBackup =>
-      '此備份在更新復原金鑰之前建立。請輸入建立該備份時保存的舊金鑰，不是目前這把新金鑰。';
+      '請使用更新金鑰前，為這份備份保存的完整金鑰。';
 
   @override
-  String get settingsRestoreDialogSubtitleSameVaultManual =>
-      '本機無法自動解鎖此備份。請輸入建立此備份時保存的復原金鑰。';
-
-  @override
-  String get settingsRestoreDialogSubtitleOtherVault =>
-      '此備份來自其他裝置。請輸入建立此備份時保存的復原金鑰。';
+  String get settingsRestoreDialogKeyInstructions => '請輸入這份備份對應的完整復原金鑰。';
 
   @override
   String get settingsRepairVaultReadyMessage => '可隨時檢查並整理日記庫。';
@@ -5119,47 +5184,4 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get aboutTabBackupRestoreSection5Item1Body =>
       'Google Drive 是手動建立與還原完整備份的位置，不會即時同步日記。匯入後的日記與原始檔案各自獨立，後續修改不會自動更新另一份內容。';
-
-  @override
-  String get personaIncludeCurrentMemory => '帶入目前的人物記憶';
-
-  @override
-  String get personaIncludeCurrentTone => '帶入目前的聊天風格';
-
-  @override
-  String get personaIncludeCurrentHint => '只帶入勾選的舊內容；帶入記憶可能保留未選日記的資訊。';
-
-  @override
-  String get personaNeutralMemory => '尚無可確認的人物記憶。';
-
-  @override
-  String get personaNeutralTone => '使用自然中性的日常語氣，不刻意加入特定口頭禪。';
-
-  @override
-  String personaRetainedContentTitle(String name) {
-    return '本機保留的$name';
-  }
-
-  @override
-  String get organizationReplyTitle => 'AI 整理說明';
-
-  @override
-  String get organizationShowReply => '更多';
-
-  @override
-  String get organizationUnsafeCandidate =>
-      '這份整理稿包含目前對話未提供的隱藏內容代號，無法採用。請返回聊天重新生成；已送出的需求會保留。';
-
-  @override
-  String get chatDiaryPrivateNotesHint =>
-      '未被 AI 引用的私密文字仍會在手機加入「私密補記」；要求 AI 排除不會移除這份補記，可在日記編輯器自行刪除。';
-
-  @override
-  String get personaToneLocalRetainedHint => '沒有可用的本人原話，將在本機保留已勾選的聊天風格。';
-
-  @override
-  String get personaToneLocalNeutralHint => '沒有可用的本人原話，將在本機建立中性的聊天風格。';
-
-  @override
-  String get aiErrorPrivacy => '無法完成隱私檢查，尚未傳送內容。請檢查設定後重試。';
 }

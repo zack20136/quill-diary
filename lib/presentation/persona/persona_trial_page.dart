@@ -22,9 +22,11 @@ import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
 import 'package:quill_diary/presentation/ai/ai_message_bubble.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class PersonaTrialPage extends ConsumerStatefulWidget {
@@ -278,10 +280,23 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
           : Column(
               children: [
                 _header(l, theme),
-                if (failed) _errorNotice(l, theme),
+                if (failed)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: AppFeedbackBanner(
+                      message: l.personaError,
+                      tone: AppFeedbackTone.error,
+                      outlined: true,
+                    ),
+                  ),
                 Expanded(
                   child: messages.isEmpty
-                      ? _emptyState(l, theme)
+                      ? AppScrollView(
+                          child: AppDialogSummary(
+                            icon: Icons.chat_bubble_outline,
+                            title: l.personaTrialEmpty,
+                          ),
+                        )
                       : AppScrollbar(
                           controller: _messagesScroll,
                           reserveGutter: true,
@@ -361,48 +376,6 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
             ),
           ],
         ),
-      ),
-    ),
-  );
-
-  Widget _errorNotice(AppLocalizations l, ThemeData theme) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
-      children: [
-        Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error),
-        const SizedBox(width: 8),
-        Text(
-          l.personaError,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.error,
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _emptyState(AppLocalizations l, ThemeData theme) => Center(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 48),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: theme.colorScheme.secondaryContainer,
-            foregroundColor: theme.colorScheme.onSecondaryContainer,
-            child: const Icon(Icons.chat_bubble_outline, size: 28),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            l.personaTrialEmpty,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.5,
-            ),
-          ),
-        ],
       ),
     ),
   );

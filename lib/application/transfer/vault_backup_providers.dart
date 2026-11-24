@@ -10,8 +10,6 @@ final vaultBackupIoProvider = Provider<VaultBackupIo>(
   (Ref ref) => VaultBackupIo(
     pathStrategy: ref.watch(vaultPathStrategyProvider),
     repository: ref.watch(vaultRepositoryProvider),
-    indexDatabaseManager: ref.watch(indexDatabaseManagerProvider),
-    editorDraftStore: ref.watch(editorDraftStoreProvider),
     personaBackupFiles: () {
       final session = ref.read(appSessionProvider).session;
       if (session == null) throw StateError('備份人物分身需要已解鎖的日記庫');

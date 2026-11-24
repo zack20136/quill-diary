@@ -27,6 +27,7 @@ class MainActivity : FlutterFragmentActivity() {
         SensitiveClipboardChannel.register(flutterEngine, applicationContext)
         EasyDiaryRealmChannel.register(flutterEngine, applicationContext)
         MediaStoreExportChannel.register(flutterEngine, applicationContext)
+        RestoreStorageChannel.register(flutterEngine, applicationContext)
         DriveUploadBridge.register(flutterEngine, this)
         deviceKeyChannel.register(flutterEngine)
         driveSignInChannel.register(flutterEngine)

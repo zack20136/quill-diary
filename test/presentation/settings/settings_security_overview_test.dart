@@ -51,7 +51,6 @@ void main() {
           onCreateRecoveryKey: () {},
           onRotateRecoveryKey: () {},
           onInspectVault: () {},
-          lockPanel: null,
         ),
       ),
     );

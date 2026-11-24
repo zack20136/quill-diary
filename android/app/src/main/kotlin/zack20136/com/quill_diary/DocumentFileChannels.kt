@@ -4,9 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.webkit.MimeTypeMap
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.StandardMethodCodec
 import java.io.File
 import java.io.IOException
 
@@ -31,7 +33,12 @@ internal class DocumentFileChannels(private val activity: Activity) {
             ::copyUriToPath,
         )
         registerChannel(
-            MethodChannel(messenger, "quill_diary/saf_file_copy"),
+            MethodChannel(
+                messenger,
+                "quill_diary/saf_file_copy",
+                StandardMethodCodec.INSTANCE,
+                messenger.makeBackgroundTaskQueue(),
+            ),
             "copyFileToTree",
             "saf_file_copy_error",
             "Unknown SAF file copy error.",
@@ -143,52 +150,74 @@ internal class DocumentFileChannels(private val activity: Activity) {
             return
         }
 
-        val sourceFile = File(sourcePath)
-        if (!sourceFile.isFile) {
-            result.error("source_missing", "找不到要複製的來源檔案。", null)
+        val source = File(sourcePath).canonicalFile
+        val privateRoot = activity.filesDir.canonicalFile.path + File.separator
+        if (!source.path.startsWith(privateRoot) || !source.exists()) {
+            result.error("source_missing", "找不到要複製的來源。", null)
             return
         }
 
         val treeUri = Uri.parse(treeUriString)
-        val parentDocumentUri =
-            if (DocumentsContract.isTreeUri(treeUri)) {
-                DocumentsContract.buildDocumentUriUsingTree(
-                    treeUri,
-                    DocumentsContract.getTreeDocumentId(treeUri),
-                )
-            } else {
-                treeUri
+        val parent = DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri),
+        )
+        val created = mutableListOf<Uri>()
+
+        fun create(inDirectory: Uri, mime: String, name: String, exactName: Boolean): Uri {
+            val uri = DocumentsContract.createDocument(contentResolver, inDirectory, mime, name)
+                ?: throw IOException("無法在選擇的資料夾建立檔案。")
+            created.add(uri)
+            if (exactName) {
+                val displayNameColumn = DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                val actual = contentResolver.query(uri, arrayOf(displayNameColumn), null, null, null)
+                    ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                if (actual != name) throw IOException("資料夾無法保留匯出檔名。")
             }
-        val createdUri =
-            try {
-                DocumentsContract.createDocument(contentResolver, parentDocumentUri, mimeType, fileName)
-            } catch (error: SecurityException) {
-                result.error(
-                    "create_document_failed",
-                    "沒有寫入此資料夾的權限，請重新選擇資料夾並允許存取。",
-                    null,
-                )
-                return
-            }
-        if (createdUri == null) {
-            result.error("create_document_failed", "無法在選擇的資料夾建立檔案。", null)
-            return
+            return uri
+        }
+
+        fun copy(file: File, to: Uri) {
+            contentResolver.openOutputStream(to, "w")?.use { output ->
+                file.inputStream().use { input -> input.copyTo(output) }
+            } ?: throw IOException("無法開啟輸出串流。")
         }
 
         try {
-            contentResolver.openOutputStream(createdUri, "w")?.use { output ->
-                sourceFile.inputStream().use { input ->
-                    input.copyTo(output)
+            val target = if (source.isDirectory) {
+                val directoryMime = DocumentsContract.Document.MIME_TYPE_DIR
+                val folder = create(parent, directoryMime, fileName, exactName = false)
+                val assets = File(source, "assets")
+                if (assets.isDirectory) {
+                    val destination = create(folder, directoryMime, "assets", exactName = true)
+                    val files = assets.listFiles() ?: throw IOException("無法讀取匯出圖片。")
+                    for (asset in files) {
+                        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(asset.extension)
+                            ?: "application/octet-stream"
+                        copy(asset, create(destination, mime, asset.name, exactName = true))
+                    }
                 }
-            } ?: throw IOException("無法開啟輸出串流。")
-            result.success(createdUri.toString())
-        } catch (error: Exception) {
-            try {
-                DocumentsContract.deleteDocument(contentResolver, createdUri)
-            } catch (_: Exception) {
-                // 刪除半成品失敗時仍回報原始錯誤。
+                copy(File(source, "diary.html"), create(folder, "text/html", "diary.html", exactName = true))
+                folder
+            } else {
+                val file = create(parent, mimeType, fileName, exactName = false)
+                copy(source, file)
+                file
             }
-            result.error("copy_failed", error.message ?: "複製檔案失敗。", null)
+            result.success(target.toString())
+        } catch (error: Exception) {
+            var removed = true
+            for (uri in created.asReversed()) {
+                val deleted = runCatching { DocumentsContract.deleteDocument(contentResolver, uri) }
+                    .getOrDefault(false)
+                if (!deleted) removed = false
+            }
+            val code = when {
+                !removed -> "partial_copy"
+                created.isEmpty() -> "create_document_failed"
+                else -> "copy_failed"
+            }
+            result.error(code, error.message, null)
         }
     }
 

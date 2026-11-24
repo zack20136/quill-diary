@@ -65,91 +65,6 @@ class SettingsFlowFeedback {
   final SettingsFlowFeedbackTone tone;
 }
 
-enum SettingsRestorePrimaryAction { retryVerification, openSettingsRecovery }
-
-enum SettingsRestoreNavigationTarget { home, settings }
-
-class SettingsRestorePrompt {
-  const SettingsRestorePrompt({
-    required this.title,
-    required this.body,
-    required this.nextStepHint,
-    required this.primaryAction,
-    required this.primaryActionLabel,
-    required this.secondaryHint,
-    this.isError = false,
-  });
-
-  final String title;
-  final String body;
-  final String nextStepHint;
-  final SettingsRestorePrimaryAction primaryAction;
-  final String primaryActionLabel;
-  final String secondaryHint;
-  final bool isError;
-  factory SettingsRestorePrompt.fromSessionState({
-    required AppLocalizations l10n,
-    required AppSessionState sessionState,
-    bool unlockFailedAfterRecoveryKey = false,
-  }) {
-    if (unlockFailedAfterRecoveryKey) {
-      return SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeUnlockFailedTitle,
-        body: sessionState.message?.trim().isNotEmpty == true
-            ? sessionState.message!.trim()
-            : l10n.vaultTransferRestoreUnlockFailed,
-        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
-        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-        isError: true,
-      );
-    }
-
-    return switch (sessionState.status) {
-      AppLockStatus.locked => SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeTitle,
-        body: snackbarMessageForPostRestore(l10n, sessionState.status),
-        nextStepHint: l10n.postRestoreOutcomeNextStepLocked,
-        primaryAction: SettingsRestorePrimaryAction.retryVerification,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryRetryVerification,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-      ),
-      AppLockStatus.recoveryRequired => SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeTitle,
-        body: snackbarMessageForPostRestore(l10n, sessionState.status),
-        nextStepHint: l10n.postRestoreOutcomeNextStepRecovery,
-        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-      ),
-      _ => SettingsRestorePrompt(
-        title: l10n.postRestoreOutcomeTitle,
-        body: snackbarMessageForPostRestore(l10n, sessionState.status),
-        nextStepHint: sessionState.message?.trim().isNotEmpty == true
-            ? sessionState.message!.trim()
-            : l10n.sessionRestoreStartupFailedMessage,
-        primaryAction: SettingsRestorePrimaryAction.openSettingsRecovery,
-        primaryActionLabel: l10n.postRestoreOutcomePrimaryEnterRecoveryKey,
-        secondaryHint: l10n.postRestoreOutcomeSecondaryHint,
-        isError: sessionState.status == AppLockStatus.fatalError,
-      ),
-    };
-  }
-}
-
-class SettingsRestoreResult {
-  const SettingsRestoreResult({
-    this.feedback,
-    this.navigationTarget,
-    this.prompt,
-  });
-
-  final SettingsFlowFeedback? feedback;
-  final SettingsRestoreNavigationTarget? navigationTarget;
-  final SettingsRestorePrompt? prompt;
-}
-
 class PreparedRestoreRequest {
   const PreparedRestoreRequest({
     required this.backupFile,
@@ -319,18 +234,23 @@ class SettingsFlowController {
     String? driveBackupName,
     File? tempFileToDelete,
   }) async {
+    final staged =
+        tempFileToDelete ??
+        await _ref
+            .read(vaultBackupServiceProvider)
+            .copyBackupForRestore(backupFile);
     try {
       final RestorePrecheck precheck = await _ref
           .read(vaultRestoreServiceProvider)
-          .precheckRestore(backupFile);
+          .precheckRestore(staged);
       return PreparedRestoreRequest(
-        backupFile: backupFile,
+        backupFile: staged,
         precheck: precheck,
         driveBackupName: driveBackupName,
-        tempFileToDelete: tempFileToDelete,
+        tempFileToDelete: staged,
       );
     } on Object {
-      await _deleteRestoreTemporaryFile(tempFileToDelete);
+      await _deleteRestoreTemporaryFile(staged);
       rethrow;
     }
   }
@@ -594,45 +514,27 @@ class SettingsFlowController {
     );
   }
 
-  Future<void> verifyRestoreRecoveryKey(
+  Future<VerifiedBackupKey> verifyRestoreRecoveryKey(
     File backupFile,
     String recoveryKey,
-  ) async {
-    await RestoreBackupFlow(_ref)
-        .verifyBackupRecoveryKey(backupFile, recoveryKey);
-  }
+  ) => RestoreBackupFlow(_ref).verifyBackupRecoveryKey(backupFile, recoveryKey);
 
-  Future<SettingsRestoreResult> restorePreparedRequest({
-    required AppLocalizations l10n,
+  Future<void> restorePreparedRequest({
     required PreparedRestoreRequest request,
-    String? backupRecoveryKey,
-    bool recoveryKeyAlreadyVerified = false,
+    VerifiedBackupKey? verifiedKey,
     BackupTaskProgressListener? onProgress,
   }) async {
     try {
       final RestoreBackupFlow flow = RestoreBackupFlow(_ref);
       await flow.ensureRestoreAllowed();
-      final String? trimmedKey = backupRecoveryKey?.trim();
-      if (!recoveryKeyAlreadyVerified &&
-          trimmedKey != null &&
-          trimmedKey.isNotEmpty) {
-        await flow.verifyBackupRecoveryKey(request.backupFile, trimmedKey);
-      }
       final RestorePreparedContext prepared = RestorePreparedContext(
         precheck: request.precheck,
-        backupRecoveryKey: trimmedKey,
+        verifiedKey: verifiedKey,
       );
-      final AppSessionState sessionState = await flow
-          .executeRestoreAndFinishSession(
-            backupFile: request.backupFile,
-            prepared: prepared,
-            onProgress: onProgress,
-          );
-      return _buildRestoreResult(
-        l10n: l10n,
-        sessionState: sessionState,
+      return await flow.executeRestoreAndFinishSession(
+        backupFile: request.backupFile,
         prepared: prepared,
-        driveBackupName: request.driveBackupName,
+        onProgress: onProgress,
       );
     } finally {
       _ref.invalidate(trustedDeviceAccessProvider);
@@ -648,30 +550,42 @@ class SettingsFlowController {
     String? driveAccountLabel,
   }) async {
     final BackupStatusStore store = _ref.read(backupStatusStoreProvider);
+    final feedback = _backupPersistFeedback(
+      l10n: l10n,
+      result: result,
+      onSuccess: onSuccess,
+      inspectFailedMessage: inspectFailedMessage,
+    );
     switch (result.status) {
       case BackupPersistStatus.success:
-        switch (action) {
-          case BackupStatusAction.localBackup:
-            await store.recordLocalBackupSuccess(
+        try {
+          await (switch (action) {
+            BackupStatusAction.localBackup => store.recordLocalBackupSuccess(
               identity: result.identity,
               purpose: result.purpose,
-            );
-            break;
-          case BackupStatusAction.externalExport:
-            await store.recordExternalExportSuccess(
-              identity: result.identity,
-              purpose: result.purpose,
-            );
-            break;
-          case BackupStatusAction.driveUpload:
-            await store.recordDriveUploadSuccess(
+            ),
+            BackupStatusAction.externalExport =>
+              store.recordExternalExportSuccess(
+                identity: result.identity,
+                purpose: result.purpose,
+              ),
+            BackupStatusAction.driveUpload => store.recordDriveUploadSuccess(
               identity: result.identity,
               purpose: result.purpose,
               accountLabel: driveAccountLabel,
-            );
-            break;
+            ),
+          });
+        } on Exception {
+          return SettingsFlowFeedback(
+            [
+              if (feedback != null) feedback.message,
+              l10n.settingsBackupStatusUpdateFailedAfterDelivery,
+            ].join('\n'),
+            tone: SettingsFlowFeedbackTone.warning,
+          );
+        } finally {
+          _ref.invalidate(backupStatusProvider);
         }
-        _ref.invalidate(backupStatusProvider);
         break;
       case BackupPersistStatus.inspectFailed:
         final String detail = localizedBackupInspectDetail(
@@ -687,12 +601,7 @@ class SettingsFlowController {
       case BackupPersistStatus.cancelled:
         break;
     }
-    return _backupPersistFeedback(
-      l10n: l10n,
-      result: result,
-      onSuccess: onSuccess,
-      inspectFailedMessage: inspectFailedMessage,
-    );
+    return feedback;
   }
 
   Future<void> _refreshDriveConnection() async {
@@ -737,58 +646,5 @@ class SettingsFlowController {
       case BackupPersistStatus.cancelled:
         return null;
     }
-  }
-
-  SettingsRestoreResult _buildRestoreResult({
-    required AppLocalizations l10n,
-    required AppSessionState sessionState,
-    required RestorePreparedContext prepared,
-    String? driveBackupName,
-  }) {
-    final String? trimmedKey = prepared.backupRecoveryKey?.trim();
-    final bool unlockFailedAfterKey =
-        trimmedKey != null &&
-        trimmedKey.isNotEmpty &&
-        sessionState.status != AppLockStatus.unlocked;
-
-    if (sessionState.status == AppLockStatus.unlocked) {
-      return SettingsRestoreResult(
-        feedback: SettingsFlowFeedback(
-          driveAwarePostRestoreSnackBarMessage(
-            l10n: l10n,
-            status: sessionState.status,
-            driveBackupName: driveBackupName,
-          ),
-          tone: SettingsFlowFeedbackTone.success,
-        ),
-        navigationTarget: SettingsRestoreNavigationTarget.home,
-      );
-    }
-
-    if (unlockFailedAfterKey ||
-        sessionState.status == AppLockStatus.locked ||
-        sessionState.status == AppLockStatus.recoveryRequired) {
-      return SettingsRestoreResult(
-        prompt: SettingsRestorePrompt.fromSessionState(
-          l10n: l10n,
-          sessionState: sessionState,
-          unlockFailedAfterRecoveryKey: unlockFailedAfterKey,
-        ),
-      );
-    }
-
-    return SettingsRestoreResult(
-      feedback: SettingsFlowFeedback(
-        driveAwarePostRestoreSnackBarMessage(
-          l10n: l10n,
-          status: sessionState.status,
-          driveBackupName: driveBackupName,
-        ),
-        tone: sessionState.status == AppLockStatus.fatalError
-            ? SettingsFlowFeedbackTone.error
-            : SettingsFlowFeedbackTone.success,
-      ),
-      navigationTarget: SettingsRestoreNavigationTarget.home,
-    );
   }
 }

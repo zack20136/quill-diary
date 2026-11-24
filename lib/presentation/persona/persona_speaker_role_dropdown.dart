@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_menu_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 
 /// 分身匯入共用的下拉欄位，外觀對齊聊天的模型標籤與選單。
 class PersonaDropdownField<T> extends StatefulWidget {
@@ -141,33 +141,55 @@ class PersonaSpeakerRoleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    return AppCard(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: colors.secondary.withValues(alpha: 0.14),
-            foregroundColor: colors.secondary,
-            child: Icon(personaSpeakerRoleIcon(role), size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall,
-            ),
-          ),
-          const SizedBox(width: 8),
-          PersonaDropdownField<PersonaSpeakerRole>(
+    return AppDialogSection(
+      padding: const EdgeInsets.all(12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact =
+              constraints.maxWidth <
+              MediaQuery.textScalerOf(context).scale(240);
+          final name = Row(
+            spacing: 10,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: colors.secondary.withValues(alpha: 0.14),
+                foregroundColor: colors.secondary,
+                child: Icon(personaSpeakerRoleIcon(role), size: 20),
+              ),
+              Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
+            ],
+          );
+          final selector = PersonaDropdownField<PersonaSpeakerRole>(
             value: role,
             items: PersonaSpeakerRole.values,
             itemLabel: (item) => personaSpeakerRoleLabel(context.l10n, item),
             onChanged: onChanged,
-          ),
-        ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                name,
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: selector,
+                ),
+              ],
+            );
+          }
+          return Row(
+            spacing: 8,
+            children: [
+              Expanded(child: name),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth / 2),
+                child: selector,
+              ),
+            ],
+          );
+        },
       ),
     );
   }

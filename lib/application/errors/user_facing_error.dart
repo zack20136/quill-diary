@@ -42,6 +42,7 @@ String userFacingErrorMessage(
   }
   if (error is AndroidSafWriteException) {
     final code = error.code;
+    if (code == "partial_copy") return l10n.portableExportPartialCopy;
     return code == null || code.isEmpty
         ? l10n.androidSafWriteFailed
         : l10n.androidSafWriteFailedWithCode(code);
@@ -64,6 +65,10 @@ String vaultBackupIssueMessage(AppLocalizations l10n, VaultBackupIssue issue) {
     VaultBackupIssue.invalidZip => l10n.vaultBackupIssueInvalidZip,
     VaultBackupIssue.missingFile => l10n.vaultBackupIssueMissingFile,
     VaultBackupIssue.invalidArchive => l10n.vaultBackupIssueInvalidArchive,
+    VaultBackupIssue.invalidBackupIntegrity =>
+      l10n.vaultBackupIssueInvalidBackupIntegrity,
+    VaultBackupIssue.invalidBackupContent =>
+      l10n.vaultBackupIssueInvalidBackupContent,
     VaultBackupIssue.recoveryKeyMismatch =>
       l10n.vaultBackupIssueRecoveryKeyMismatch,
     VaultBackupIssue.noEncryptedSample =>

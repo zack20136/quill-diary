@@ -838,6 +838,7 @@ void main() {
         generationOverride: '整理秘密地址的故事',
       );
       controller.updateComposer('先前提過秘密地址', []);
+      client.output = '記下這個地址了。';
       await controller.send();
       controller.updateComposer('秘密地址再提一次秘密地址', [const PrivateTextRange(0, 4)]);
       final beforeSend = (await controller.previewRequest())!;
@@ -848,10 +849,18 @@ void main() {
       expect(pendingTurns.last.text, '{{PRI_01}}再提一次秘密地址');
       expect(beforeSend.systemPrompt, isNot(contains('秘密地址')));
       await controller.send();
-      final sent = client.calls.last.messages;
-      expect(sent.first.text, '先前提過秘密地址');
-      expect(sent.last.text, '{{PRI_01}}再提一次秘密地址');
-      expect(client.calls.last.prompt, isNot(contains('秘密地址')));
+      final wire = client.calls.last.request;
+      final previewTurns = beforeSend.effective().turns;
+      expect(
+        wire.messages.map((message) => (message.isUser, message.text)),
+        previewTurns.map((turn) => (turn.isUser, turn.text)),
+      );
+      expect(
+        (previewTurns[1].isUser, previewTurns[1].text),
+        (false, '記下這個地址了。'),
+      );
+      expect(previewTurns.last.pending, isTrue);
+      expect(wire.systemPrompt, beforeSend.effective().systemPrompt);
       final preview = (await controller.previewRequest())!;
       final userTurns = preview.turns.where((turn) => turn.isUser).toList();
       expect(userTurns.first.text, '先前提過秘密地址');
@@ -1016,12 +1025,18 @@ void main() {
       expect(draft.attachmentIds, hasLength(1));
       expect(draft.markdownBody, contains('私密補記'));
       expect(draft.markdownBody, contains('秘密地點'));
-      final path = await draftStore.materializePendingFileForPreview(
-        ChatDiarySession.draftKeyFor(chat.id),
+      final draftKey = ChatDiarySession.draftKeyFor(chat.id);
+      final path = await draftStore.pendingAbsolutePath(
+        draftKey,
         draft.pendingAttachments.single.relativePath,
-        setup.session,
       );
-      expect(await File(path).readAsBytes(), testAiPng);
+      expect(
+        await draftStore.readPendingAttachment((
+          draftKey: draftKey,
+          path: path,
+        ), setup.session),
+        testAiPng,
+      );
       expect(await draftStore.read('__new__', setup.session), isNull);
     });
     test('空白生成保留人工草稿、附件與生成快照，仍可接續聊天', () async {
@@ -1128,12 +1143,18 @@ void main() {
         ChatDiarySession.draftKeyFor(chat.id),
         setup.session,
       );
-      final path = await draftStore.materializePendingFileForPreview(
-        ChatDiarySession.draftKeyFor(chat.id),
+      final draftKey = ChatDiarySession.draftKeyFor(chat.id);
+      final path = await draftStore.pendingAbsolutePath(
+        draftKey,
         draft!.pendingAttachments.single.relativePath,
-        setup.session,
       );
-      expect(await File(path).readAsBytes(), original);
+      expect(
+        await draftStore.readPendingAttachment((
+          draftKey: draftKey,
+          path: path,
+        ), setup.session),
+        original,
+      );
       final flow = container.read(editorFlowControllerProvider);
       final restored = await flow.restoreDraftIfNeeded(
         draftKey: ChatDiarySession.draftKeyFor(chat.id),

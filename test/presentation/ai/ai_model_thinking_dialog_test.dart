@@ -52,16 +52,28 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('手動 JSON 直接顯示進階欄位，無效輸入可修正並保留原生型別', (tester) async {
+  testWidgets('自訂 JSON 直接顯示進階欄位，無效輸入可修正並保留原生型別', (tester) async {
     await open(tester);
-    await selectFormat(tester, '手動 JSON');
+    await selectFormat(tester, testL10n.aiThinkingCustom);
     expect(find.byType(ExpansionTile), findsNothing);
+    final defaultField = find.byKey(const ValueKey('thinking-default'));
+    await tester.ensureVisible(defaultField);
+    await tester.tap(defaultField);
+    await tester.pumpAndSettle();
+    final lowOption = find.widgetWithText(
+      MenuItemButton,
+      testL10n.aiThinkingLow,
+    );
+    await tester.ensureVisible(lowOption);
+    await tester.tap(lowOption);
+    await tester.pumpAndSettle();
     final low = find.byKey(const ValueKey('thinking-json-low'));
     await tester.ensureVisible(low);
     await tester.enterText(low, '{bad');
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
     expect(find.text(testL10n.aiThinkingJsonInvalid), findsOneWidget);
+    expect(find.text(testL10n.aiThinkingPreviewInvalid), findsOneWidget);
     expect(tester.widget<TextField>(low).controller!.text, '{bad');
     expect(result, isNull);
     await tester.enterText(low, '{"messages": []}');
@@ -71,6 +83,12 @@ void main() {
     await tester.enterText(
       low,
       '{"think":"xhigh","extra":{"enabled":true,"budget":1024}}',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(testL10n.aiThinkingProtectedFields), findsNothing);
+    expect(
+      tester.widget<SelectableText>(find.byType(SelectableText)).data,
+      contains('"budget": 1024'),
     );
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
@@ -83,7 +101,8 @@ void main() {
 
   testWidgets('不傳送模式可套用，取消與沿用預設各自回傳不同結果', (tester) async {
     await open(tester);
-    await selectFormat(tester, '不傳送 Thinking 參數');
+    await selectFormat(tester, testL10n.aiThinkingOmit);
+    expect(find.text(testL10n.aiThinkingPreviewEmpty), findsOneWidget);
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
     expect(result, isNull);
@@ -95,7 +114,7 @@ void main() {
     expect(result!.override, isNull);
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
-    await selectFormat(tester, '不傳送 Thinking 參數');
+    await selectFormat(tester, testL10n.aiThinkingOmit);
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
     expect(result!.override!.levels, isEmpty);
@@ -113,14 +132,18 @@ void main() {
       tester,
       connection: config.copyWith(thinkingOverrides: {config.model: existing}),
     );
-    expect(find.text('手動 JSON'), findsOneWidget);
+    expect(find.text(testL10n.aiThinkingCustom), findsOneWidget);
     expect(find.byType(ExpansionTile), findsNothing);
     final low = find.byKey(const ValueKey('thinking-json-low'));
     await tester.ensureVisible(low);
     expect(tester.widget<TextField>(low).controller!.text, contains('1024'));
     await tester.enterText(low, '{"think":"xhigh","extra":[true,null,2048]}');
     await tester.pumpAndSettle();
-    for (final label in ['不傳送 Thinking 參數', '沿用目前協定', '手動 JSON']) {
+    for (final label in [
+      testL10n.aiThinkingOmit,
+      testL10n.aiThinkingInherit,
+      testL10n.aiThinkingCustom,
+    ]) {
       await tester.ensureVisible(find.byKey(const ValueKey('thinking-format')));
       await selectFormat(tester, label);
     }
@@ -146,7 +169,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('thinking-format')));
     await tester.pumpAndSettle();
     expect(find.byType(MenuItemButton), findsNWidgets(3));
-    await tester.tap(find.widgetWithText(MenuItemButton, '手動 JSON'));
+    await tester.tap(
+      find.widgetWithText(MenuItemButton, testL10n.aiThinkingCustom),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(ExpansionTile), findsNothing);
     for (final level in AiThinkingLevel.values) {
@@ -157,8 +182,14 @@ void main() {
     }
     await tester.tap(find.widgetWithText(FilledButton, '套用'));
     await tester.pumpAndSettle();
-    expect(find.text(testL10n.aiThinkingSelectionRequired), findsOneWidget);
+    final warning = find.text(testL10n.aiThinkingSelectionRequired);
+    expect(warning.hitTestable(), findsOneWidget);
     expect(result, isNull);
+    final low = find.byKey(const ValueKey('thinking-enabled-low'));
+    await tester.ensureVisible(low);
+    await tester.tap(low);
+    await tester.pumpAndSettle();
+    expect(warning, findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -33,8 +33,9 @@ import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/infrastructure/storage/vault_transfer_models.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
-import 'package:quill_diary/presentation/restore/widgets/post_restore_outcome_dialog.dart';
+import 'package:quill_diary/presentation/restore/widgets/restore_confirm_dialog.dart';
 import 'package:quill_diary/presentation/restore/widgets/restore_recovery_key_dialog.dart';
+import 'package:quill_diary/presentation/settings/backup/backup_pick_dialog.dart';
 import 'package:quill_diary/presentation/settings/backup/backup_pick_list_item.dart';
 import 'package:quill_diary/presentation/settings/widgets/drive_backup_section.dart';
 import 'package:quill_diary/presentation/settings/widgets/local_backup_section.dart';
@@ -498,116 +499,107 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       icon: Icons.health_and_safety_outlined,
       title: l10n.settingsSecurityOverviewSectionTitle,
       description: l10n.settingsSecurityOverviewSectionDescription,
-      child: ref
-          .watch(backupStatusProvider)
-          .when(
-            loading: () => const AppLoadingState(),
-            error: (Object error, StackTrace _) => AppFeedbackBanner(
-              icon: Icons.error_outline_rounded,
-              message: userFacingErrorMessage(error, l10n: l10n),
-              tone: AppFeedbackTone.error,
-            ),
-            data: (BackupStatusSnapshot backupStatus) =>
-                trustedDeviceAccessAsync.when(
-                  data: (bool hasTrustedDevice) => SettingsSecurityOverview(
-                    hasRecoveryKey: recoveryMetadata != null,
-                    recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
-                    hasUnlockedSession: hasUnlockedSession,
-                    hasTrustedDevice: hasTrustedDevice,
-                    unlockMode: unlockModeAsync.asData?.value,
-                    indexMessage: settingsIndexStatusMessage(
-                      l10n,
-                      sessionState: sessionState,
-                      hasUnlockedSession: hasUnlockedSession,
-                      repairSummary: repairSummary,
-                      inspectSummary: inspectSummary,
-                    ),
-                    indexHealthLevel: settingsIndexHealthLevel(
-                      sessionState: sessionState,
-                      hasUnlockedSession: hasUnlockedSession,
-                      repairSummary: repairSummary,
-                      inspectSummary: inspectSummary,
-                    ),
-                    backupStatus: backupStatus,
-                    busy: _busy,
-                    onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
-                        ? _createRecoveryKey
-                        : null,
-                    onRotateRecoveryKey:
-                        recoveryMetadata != null &&
-                            pageAccess.vaultTransferCapabilities.canBackup
-                        ? () => _runBusy(_rotateRecoveryKey, showOverlay: false)
-                        : null,
-                    onInspectVault: hasUnlockedSession
-                        ? () => unawaited(_inspectVault())
-                        : null,
-                    onRetryTrustedUnlock:
-                        sessionState?.status == AppLockStatus.locked
-                        ? () => _runBusy(_retryTrustedUnlock)
-                        : null,
-                    lockPanel:
-                        sessionState?.status == AppLockStatus.unlocked ||
-                            sessionState?.status == AppLockStatus.locked
-                        ? null
-                        : sessionAsync.when(
-                            data: (AppSessionState sessionState) =>
-                                SettingsStatusPanel(
-                                  sessionState: sessionState,
-                                  busy: _busy,
-                                  recoveryKeyInputController:
-                                      _recoveryKeyInputController,
-                                  recoveryKeyHint:
-                                      recoveryMetadata?.recoveryKeyHint,
-                                  bannerIcon: _sessionIcon(sessionState.status),
-                                  bannerMessage: _sessionSummary(
-                                    l10n,
-                                    sessionState,
-                                  ),
-                                  bannerTone: _sessionTone(sessionState.status),
-                                  onUnlockWithRecovery:
-                                      sessionState.status ==
-                                          AppLockStatus.recoveryRequired
-                                      ? () => _runBusy(() async {
-                                          _showFeedback(
-                                            await _settingsFlow
-                                                .unlockWithRecovery(
-                                                  l10n,
-                                                  _recoveryKeyInputController
-                                                      .text
-                                                      .trim(),
-                                                ),
-                                          );
-                                        })
-                                      : null,
-                                  onCancelUnlock:
-                                      sessionState.status ==
-                                          AppLockStatus.unlocking
-                                      ? () => _runBusy(() async {
-                                          await _settingsFlow
-                                              .cancelRecoveryUnlock();
-                                        })
-                                      : null,
-                                ),
-                            loading: () => const AppLoadingState(),
-                            error: (Object error, StackTrace _) =>
-                                AppFeedbackBanner(
-                                  icon: Icons.error_outline_rounded,
-                                  message: userFacingErrorMessage(
-                                    error,
-                                    l10n: l10n,
-                                  ),
-                                  tone: AppFeedbackTone.error,
-                                ),
-                          ),
-                  ),
-                  loading: () => const AppLoadingState(),
-                  error: (Object error, StackTrace _) => AppFeedbackBanner(
-                    icon: Icons.error_outline_rounded,
-                    message: userFacingErrorMessage(error, l10n: l10n),
-                    tone: AppFeedbackTone.error,
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 14,
+        children: <Widget>[
+          ref
+              .watch(backupStatusProvider)
+              .when(
+                loading: () => const AppLoadingState(),
+                error: (Object error, StackTrace _) => AppFeedbackBanner(
+                  icon: Icons.error_outline_rounded,
+                  message: userFacingErrorMessage(error, l10n: l10n),
+                  tone: AppFeedbackTone.error,
                 ),
+                data: (BackupStatusSnapshot backupStatus) =>
+                    trustedDeviceAccessAsync.when(
+                      data: (bool hasTrustedDevice) => SettingsSecurityOverview(
+                        hasRecoveryKey: recoveryMetadata != null,
+                        recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
+                        hasUnlockedSession: hasUnlockedSession,
+                        hasTrustedDevice: hasTrustedDevice,
+                        unlockMode: unlockModeAsync.asData?.value,
+                        indexMessage: settingsIndexStatusMessage(
+                          l10n,
+                          sessionState: sessionState,
+                          hasUnlockedSession: hasUnlockedSession,
+                          repairSummary: repairSummary,
+                          inspectSummary: inspectSummary,
+                        ),
+                        indexHealthLevel: settingsIndexHealthLevel(
+                          sessionState: sessionState,
+                          hasUnlockedSession: hasUnlockedSession,
+                          repairSummary: repairSummary,
+                          inspectSummary: inspectSummary,
+                        ),
+                        backupStatus: backupStatus,
+                        busy: _busy,
+                        onCreateRecoveryKey: pageAccess.canCreateRecoveryKey
+                            ? _createRecoveryKey
+                            : null,
+                        onRotateRecoveryKey:
+                            recoveryMetadata != null &&
+                                pageAccess.vaultTransferCapabilities.canBackup
+                            ? () => _runBusy(
+                                _rotateRecoveryKey,
+                                showOverlay: false,
+                              )
+                            : null,
+                        onInspectVault: hasUnlockedSession
+                            ? () => unawaited(_inspectVault())
+                            : null,
+                        onRetryTrustedUnlock:
+                            sessionState?.status == AppLockStatus.locked
+                            ? () => _runBusy(_retryTrustedUnlock)
+                            : null,
+                      ),
+                      loading: () => const AppLoadingState(),
+                      error: (Object error, StackTrace _) => AppFeedbackBanner(
+                        icon: Icons.error_outline_rounded,
+                        message: userFacingErrorMessage(error, l10n: l10n),
+                        tone: AppFeedbackTone.error,
+                      ),
+                    ),
+              ),
+          if (sessionState?.status != AppLockStatus.unlocked &&
+              sessionState?.status != AppLockStatus.locked)
+            sessionAsync.when(
+              data: (state) =>
+                  _buildSessionStatusPanel(state, recoveryMetadata),
+              loading: () => const AppLoadingState(),
+              error: (error, _) => AppFeedbackBanner(
+                message: userFacingErrorMessage(error, l10n: l10n),
+                tone: AppFeedbackTone.error,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionStatusPanel(
+    AppSessionState state,
+    RecoveryMetadata? recoveryMetadata,
+  ) {
+    final l10n = context.l10n;
+    return SettingsStatusPanel(
+      sessionState: state,
+      busy: _busy,
+      recoveryKeyInputController: _recoveryKeyInputController,
+      recoveryKeyHint: recoveryMetadata?.recoveryKeyHint,
+      bannerIcon: _sessionIcon(state.status),
+      bannerMessage: _sessionSummary(l10n, state),
+      bannerTone: _sessionTone(state.status),
+      onUnlockWithRecovery: () => _runBusy(() async {
+        _showFeedback(
+          await _settingsFlow.unlockWithRecovery(
+            l10n,
+            _recoveryKeyInputController.text.trim(),
           ),
+        );
+      }),
+      onCancelUnlock: () => _runBusy(_settingsFlow.cancelRecoveryUnlock),
     );
   }
 
@@ -636,7 +628,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final Map<String, LocalBackupFile> backupsById = <String, LocalBackupFile>{
       for (final LocalBackupFile backup in backups) backup.path: backup,
     };
-    final BackupPickListItem? picked = await showSettingsBackupPickerDialog(
+    final BackupPickListItem? picked = await showBackupPickDialog(
       context: context,
       title: l10n.settingsLocalBackupPickDialogTitle,
       emptyMessage: l10n.settingsLocalBackupNoBackups,
@@ -683,7 +675,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final Map<String, DriveBackupFile> backupsById = <String, DriveBackupFile>{
       for (final DriveBackupFile backup in backups) backup.id: backup,
     };
-    final BackupPickListItem? picked = await showSettingsBackupPickerDialog(
+    final BackupPickListItem? picked = await showBackupPickDialog(
       context: context,
       title: l10n.settingsDriveBackupPickDialogTitle,
       emptyMessage: l10n.settingsDriveBackupNoBackups,
@@ -1162,39 +1154,49 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final bool confirmed = await showRestoreConfirmDialog(
       context,
       request.precheck,
+      requiresRecoveryKey: !request.precheck.canResumeTrustedSession(
+        ref.read(appSessionProvider).session,
+      ),
       driveBackupName: request.driveBackupName,
     );
     if (!confirmed || !mounted) {
       return;
     }
-    String? backupRecoveryKey;
-    if (request.precheck.expectsRecoveryKeyAfterRestore) {
-      backupRecoveryKey = await _collectValidatedRestoreRecoveryKey(
+    VerifiedBackupKey? verifiedKey;
+    if (!request.precheck.canResumeTrustedSession(
+      ref.read(appSessionProvider).session,
+    )) {
+      verifiedKey = await _collectValidatedRestoreRecoveryKey(
         backupFile: request.backupFile,
         precheck: request.precheck,
       );
-      if (!mounted || backupRecoveryKey == null) {
+      if (!mounted || verifiedKey == null) {
         return;
       }
     }
-    SettingsRestoreResult? result;
     await _runWithBackupProgress((
       BackupTaskProgressListener reportProgress,
     ) async {
-      result = await _settingsFlow.restorePreparedRequest(
-        l10n: l10n,
+      await _settingsFlow.restorePreparedRequest(
         request: request,
-        backupRecoveryKey: backupRecoveryKey,
-        recoveryKeyAlreadyVerified: backupRecoveryKey != null,
+        verifiedKey: verifiedKey,
         onProgress: reportProgress,
       );
+      if (!mounted) return;
+      final driveBackupName = request.driveBackupName?.trim();
+      _showFeedback(
+        SettingsFlowFeedback(
+          driveBackupName == null || driveBackupName.isEmpty
+              ? l10n.sessionRestoreSuccessUnlockedMessage
+              : l10n.settingsDriveBackupRestoreSuccess(driveBackupName),
+          tone: SettingsFlowFeedbackTone.success,
+        ),
+      );
+      context.go(AppRoutes.homeRoute);
     });
-    if (result != null) {
-      await _presentRestoreResult(result!);
-    }
   }
 
-  Future<String?> _collectValidatedRestoreRecoveryKey({
+  Future<VerifiedBackupKey?> _collectValidatedRestoreRecoveryKey({
     required File backupFile,
     required RestorePrecheck precheck,
   }) async {
@@ -1216,50 +1218,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return null;
       }
       try {
-        await _settingsFlow.verifyRestoreRecoveryKey(backupFile, recoveryKey);
-        return recoveryKey;
+        return await _settingsFlow.verifyRestoreRecoveryKey(
+          backupFile,
+          recoveryKey,
+        );
       } on VaultBackupException catch (error) {
         if (!context.mounted) {
           return null;
         }
         validationError = vaultBackupIssueMessage(context.l10n, error.issue);
       }
-    }
-  }
-
-  Future<void> _presentRestoreResult(SettingsRestoreResult result) async {
-    final BuildContext context = this.context;
-    if (!context.mounted) {
-      return;
-    }
-    _showFeedback(result.feedback);
-    if (result.prompt != null) {
-      final bool runPrimary = await showPostRestoreOutcomeDialog(
-        context,
-        outcome: result.prompt!,
-      );
-      if (!context.mounted) {
-        return;
-      }
-      if (runPrimary) {
-        switch (result.prompt!.primaryAction) {
-          case SettingsRestorePrimaryAction.retryVerification:
-            await _settingsFlow.retryTrustedUnlock();
-          case SettingsRestorePrimaryAction.openSettingsRecovery:
-            context.go(AppRoutes.settingsRoute);
-        }
-      } else {
-        context.go(AppRoutes.homeRoute);
-      }
-      return;
-    }
-    switch (result.navigationTarget) {
-      case SettingsRestoreNavigationTarget.home:
-        context.go(AppRoutes.homeRoute);
-      case SettingsRestoreNavigationTarget.settings:
-        context.go(AppRoutes.settingsRoute);
-      case null:
-        break;
     }
   }
 

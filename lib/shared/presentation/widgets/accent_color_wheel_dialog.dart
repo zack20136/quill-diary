@@ -5,6 +5,7 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/accent_chip.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -119,7 +120,6 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
     );
 
     return AppDialogShell(
-      accent: true,
       icon: const Icon(Icons.palette_outlined),
       title: widget.title,
       actions: <Widget>[
@@ -132,67 +132,69 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
           child: Text(widget.saveLabel),
         ),
       ],
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Center(
-            child: SizedBox(
-              width: 180,
-              height: 180,
-              child: ColorWheelPicker(
-                color: _picked,
-                wheelWidth: 14,
-                onChanged: (Color color) {
-                  setState(() => _picked = color.withValues(alpha: 1.0));
-                },
-                onWheel: (_) {},
+      content: AppScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Center(
+              child: SizedBox(
+                width: 180,
+                height: 180,
+                child: ColorWheelPicker(
+                  color: _picked,
+                  wheelWidth: 14,
+                  onChanged: (Color color) {
+                    setState(() => _picked = color.withValues(alpha: 1.0));
+                  },
+                  onWheel: (_) {},
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.35),
+            const SizedBox(height: 16),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.35),
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      '0x${_picked.hexAlpha}',
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontFeatures: const <FontFeature>[
-                          FontFeature.tabularFigures(),
-                        ],
-                        letterSpacing: 0.4,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        '0x${_picked.hexAlpha}',
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontFeatures: const <FontFeature>[
+                            FontFeature.tabularFigures(),
+                          ],
+                          letterSpacing: 0.4,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: context.l10n.commonActionCopy,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _copyColorCode,
-                    icon: Icon(
-                      Icons.copy_rounded,
-                      size: 20,
-                      color: cs.onSurfaceVariant,
+                    IconButton(
+                      tooltip: context.l10n.commonActionCopy,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _copyColorCode,
+                      icon: Icon(
+                        Icons.copy_rounded,
+                        size: 20,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _previewPanel(theme, cs, (previewBg, previewFg)),
-        ],
+            const SizedBox(height: 12),
+            _previewPanel(theme, cs, (previewBg, previewFg)),
+          ],
+        ),
       ),
     );
   }

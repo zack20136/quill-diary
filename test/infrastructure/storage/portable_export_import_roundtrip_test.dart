@@ -239,6 +239,26 @@ void main() {
       expect(html, contains('data:image/png;base64,'));
       expect(html, contains('data:image/webp;base64,'));
 
+      final bundle = await exportIo.writeSelectedHtmlBundle(
+        session: setup.session,
+        entryIds: entries.map((e) => e.id).toSet(),
+        target: Directory(p.join(tempRoot.path, 'bundle')),
+        options: const HtmlExportOptions(externalAssets: true),
+      );
+      final separateHtml = await File(p.join(bundle.path, 'diary.html'))
+          .readAsString();
+      expect(separateHtml, contains('src="assets/image-1.png"'));
+      expect(separateHtml, contains('src="assets/image-2.webp"'));
+      expect(
+        await File(p.join(bundle.path, 'assets', 'image-1.png')).readAsBytes(),
+        _pngBytes,
+      );
+      expect(
+        await File(p.join(bundle.path, 'assets', 'image-2.webp')).readAsBytes(),
+        _webpBytes,
+      );
+      await bundle.delete(recursive: true);
+
       for (final entry in entries) {
         await harness.repository.deleteEntry(setup.session, entry.id);
       }

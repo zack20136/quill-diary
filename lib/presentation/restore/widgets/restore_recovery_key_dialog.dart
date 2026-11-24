@@ -1,8 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/settings/restore_precheck_presenter.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
 
@@ -40,12 +41,6 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
   String? _errorText;
 
   @override
-  void initState() {
-    super.initState();
-    _errorText = widget.validationError;
-  }
-
-  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -68,40 +63,38 @@ class _RestoreRecoveryKeyDialogState extends State<_RestoreRecoveryKeyDialog> {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
     final String hint = widget.precheck.backupRecoveryHint;
+    final bool olderKey = widget.precheck.recoveryKeyRotatedSinceBackup;
 
     return AppDialogShell(
-      title: l10n.settingsRestoreDialogRecoveryKeyTitle,
+      icon: Icon(
+        olderKey ? Icons.history_rounded : Icons.key_outlined,
+        color: theme.colorScheme.primary,
+      ),
+      title: olderKey
+          ? l10n.settingsRestoreDialogOlderKeyTitle
+          : l10n.settingsRestoreDialogRecoveryKeyTitle,
       showClose: false,
       content: AppScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
+          spacing: 14,
           children: <Widget>[
-            Text(
-              restoreRecoveryKeyDialogSubtitle(l10n, widget.precheck),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.45,
+            if (widget.validationError case final String error)
+              AppFeedbackBanner(
+                message: error,
+                tone: AppFeedbackTone.error,
+                outlined: true,
               ),
+            AppDialogSummary(
+              icon: Icons.key_outlined,
+              title: olderKey
+                  ? l10n.settingsRestoreDialogSubtitleRotatedBackup
+                  : l10n.settingsRestoreDialogKeyInstructions,
+              details: [
+                if (hint.isNotEmpty) l10n.settingsRestoreKeyEnding(hint),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.settingsRestoreDialogRecoveryKeyVerifyNote,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (hint.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              Text(
-                '${l10n.settingsRecoveryKeyHintPrefix}$hint',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
             RecoveryKeyTextField(
               controller: _controller,
               autofocus: true,

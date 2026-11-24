@@ -12,7 +12,7 @@ class PinnedEntriesStore {
 
   final VaultPathStrategy _pathStrategy;
 
-  Future<Set<EntryId>> readIds() async {
+  Future<Set<EntryId>> readIds({bool strict = false}) async {
     final File file = File(await _pathStrategy.pinnedEntriesPath());
     if (!file.existsSync()) {
       return <EntryId>{};
@@ -21,8 +21,17 @@ class PinnedEntriesStore {
     try {
       decoded = jsonDecode(await file.readAsString());
     } on Object {
+      if (strict) rethrow;
       // 保留損毀檔案供手動復原；讀取失敗時降級為空集合。
       return <EntryId>{};
+    }
+    if (strict &&
+        (decoded is! Map ||
+            decoded['entry_ids'] is! List ||
+            (decoded['entry_ids'] as List).any(
+              (id) => id is! String || id.trim().isEmpty,
+            ))) {
+      throw const FormatException('釘選資料格式不正確。');
     }
     return _parseEntryIds(decoded);
   }

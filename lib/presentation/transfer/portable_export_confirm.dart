@@ -3,6 +3,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/transfer/portable_transfer_dialogs.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 
 const int _kHtmlExportLargeImageBytes = 50 * 1024 * 1024;
@@ -46,7 +47,7 @@ Future<MarkdownExportConfirmResult> confirmMarkdownExport({
   final AppLocalizations l10n = context.l10n;
   final bool confirmed = await showPortableTransferConfirmDialog(
     context: context,
-    title: l10n.portableExportConfirmTitle,
+    title: l10n.portableExportMarkdownTitle,
     confirmLabel: l10n.portableExportConfirmAction,
     canConfirm: () => selectedEntryIds.isNotEmpty,
     body: (BuildContext context, StateSetter setState) {
@@ -54,13 +55,15 @@ Future<MarkdownExportConfirmResult> confirmMarkdownExport({
         selectedEntryIds,
       );
       return PortableTransferConfirmBody(
-        summaryLines: <String>[
-          l10n.portableExportMarkdownFormatLabel,
+        summaryIcon: Icons.description_outlined,
+        summaryTitle: l10n.portableExportMarkdownFormatLabel,
+        summaryDetails: <String>[
           l10n.portableExportEntryCount(selectedEstimate.entryCount),
           l10n.portableExportAttachmentCount(selectedEstimate.attachmentCount),
           if (selectedEstimate.firstDate != null &&
               selectedEstimate.lastDate != null)
-            l10n.portableExportDateRange(
+            _exportDates(
+              l10n,
               selectedEstimate.firstDate!.value,
               selectedEstimate.lastDate!.value,
             ),
@@ -88,7 +91,7 @@ Future<MarkdownExportConfirmResult> confirmMarkdownExport({
                     .toList(growable: false),
                 initiallySelected: selectedEntryIds,
               );
-          if (next == null) return;
+          if (next == null || !context.mounted) return;
           setState(() {
             selectedEntryIds
               ..clear()
@@ -97,7 +100,7 @@ Future<MarkdownExportConfirmResult> confirmMarkdownExport({
         },
         options: <Widget>[
           SwitchListTile(
-            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.person_off_outlined),
             value: hidePersonNames,
             onChanged: (bool value) {
               setState(() => hidePersonNames = value);
@@ -106,7 +109,11 @@ Future<MarkdownExportConfirmResult> confirmMarkdownExport({
             subtitle: Text(l10n.portableExportHidePersonNamesHint),
           ),
         ],
-        footer: l10n.portableExportPlaintextWarning,
+        notice: AppFeedbackBanner(
+          icon: Icons.lock_open_outlined,
+          message: l10n.portableExportPlaintextWarning,
+          tone: AppFeedbackTone.warning,
+        ),
       );
     },
   );
@@ -128,6 +135,7 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
 }) async {
   final bool useEnglishPersonLabels = isEnglishL10n(context.l10n);
   var includeImages = true;
+  var externalAssets = false;
   var hidePersonNames = false;
   final Set<EntryId> selectedEntryIds = estimate.entries
       .map((HtmlExportEntrySummary e) => e.id)
@@ -136,22 +144,29 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
   final AppLocalizations l10n = context.l10n;
   final bool confirmed = await showPortableTransferConfirmDialog(
     context: context,
-    title: l10n.portableExportConfirmTitle,
+    title: l10n.portableExportHtmlTitle,
     confirmLabel: l10n.portableExportConfirmAction,
     canConfirm: () => selectedEntryIds.isNotEmpty,
     body: (BuildContext context, StateSetter setState) {
       final HtmlExportEstimate selectedEstimate = estimate.forSelected(
         selectedEntryIds,
       );
+      final bool canExportAssets =
+          includeImages && selectedEstimate.imageCount > 0;
       final int exportBytes = selectedEstimate.estimatedExportBytes(
         includeImages: includeImages,
+        externalAssets: externalAssets,
       );
       final bool largeImages =
           includeImages &&
+          !externalAssets &&
           selectedEstimate.exceedsImageBytes(_kHtmlExportLargeImageBytes);
       return PortableTransferConfirmBody(
-        summaryLines: <String>[
-          l10n.portableExportHtmlFormatLabel,
+        summaryIcon: Icons.code_rounded,
+        summaryTitle: externalAssets
+            ? l10n.portableExportHtmlAssetsLabel
+            : l10n.portableExportHtmlFormatLabel,
+        summaryDetails: <String>[
           if (scopeLabel != null && scopeLabel.isNotEmpty)
             l10n.portableExportScopeLabel(scopeLabel),
           l10n.portableExportEntryCount(selectedEstimate.entryCount),
@@ -159,7 +174,8 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
             l10n.portableExportImageCount(selectedEstimate.imageCount),
           if (selectedEstimate.firstDate != null &&
               selectedEstimate.lastDate != null)
-            l10n.portableExportDateRange(
+            _exportDates(
+              l10n,
               selectedEstimate.firstDate!.value,
               selectedEstimate.lastDate!.value,
             ),
@@ -185,24 +201,43 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
                     .toList(growable: false),
                 initiallySelected: selectedEntryIds,
               );
-          if (next == null) return;
+          if (next == null || !context.mounted) return;
           setState(() {
             selectedEntryIds
               ..clear()
               ..addAll(next);
+            if (estimate.forSelected(next).imageCount == 0) {
+              externalAssets = false;
+            }
           });
         },
         options: <Widget>[
           SwitchListTile(
-            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.image_outlined),
             value: includeImages,
             onChanged: (bool value) {
-              setState(() => includeImages = value);
+              setState(() {
+                includeImages = value;
+                if (!value) externalAssets = false;
+              });
             },
             title: Text(l10n.portableExportIncludeImagesLabel),
           ),
           SwitchListTile(
-            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.folder_outlined),
+            value: externalAssets,
+            onChanged: canExportAssets
+                ? (bool value) => setState(() => externalAssets = value)
+                : null,
+            title: Text(l10n.portableExportHtmlAssetsLabel),
+            subtitle: Text(
+              canExportAssets
+                  ? l10n.portableExportHtmlAssetsHint
+                  : l10n.portableExportHtmlAssetsUnavailableHint,
+            ),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.person_off_outlined),
             value: hidePersonNames,
             onChanged: (bool value) {
               setState(() => hidePersonNames = value);
@@ -211,26 +246,23 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
             subtitle: Text(l10n.portableExportHidePersonNamesHint),
           ),
         ],
-        notice: largeImages
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const SizedBox(height: 4),
-                  Text(l10n.homeHtmlExportLargeTitle),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.homeHtmlExportImageSize(
-                      DisplayFormat.formatBytesForDisplay(
-                        selectedEstimate.imageBytes,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(l10n.homeHtmlExportEmbeddedHint),
-                ],
-              )
-            : null,
-        footer: l10n.portableExportPlaintextWarning,
+        notice: Column(
+          spacing: 8,
+          children: <Widget>[
+            if (largeImages)
+              AppFeedbackBanner(
+                icon: Icons.image_outlined,
+                message:
+                    '${l10n.homeHtmlExportImageSize(DisplayFormat.formatBytesForDisplay(selectedEstimate.imageBytes))}\n${l10n.homeHtmlExportEmbeddedHint}',
+                tone: AppFeedbackTone.warning,
+              ),
+            AppFeedbackBanner(
+              icon: Icons.lock_open_outlined,
+              message: l10n.portableExportPlaintextWarning,
+              tone: AppFeedbackTone.warning,
+            ),
+          ],
+        ),
       );
     },
   );
@@ -238,6 +270,7 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
   return HtmlExportConfirmResult(
     confirmed: confirmed,
     options: HtmlExportOptions(
+      externalAssets: externalAssets,
       includeImages: includeImages,
       hidePersonNames: hidePersonNames,
       useEnglishPersonLabels: useEnglishPersonLabels,
@@ -250,3 +283,8 @@ Future<HtmlExportConfirmResult> confirmHtmlExport({
     selectedEntryIds: Set<EntryId>.from(selectedEntryIds),
   );
 }
+
+String _exportDates(AppLocalizations l10n, String start, String end) =>
+    start == end
+    ? l10n.portableExportDate(start)
+    : l10n.portableExportDateRange(start, end);

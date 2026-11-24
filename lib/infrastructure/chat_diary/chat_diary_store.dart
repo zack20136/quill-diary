@@ -626,9 +626,6 @@ class ChatDiaryStore {
   }
 
   Future<void> _deleteDraftFiles(String id) async {
-    await editorDraftStore.clearMaterializedPendingFiles(
-      ChatDiarySession.draftKeyFor(id),
-    );
     final directory = await draftDirectory(id);
     if (directory.existsSync()) await directory.delete(recursive: true);
   }

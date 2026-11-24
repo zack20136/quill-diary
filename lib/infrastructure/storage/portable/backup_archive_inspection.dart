@@ -23,6 +23,8 @@ enum VaultBackupIssue {
   noEncryptedSample,
   recoveryInfoMissing,
   missingVaultPayload,
+  invalidBackupIntegrity,
+  invalidBackupContent,
   extractionLimitExceeded,
 }
 

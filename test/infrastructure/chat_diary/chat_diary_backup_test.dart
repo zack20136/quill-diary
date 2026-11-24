@@ -338,10 +338,9 @@ void main() {
         'image.png',
         setup.session,
       );
-      final previewPath = await draftStore.materializePendingFileForPreview(
+      final pendingPath = await draftStore.pendingAbsolutePath(
         draftKey,
         relativePath,
-        setup.session,
       );
       final directory = await store.draftDirectory(chat.id);
       for (final suffix in ['.previous', '.tmp']) {
@@ -359,7 +358,7 @@ void main() {
         await store.delete(chat.id, session: setup.session);
       }
       expect(directory.existsSync(), isFalse);
-      expect(File(previewPath).parent.existsSync(), isFalse);
+      expect(File(pendingPath).existsSync(), isFalse);
       expect(await store.load(chat.id, setup.session), isNull);
       expect(
         (await store.load(retainedChat.id, setup.session))!.composerText,
@@ -843,13 +842,14 @@ void main() {
       (await draftStore.read(key, rotated.session))!.markdownBody,
       '還未存成日記的草稿',
     );
-    final preview = await draftStore.materializePendingFileForPreview(
-      key,
-      relative,
-      rotated.session,
+    final stagedPath = await draftStore.pendingAbsolutePath(key, relative);
+    expect(
+      await draftStore.readPendingAttachment((
+        draftKey: key,
+        path: stagedPath,
+      ), rotated.session),
+      testAiPng,
     );
-    expect(await File(preview).readAsBytes(), testAiPng);
-    await draftStore.clearMaterializedPendingFiles(key);
     final path = await harness.pathStrategy.editorDraftDirectory(
       ChatDiarySession.draftKeyFor(chat.id),
     );

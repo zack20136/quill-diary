@@ -114,32 +114,26 @@ void main() {
     expect(find.text(testL10n.onboardingIntroPage1Title), findsOneWidget);
   });
 
-  testWidgets('窄螢幕上的中英文導覽翻到最後一頁時外框位置固定', (tester) async {
+  testWidgets('小螢幕放大字級時可翻完中英文導覽', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(352, 600);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.65;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final Finder surface = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byWidgetPredicate(
-        (widget) => widget is Material && widget.type == MaterialType.card,
-      ),
-    );
-    Rect? firstPage;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     for (final (locale, l10n) in [
       (appZhLocale, testL10n),
       (appEnLocale, testEnL10n),
     ]) {
       await openDialog(tester, locale: locale);
-      firstPage ??= tester.getRect(surface);
-      expect(tester.getRect(surface), firstPage);
       for (int page = 1; page < 5; page++) {
         await tester.tap(find.text(l10n.onboardingIntroNext));
         await tester.pumpAndSettle();
-        expect(tester.getRect(surface), firstPage);
       }
       await tester.tap(find.text(l10n.onboardingIntroGetStarted));
       await tester.pumpAndSettle();
+      expect(find.byType(AppDialogShell), findsNothing);
+      expect(tester.takeException(), isNull);
     }
   });
 

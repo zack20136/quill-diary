@@ -4,22 +4,15 @@ import 'package:path/path.dart' as p;
 
 import 'package:quill_diary/infrastructure/storage/media_store_export.dart';
 
-enum GalleryImageSource { encrypted, local }
-
 class GalleryImageItem {
-  const GalleryImageItem.encrypted({
+  const GalleryImageItem({
     required this.path,
     required this.fileName,
     required this.mimeType,
-  }) : source = GalleryImageSource.encrypted;
+    this.draftKey,
+  });
 
-  const GalleryImageItem.local({
-    required this.path,
-    required this.fileName,
-    required this.mimeType,
-  }) : source = GalleryImageSource.local;
-
-  final GalleryImageSource source;
+  final String? draftKey;
   final String path;
   final String fileName;
   final String mimeType;

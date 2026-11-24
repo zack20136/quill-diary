@@ -7,10 +7,10 @@ import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/persona/persona_store.dart';
-import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
+import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repair_file_operations.dart';
 import 'package:quill_diary/infrastructure/storage/vault_repository.dart';
 
@@ -32,6 +32,7 @@ class VaultTestHarness {
     RecordingDeviceKeyManager? deviceKeyManager,
     FakeAppLockService? appLockService,
     CryptoService? cryptoService,
+    IndexDatabaseManager Function(VaultPathStrategy)? createIndexManager,
     VaultRepairFileOperations repairFileOperations =
         const VaultRepairFileOperations(),
   }) async {
@@ -40,7 +41,8 @@ class VaultTestHarness {
     harness.pathStrategy = TestVaultPathStrategy(harness.tempDir);
     harness.deviceKeyManager = deviceKeyManager ?? RecordingDeviceKeyManager();
     harness.appLockService = appLockService ?? FakeAppLockService();
-    harness.indexDatabaseManager = IndexDatabaseManager(harness.pathStrategy);
+    harness.indexDatabaseManager =
+        (createIndexManager ?? IndexDatabaseManager.new)(harness.pathStrategy);
     harness.repository = VaultRepository(
       pathStrategy: harness.pathStrategy,
       frontMatterCodec: const FrontMatterCodec(),
@@ -63,11 +65,6 @@ class VaultTestHarness {
       backup: VaultBackupIo(
         pathStrategy: pathStrategy,
         repository: repository,
-        indexDatabaseManager: IndexDatabaseManager(pathStrategy),
-        editorDraftStore: EditorDraftStore(
-          pathStrategy: pathStrategy,
-          cryptoService: LocalCryptoService(),
-        ),
         personaBackupFiles: session == null
             ? null
             : () => PersonaStore(

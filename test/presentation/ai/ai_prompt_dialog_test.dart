@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 
 import '../../helpers/shared/widget_test_app.dart';
 
@@ -35,7 +34,6 @@ void main() {
               result = await showAiPromptDialog(
                 context,
                 title: (l) => l.chatDiaryGuidanceLabel,
-                help: (l) => l.chatDiaryGuidanceHelp,
                 defaultPrompt: _defaultPrompt,
                 fieldKey: _field,
                 customText: customText,
@@ -52,114 +50,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // 英文窄寬加大字級時還原預設與按鈕放不下同列，改為換行，只檢查還原在上、按鈕在下。
-  for (final (locale, width, scale, sameRow) in [
-    (appZhLocale, 520.0, 1.0, true),
-    (appEnLocale, 320.0, 2.0, false),
-  ]) {
-    testWidgets(
-      '${locale.languageCode} 提示詞還原與取消、套用同列（放不下時換行），還原狀態隨內容更新且預設不存覆寫',
-      (tester) async {
-        tester.view.physicalSize = Size(width, 1200);
-        tester.view.devicePixelRatio = 1;
-        tester.platformDispatcher.textScaleFactorTestValue = scale;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        addTearDown(tester.view.resetViewInsets);
-        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-        await open(tester, locale: locale);
-        final l = lookupAppLocalizations(locale);
-        final restore = find.widgetWithText(
-          TextButton,
-          l.aiPromptRestoreDefault,
-        );
-        final cancel = find.widgetWithText(TextButton, l.commonActionCancel);
-        final apply = find.widgetWithText(FilledButton, l.aiPromptApply);
-        if (sameRow) {
-          expect(
-            tester.getRect(restore).left,
-            closeTo(tester.getRect(find.byKey(_field)).left, 0.5),
-          );
-          expect(
-            tester.getRect(restore).right,
-            lessThanOrEqualTo(tester.getRect(cancel).left),
-          );
-          expect(
-            tester.getRect(restore).center.dy,
-            closeTo(tester.getRect(cancel).center.dy, 0.5),
-          );
-          expect(
-            tester.getRect(cancel).right,
-            lessThanOrEqualTo(tester.getRect(apply).left),
-          );
-          expect(
-            tester.getRect(apply).center.dy,
-            closeTo(tester.getRect(cancel).center.dy, 0.5),
-          );
-        } else {
-          expect(
-            tester.getRect(restore).bottom,
-            lessThanOrEqualTo(tester.getRect(cancel).top),
-          );
-        }
-        expect(tester.widget<TextButton>(restore).onPressed, isNull);
-
-        await tester.enterText(find.byKey(_field), '自訂內容');
-        await tester.pump();
-        expect(tester.widget<TextButton>(restore).onPressed, isNotNull);
-        await tester.tap(restore);
-        await tester.pumpAndSettle();
-        final language = locale == appEnLocale
-            ? AppLanguage.en
-            : AppLanguage.zh;
-        expect(
-          tester.widget<TextField>(find.byKey(_field)).controller!.text,
-          _defaultPrompt(language),
-        );
-        expect(tester.widget<TextButton>(restore).onPressed, isNull);
-
-        await tester.enterText(find.byKey(_field), '另一份內容');
-        await tester.enterText(find.byKey(_field), _defaultPrompt(language));
-        await tester.pump();
-        expect(tester.widget<TextButton>(restore).onPressed, isNull);
-        tester.view.viewInsets = const FakeViewPadding(bottom: 280);
-        await tester.showKeyboard(find.byKey(_field));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        await tester.tap(apply);
-        await tester.pumpAndSettle();
-        expect(completed, isTrue);
-        expect(result, isNotNull);
-        expect(result!.customText, isNull);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
-
-  testWidgets('長提示詞的輸入框填滿對話框，捲動後仍可編輯', (tester) async {
+  testWidgets('長提示詞可捲動，捲動後仍可編輯', (tester) async {
     final text = List.generate(80, (i) => '第 $i 段：保留可編輯的完整提示詞。').join('\n');
     await open(tester, customText: text);
     final Finder field = find.byKey(_field);
-    final double cardHeight = tester
-        .getSize(
-          find
-              .descendant(
-                of: find.byType(AlertDialog),
-                matching: find.byType(Material),
-              )
-              .first,
-        )
-        .height;
-    expect(tester.getSize(field).height, greaterThan(cardHeight * 0.5));
-    expect(find.byType(AppScrollbar), findsOneWidget);
-    expect(find.byKey(const ValueKey('app-scrollbar-thumb')), findsOneWidget);
     final Finder scrollable = find.descendant(
       of: field,
       matching: find.byType(Scrollable),
     );
     await tester.drag(scrollable, const Offset(0, -160));
     await tester.pumpAndSettle();
-    expect(tester.widget<TextField>(field).controller!.text, text);
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      greaterThan(0),
+    );
     await tester.enterText(field, '更新後仍可編輯');
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(field).controller!.text, '更新後仍可編輯');
@@ -180,6 +84,49 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, l.aiPromptApply));
     await tester.pumpAndSettle();
     expect(result!.customText, '  保留空白的自訂內容  ');
+  });
+
+  testWidgets('窄畫面鍵盤下可修正空白提示詞，還原預設後不存覆寫', (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await open(tester, locale: appEnLocale);
+    final l = lookupAppLocalizations(appEnLocale);
+    final field = find.byKey(_field);
+    final restore = find.widgetWithText(TextButton, l.aiPromptRestoreDefault);
+    expect(tester.widget<TextButton>(restore).onPressed, isNull);
+    await tester.enterText(field, ' ');
+    tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+    await tester.pumpAndSettle();
+    final apply = find.widgetWithText(FilledButton, l.aiPromptApply);
+    expect(
+      tester.getTopLeft(restore).dx,
+      lessThan(tester.getTopLeft(apply).dx),
+    );
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+    final error = find.text(l.aiPromptRequired);
+    expect(error.hitTestable(), findsOneWidget);
+    expect(tester.getRect(error).top, lessThan(tester.getRect(field).top));
+    await tester.enterText(field, '修正後的提示詞');
+    await tester.pumpAndSettle();
+    expect(error, findsNothing);
+    await tester.tap(restore);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(field).controller!.text,
+      _defaultPrompt(AppLanguage.en),
+    );
+    expect(tester.widget<TextButton>(restore).onPressed, isNull);
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+    expect(result, isNotNull);
+    expect(result!.customText, isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('唯讀提示詞只提供關閉，不提供還原與套用', (tester) async {

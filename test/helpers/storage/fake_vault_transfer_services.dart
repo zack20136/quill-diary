@@ -5,11 +5,8 @@ import 'package:quill_diary/application/transfer/vault_backup_service.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_key_identity.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
-import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/vault_backup_io.dart';
 import 'package:quill_diary/infrastructure/storage/restore_precheck.dart';
@@ -37,11 +34,6 @@ class FakeVaultBackupService extends VaultBackupService {
          backupIo: VaultBackupIo(
            pathStrategy: DummyVaultPathStrategy(),
            repository: FakeSessionVaultRepository(),
-           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-           editorDraftStore: EditorDraftStore(
-             pathStrategy: DummyVaultPathStrategy(),
-             cryptoService: LocalCryptoService(),
-           ),
          ),
          driveBackupService: _UnusedDriveBackupService(),
          externalDirectoryStore: ExternalDirectoryStore(
@@ -137,11 +129,6 @@ class FakeVaultRestoreService extends VaultRestoreService {
          backupIo: VaultBackupIo(
            pathStrategy: DummyVaultPathStrategy(),
            repository: FakeSessionVaultRepository(),
-           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-           editorDraftStore: EditorDraftStore(
-             pathStrategy: DummyVaultPathStrategy(),
-             cryptoService: LocalCryptoService(),
-           ),
          ),
          vaultRepository: FakeSessionVaultRepository(),
          backupService: FakeVaultBackupService(),

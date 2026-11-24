@@ -322,10 +322,12 @@ void main() {
       expect(preview.turns.single.text, isNot(contains('私人')));
       expect((await controller.previewRequest(generate: true))!.turns, isEmpty);
       await controller.sendMessage();
-      expect(scope.client.calls.single.prompt, preview.systemPrompt);
+      final chatRequest = scope.client.calls.single.request;
+      final chatPreview = preview.effective();
+      expect(chatRequest.systemPrompt, chatPreview.systemPrompt);
       expect(
-        scope.client.calls.single.messages.single.text,
-        preview.turns.single.text,
+        chatRequest.messages.map((message) => (message.isUser, message.text)),
+        chatPreview.turns.map((turn) => (turn.isUser, turn.text)),
       );
       final token = privacyTokenPattern.firstMatch(
         preview.turns.single.text,
@@ -337,11 +339,16 @@ void main() {
       final generation = (await controller.previewRequest(generate: true))!;
       expect(generation.turns.any((t) => t.pending), isFalse);
       await controller.generateDraft();
-      expect(scope.client.calls.last.prompt, generation.systemPrompt);
+      final generationRequest = scope.client.calls.last.request;
+      final generationPreview = generation.effective();
+      expect(generationRequest.systemPrompt, generationPreview.systemPrompt);
       expect(
-        scope.client.calls.last.messages.map((m) => m.text),
-        generation.turns.map((t) => t.text),
+        generationRequest.messages.map(
+          (message) => (message.isUser, message.text),
+        ),
+        generationPreview.turns.map((turn) => (turn.isUser, turn.text)),
       );
+      expect(generationPreview.turns.last.isUser, isFalse);
       expect(controller.draft!.restoredBody, contains('私人'));
       await controller.returnToChat();
       controller.updateComposer('再修順', []);

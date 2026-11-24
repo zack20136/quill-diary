@@ -1,18 +1,17 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/diary/diary_entry_providers.dart';
 import 'package:quill_diary/application/editor/editor_attachment_items.dart';
+import 'package:quill_diary/application/editor/editor_draft_providers.dart';
 import 'package:quill_diary/application/editor/editor_gallery_export.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
 
 class EditorPreviewGallery extends StatelessWidget {
   const EditorPreviewGallery({
@@ -129,10 +128,9 @@ class EditorPreviewGallery extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
-          child: localFileThumbnail(
-            attachment.sourcePath,
+          child: EditorDraftImage(
+            source: attachment.encryptedDraftSource,
             size: edge,
-            borderRadius: BorderRadius.circular(PageStyle.radiusThumb),
           ),
         ),
       ),
@@ -147,19 +145,52 @@ class EditorGalleryImagePane extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Color foreground = context.appColors.galleryForeground;
-    return switch (item.source) {
-      GalleryImageSource.encrypted => _EncryptedGalleryImage(path: item.path),
-      GalleryImageSource.local => Image.file(
-        File(item.path),
-        fit: BoxFit.contain,
-        errorBuilder: (
-          BuildContext context,
-          Object error,
-          StackTrace? stackTrace,
-        ) => Icon(Icons.broken_image_outlined, color: foreground, size: 56),
-      ),
-    };
+    final draftKey = item.draftKey;
+    return draftKey == null
+        ? _EncryptedGalleryImage(path: item.path)
+        : EditorDraftImage(source: (draftKey: draftKey, path: item.path));
+  }
+}
+
+class EditorDraftImage extends ConsumerWidget {
+  const EditorDraftImage({
+    super.key,
+    required this.source,
+    this.size,
+    this.borderRadius,
+  });
+
+  final ({String draftKey, String path})? source;
+  final double? size;
+  final BorderRadius? borderRadius;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final source = this.source;
+    final bytes = source == null
+        ? null
+        : ref.watch(editorDraftAttachmentBytesProvider(source)).asData?.value;
+    final size = this.size;
+    final radius = borderRadius ?? BorderRadius.circular(PageStyle.radiusThumb);
+    Widget fallback() => size == null
+        ? Center(child: Text(context.l10n.editorPreviewUnavailable))
+        : EntryCoverThumbnailPlaceholder(size: size, borderRadius: radius);
+    if (bytes == null || bytes.isEmpty) return fallback();
+
+    final image = Image.memory(
+      bytes,
+      width: size,
+      height: size,
+      fit: size == null ? BoxFit.contain : BoxFit.cover,
+      cacheWidth: size == null
+          ? null
+          : (size * MediaQuery.devicePixelRatioOf(context)).round().clamp(
+              64,
+              512,
+            ),
+      errorBuilder: (_, _, _) => fallback(),
+    );
+    return size == null ? image : ClipRRect(borderRadius: radius, child: image);
   }
 }
 

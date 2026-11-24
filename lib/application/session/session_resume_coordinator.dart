@@ -66,7 +66,6 @@ class SessionResumeCoordinator {
 
   void reset() {
     _inactivityWatchdog.disarm();
-    _activeSensitiveTasks = 0;
     _pendingResourceCleanup = false;
     _cancelResumeArmTimer();
     _startupPhase = SessionStartupPhase.bootstrapping;

@@ -74,6 +74,9 @@ class VaultBackupService {
                 partial.path,
                 onProgress: deliverProgress,
               );
+              if (await sha256File(partial) != await sha256File(stagingZip)) {
+                throw FileSystemException('本機備份副本校驗失敗', partial.path);
+              }
               if (destination.existsSync()) {
                 final stem = p.basenameWithoutExtension(deliveredFileName);
                 destination = File(
@@ -87,8 +90,7 @@ class VaultBackupService {
             } finally {
               await deleteFileIfExists(partial.path);
             }
-            final List<LocalBackupFile> backups = await _loadAppLocalBackups();
-            await _pruneExcessAppLocalBackupsFromSorted(backups);
+            await _pruneLocalBackups(destination);
             return destination.path;
           },
     );
@@ -119,7 +121,7 @@ class VaultBackupService {
             return deliverToExternalDirectory(
               dialogTitle: l10n.vaultTransferPickBackupDirectoryTitle,
               fileName: fileName,
-              sourceFile: stagingZip,
+              source: stagingZip,
               resolveInitialDirectory:
                   _externalDirectoryStore.resolveInitialDirectory,
               rememberDirectory: _externalDirectoryStore.rememberDirectory,
@@ -187,16 +189,10 @@ class VaultBackupService {
     );
   }
 
-  Future<List<LocalBackupFile>> listAppLocalBackups() async {
-    final List<LocalBackupFile> backups = await _loadAppLocalBackups();
-    await _pruneExcessAppLocalBackupsFromSorted(backups);
-    return backups;
-  }
-
   Future<void> deleteAppLocalBackup(LocalBackupFile backup) async {
     final File file = File(backup.path);
     await _ensureFileInsideLocalBackupsDirectory(file);
-    await _deleteIfExists(file);
+    if (await file.exists()) await file.delete();
   }
 
   Future<List<DriveBackupFile>> listDriveBackups() async {
@@ -224,7 +220,18 @@ class VaultBackupService {
     return _backupIo.inspectBackup(backupFile);
   }
 
-  Future<List<LocalBackupFile>> _loadAppLocalBackups() async {
+  Future<File> copyBackupForRestore(File source) async {
+    final copy = await _createBackupStagingFile();
+    try {
+      await copyFileToPath(source, copy.path);
+      return copy;
+    } on Object {
+      await deleteFileIfExists(copy.path);
+      rethrow;
+    }
+  }
+
+  Future<List<LocalBackupFile>> listAppLocalBackups() async {
     final Directory backupsDirectory = await _pathStrategy
         .localBackupsDirectory();
     if (!backupsDirectory.existsSync()) {
@@ -261,22 +268,22 @@ class VaultBackupService {
     return b.name.compareTo(a.name);
   }
 
-  Future<void> _pruneExcessAppLocalBackupsFromSorted(
-    List<LocalBackupFile> sortedNewestFirst,
-  ) async {
-    if (sortedNewestFirst.length <= VaultBackupPolicy.retainCount) {
-      return;
+  Future<void> _pruneLocalBackups(File delivered) async {
+    try {
+      final backups = await listAppLocalBackups();
+      final stale = backups
+          .where((backup) => !p.equals(backup.path, delivered.path))
+          .skip(VaultBackupPolicy.retainCount - 1);
+      for (final backup in stale) {
+        if (await FileSystemEntity.type(delivered.path, followLinks: false) !=
+            FileSystemEntityType.file) {
+          return;
+        }
+        await deleteAppLocalBackup(backup);
+      }
+    } on FileSystemException {
+      // 清理失敗不撤銷已交付的備份。
     }
-    final List<LocalBackupFile> stale = sortedNewestFirst.sublist(
-      VaultBackupPolicy.retainCount,
-    );
-    for (final LocalBackupFile backup in stale) {
-      await deleteAppLocalBackup(backup);
-    }
-    sortedNewestFirst.removeRange(
-      VaultBackupPolicy.retainCount,
-      sortedNewestFirst.length,
-    );
   }
 
   Future<void> _ensureFileInsideLocalBackupsDirectory(File file) async {
@@ -320,6 +327,10 @@ class VaultBackupService {
           message: inspect.issue.name,
         );
       }
+      final metadata = inspect.metadata;
+      final identity = metadata == null
+          ? null
+          : await RecoveryKeyIdentity.fromMetadata(metadata);
       final String? saved = await deliver(
         staging,
         resolvedFileName,
@@ -335,9 +346,7 @@ class VaultBackupService {
       return BackupPersistResult(
         status: BackupPersistStatus.success,
         savedPath: saved,
-        identity: inspect.metadata == null
-            ? null
-            : await RecoveryKeyIdentity.fromMetadata(inspect.metadata!),
+        identity: identity,
         purpose: purpose,
         message: '',
       );
@@ -354,11 +363,5 @@ class VaultBackupService {
         '${generateBackupId()}.${VaultBackupPolicy.fileExtension}',
       ),
     ).create(recursive: true, exclusive: true);
-  }
-
-  Future<void> _deleteIfExists(File file) async {
-    if (file.existsSync()) {
-      await file.delete();
-    }
   }
 }

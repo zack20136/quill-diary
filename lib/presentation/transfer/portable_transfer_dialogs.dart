@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
 class PortableEntryOption<T> {
@@ -38,42 +39,41 @@ Future<Set<T>?> showPortableEntrySelectionDialog<T>({
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 12,
                 children: <Widget>[
-                  Row(
+                  AppDialogSummary(
+                    icon: Icons.checklist_rounded,
+                    title: l10n.portableExportSelectEntriesSummary(
+                      draft.length,
+                      entries.length,
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 8,
                     children: <Widget>[
                       TextButton(
-                        onPressed: () {
-                          setState(() {
-                            draft
-                              ..clear()
-                              ..addAll(
-                                entries.map((PortableEntryOption<T> e) => e.id),
-                              );
-                          });
-                        },
+                        onPressed: draft.length == entries.length
+                            ? null
+                            : () => setState(() {
+                                draft
+                                  ..clear()
+                                  ..addAll(
+                                    entries.map(
+                                      (PortableEntryOption<T> e) => e.id,
+                                    ),
+                                  );
+                              }),
                         child: Text(l10n.homeSelectionSelectAll),
                       ),
                       TextButton(
-                        onPressed: () {
-                          setState(draft.clear);
-                        },
+                        onPressed: draft.isEmpty
+                            ? null
+                            : () => setState(draft.clear),
                         child: Text(l10n.homeSelectionDeselectAll),
-                      ),
-                      const Spacer(),
-                      Text(
-                        l10n.portableExportSelectEntriesSummary(
-                          draft.length,
-                          entries.length,
-                        ),
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Material(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(12),
+                  AppDialogSection(
                     child: ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -150,39 +150,15 @@ class PortableTransferEntryPickerTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final ColorScheme colors = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      l10n.portableExportSelectEntriesLabel,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      l10n.portableExportSelectEntriesSummary(
-                        selectedCount,
-                        totalCount,
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: colors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: colors.onSurface),
-            ],
-          ),
+    return AppDialogSection(
+      child: ListTile(
+        leading: Icon(Icons.checklist_rounded, color: colors.primary),
+        title: Text(l10n.portableExportSelectEntriesLabel),
+        subtitle: Text(
+          l10n.portableExportSelectEntriesSummary(selectedCount, totalCount),
         ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
       ),
     );
   }
@@ -191,54 +167,45 @@ class PortableTransferEntryPickerTile extends StatelessWidget {
 class PortableTransferConfirmBody extends StatelessWidget {
   const PortableTransferConfirmBody({
     super.key,
-    required this.summaryLines,
+    required this.summaryTitle,
+    required this.summaryIcon,
+    this.summaryDetails = const <String>[],
     required this.selectedCount,
     required this.totalCount,
     required this.onSelectEntries,
     this.options = const <Widget>[],
     this.notice,
-    this.footer,
   });
 
-  final List<String> summaryLines;
+  final String summaryTitle;
+  final List<String> summaryDetails;
   final int selectedCount;
   final int totalCount;
   final VoidCallback onSelectEntries;
+  final IconData summaryIcon;
   final List<Widget> options;
   final Widget? notice;
-  final String? footer;
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
       children: <Widget>[
-        PortableTransferSummaryCard(lines: summaryLines),
-        const SizedBox(height: 8),
+        AppDialogSummary(
+          title: summaryTitle,
+          details: summaryDetails,
+          icon: summaryIcon,
+        ),
         PortableTransferEntryPickerTile(
           selectedCount: selectedCount,
           totalCount: totalCount,
           onTap: onSelectEntries,
         ),
-        if (options.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 4),
-          Divider(
-            height: 1,
-            color: colors.outlineVariant.withValues(alpha: 0.45),
-          ),
-          ...options,
-        ],
+        if (options.isNotEmpty)
+          AppDialogSection(child: Column(children: options)),
         ?notice,
-        if (footer != null) ...<Widget>[
-          const SizedBox(height: 12),
-          Text(
-            footer!,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: colors.onSurfaceVariant),
-          ),
-        ],
       ],
     );
   }
@@ -279,34 +246,4 @@ Future<bool> showPortableTransferConfirmDialog({
     },
   );
   return confirmed == true;
-}
-
-class PortableTransferSummaryCard extends StatelessWidget {
-  const PortableTransferSummaryCard({super.key, required this.lines});
-
-  final List<String> lines;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            for (var index = 0; index < lines.length; index++) ...<Widget>[
-              if (index > 0) const SizedBox(height: 4),
-              Text(lines[index]),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }

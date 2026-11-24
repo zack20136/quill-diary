@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
@@ -11,8 +12,16 @@ import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
 import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
+enum TagCatalogFailure { io, format, authentication }
+
 class TagCatalogException implements Exception {
-  const TagCatalogException();
+  const TagCatalogException(this.kind, this.cause);
+
+  final TagCatalogFailure kind;
+  final Object cause;
+
+  @override
+  String toString() => 'TagCatalogException(${kind.name}): $cause';
 }
 
 /// 呼叫端在日記庫修改序列內操作，避免遷移與備份或輪替交錯。
@@ -139,15 +148,28 @@ class TagCatalogStore {
   Future<List<TagCatalogItem>> read(
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
-  ) async {
+  ) => _reportFailure(() async {
+    final file = File(await _pathStrategy.tagCatalogPath());
+    await _migrate(file, session, metadata);
+    return file.existsSync()
+        ? _decode(await _decrypt(file, session))
+        : const [];
+  });
+
+  Future<T> _reportFailure<T>(Future<T> Function() operation) async {
     try {
-      final file = File(await _pathStrategy.tagCatalogPath());
-      await _migrate(file, session, metadata);
-      return file.existsSync()
-          ? _decode(await _decrypt(file, session))
-          : const [];
-    } on Object {
-      throw const TagCatalogException();
+      return await operation();
+    } on Object catch (error, stack) {
+      final kind = switch (error) {
+        FileSystemException() => TagCatalogFailure.io,
+        FormatException() ||
+        TypeError() ||
+        ArgumentError() => TagCatalogFailure.format,
+        SecretBoxAuthenticationError() => TagCatalogFailure.authentication,
+        _ => null,
+      };
+      if (kind == null) rethrow;
+      Error.throwWithStackTrace(TagCatalogException(kind, error), stack);
     }
   }
 
@@ -165,7 +187,7 @@ class TagCatalogStore {
     UnlockedVaultSession session,
     RecoveryMetadata metadata,
   ) async {
-    try {
+    await _reportFailure(() async {
       final payload = _normalizeItems(items)
           .map((item) => item.toJson())
           .toList();
@@ -175,9 +197,7 @@ class TagCatalogStore {
         session,
         metadata,
       );
-    } on Object {
-      throw const TagCatalogException();
-    }
+    });
   }
 
   Future<Map<String, Uint8List>> preserveLegacyFiles(

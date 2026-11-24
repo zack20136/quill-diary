@@ -1,6 +1,5 @@
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
-import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 
 typedef ResolvedImportAttachments = ({
   List<PendingAttachment> attachments,
@@ -34,16 +33,4 @@ class ParsedImportEntry {
       entry.markdownBody.trim().isEmpty &&
       (entry.normalizedTitle == null || entry.normalizedTitle!.isEmpty) &&
       attachments.isEmpty;
-}
-
-class HtmlExportDocument {
-  const HtmlExportDocument({
-    required this.record,
-    required this.entry,
-    required this.attachments,
-  });
-
-  final DiaryEntrySummary record;
-  final DiaryEntry? entry;
-  final List<AssetAttachment> attachments;
 }

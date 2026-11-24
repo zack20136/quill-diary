@@ -7,9 +7,9 @@ import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/diary/widgets/entry_cover_thumbnail.dart';
+import 'package:quill_diary/presentation/editor/widgets/editor_preview_gallery.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
-import 'package:quill_diary/shared/presentation/widgets/local_file_thumbnail.dart';
 
 class EditorAttachmentStrip extends StatelessWidget {
   const EditorAttachmentStrip({
@@ -324,8 +324,8 @@ class EditorAttachmentStrip extends StatelessWidget {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: <Widget>[
-          localFileThumbnail(
-            attachment.sourcePath,
+          EditorDraftImage(
+            source: attachment.encryptedDraftSource,
             size: 64,
             borderRadius: BorderRadius.circular(PageStyle.radiusThumbSmall),
           ),

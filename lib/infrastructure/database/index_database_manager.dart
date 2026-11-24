@@ -33,16 +33,19 @@ class IndexDatabaseManager {
   Future<IndexDatabase> openForSession(
     UnlockedVaultSession session, {
     List<int>? interruptedRotationWrapKey,
+    bool allowRebuild = true,
   }) => _serialize(
     () => _openForSessionNow(
       session,
       interruptedRotationWrapKey: interruptedRotationWrapKey,
+      allowRebuild: allowRebuild,
     ),
   );
 
   Future<IndexDatabase> _openForSessionNow(
     UnlockedVaultSession session, {
     List<int>? interruptedRotationWrapKey,
+    required bool allowRebuild,
   }) async {
     final List<int> key = await _deriveKey(session);
     if (_database != null &&
@@ -57,7 +60,7 @@ class IndexDatabaseManager {
     try {
       return await _connectAndInitialize(session: session, keyBytes: key);
     } on Object catch (error) {
-      if (!isUnreadableEncryptedIndexError(error)) {
+      if (!allowRebuild || !isUnreadableEncryptedIndexError(error)) {
         rethrow;
       }
       if (interruptedRotationWrapKey != null) {

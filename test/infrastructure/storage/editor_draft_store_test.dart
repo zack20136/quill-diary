@@ -51,7 +51,6 @@ void main() {
   });
 
   tearDown(() async {
-    await store.clearAllMaterializedPendingFiles();
     if (rootDir.existsSync()) {
       await rootDir.delete(recursive: true);
     }
@@ -84,14 +83,15 @@ void main() {
     expect(draftKeys, contains('__new__'));
   });
 
-  test('暫存附件為加密檔，materialize 後可讀且清理會移除明文', () async {
+  test('暫存附件保留密文而讀取預覽不寫入明文檔', () async {
     const String plainText = 'hello encrypted pending';
     final File sourceFile = File(p.join(rootDir.path, 'picked.txt'));
     await sourceFile.writeAsString(plainText);
 
-    final String relativePath = await store.stagePendingFile(
+    final String relativePath = await store.stagePendingBytes(
       'entry-1',
-      sourceFile.path,
+      await sourceFile.readAsBytes(),
+      p.basename(sourceFile.path),
       session,
     );
     final String stagedPath = await store.pendingAbsolutePath(
@@ -106,30 +106,21 @@ void main() {
     final List<int> encBytes = await File(stagedPath).readAsBytes();
     expect(String.fromCharCodes(encBytes.take(4)), 'LDJ2');
 
-    final String previewPath = await store.materializePendingFileForPreview(
-      'entry-1',
-      relativePath,
-      session,
-    );
-    expect(File(previewPath).existsSync(), isTrue);
-    expect(await File(previewPath).readAsString(), plainText);
-
-    await store.clearMaterializedPendingFiles('entry-1');
-    expect(File(previewPath).existsSync(), isFalse);
+    final preview = await store.readPendingAttachment((
+      draftKey: 'entry-1',
+      path: stagedPath,
+    ), session);
+    expect(utf8.decode(preview), plainText);
   });
 
   test('暫存附件、寫入草稿後再刪除會移除檔案', () async {
     final File sourceFile = File(p.join(rootDir.path, 'picked.txt'));
     await sourceFile.writeAsString('hello');
 
-    final String relativePath = await store.stagePendingFile(
+    final String relativePath = await store.stagePendingBytes(
       'entry-1',
-      sourceFile.path,
-      session,
-    );
-    await store.materializePendingFileForPreview(
-      'entry-1',
-      relativePath,
+      await sourceFile.readAsBytes(),
+      p.basename(sourceFile.path),
       session,
     );
 
@@ -255,14 +246,16 @@ void main() {
       ..writeAsStringSync('a');
     final File sourceB = File(p.join(rootDir.path, 'b.txt'))
       ..writeAsStringSync('b');
-    final String relativeA = await store.stagePendingFile(
+    final String relativeA = await store.stagePendingBytes(
       'entry-prune',
-      sourceA.path,
+      await sourceA.readAsBytes(),
+      p.basename(sourceA.path),
       session,
     );
-    final String relativeB = await store.stagePendingFile(
+    final String relativeB = await store.stagePendingBytes(
       'entry-prune',
-      sourceB.path,
+      await sourceB.readAsBytes(),
+      p.basename(sourceB.path),
       session,
     );
 
@@ -299,21 +292,6 @@ void main() {
 
     expect(File(keptPath).existsSync(), isTrue);
     expect(File(prunedPath).existsSync(), isFalse);
-  });
-
-  test('stagePendingFile 空路徑或不存在來源會拋錯', () async {
-    await expectLater(
-      store.stagePendingFile('entry-1', '   ', session),
-      throwsA(isA<ArgumentError>()),
-    );
-    await expectLater(
-      store.stagePendingFile(
-        'entry-1',
-        p.join(rootDir.path, 'missing.txt'),
-        session,
-      ),
-      throwsA(isA<FileSystemException>()),
-    );
   });
 }
 

@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/attachment/asset_attachment.dart';
 import 'package:quill_diary/domain/diary/diary_entry.dart';
 import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
@@ -33,8 +34,10 @@ import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/security/keystore_unlock_policy.dart';
 import 'package:quill_diary/infrastructure/security/unlock_mode_policy.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
+import 'package:quill_diary/infrastructure/storage/people_store.dart';
 import 'package:quill_diary/infrastructure/storage/pinned_entries_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
+import 'package:quill_diary/infrastructure/storage/portable/vault_restore_transaction.dart';
 import 'package:quill_diary/infrastructure/storage/recovery_rotation_record.dart';
 import 'package:quill_diary/infrastructure/storage/shared/media_type_utils.dart';
 import 'package:quill_diary/infrastructure/storage/shared/vault_file_ops.dart';
@@ -137,6 +140,8 @@ class VaultRepository {
   UnlockedVaultSession get _requireTagCatalogSession =>
       _tagCatalogSession ?? (throw StateError('標籤目錄需要已解鎖的日記庫'));
 
+  UnlockedVaultSession? get unlockedSessionForBackup => _tagCatalogSession;
+
   Future<List<TagCatalogItem>> _readTagCatalog() async {
     try {
       final items = await _tagCatalog.read(
@@ -187,10 +192,13 @@ class VaultRepository {
   PeopleAnalyticsDebugMetrics get peopleAnalyticsDebugMetrics =>
       _people.peopleAnalyticsDebugMetrics;
 
-  Future<void> initialize() async {
+  Future<void> initialize() => runVaultMutation(() async {
+    await (await VaultRestoreTransaction.forPaths(_pathStrategy)).recover();
     await _pathStrategy.ensureBaseDirectories();
-    _cachedRecoveryMetadata = await readRecoveryMetadata();
-  }
+    await cleanupAbandonedWorkFiles(_pathStrategy);
+    _cachedRecoveryMetadata = null;
+    await readRecoveryMetadata();
+  });
 
   Future<bool> hasTrustedDeviceAccess() async {
     final RecoveryMetadata? metadata = await readRecoveryMetadata();
@@ -666,31 +674,6 @@ class VaultRepository {
     }
   }
 
-  /// 還原前驗證復原金鑰能否解密備份內的加密檔（不寫入本機日記庫）。
-  Future<void> verifyRecoveryKeyAgainstBackupBytes({
-    required RecoveryMetadata metadata,
-    required String recoveryKey,
-    required List<int> encryptedDocumentBytes,
-  }) async {
-    final List<int> recoveryWrapKey = await _cryptoService
-        .deriveRecoveryWrapKey(recoveryKey: recoveryKey, kdf: metadata.kdf);
-    final ParsedEncryptedDocument parsed = _cryptoService.parseFileBytes(
-      encryptedDocumentBytes,
-    );
-    try {
-      await _cryptoService.decryptBytes(
-        headerBytes: parsed.headerBytes,
-        ciphertextBytes: parsed.ciphertextBytes,
-        context: DecryptionContext.recovery(
-          recoveryWrapKey: recoveryWrapKey,
-          vaultId: metadata.vaultId,
-        ),
-      );
-    } on SecretBoxAuthenticationError {
-      throw const VaultBackupException(VaultBackupIssue.recoveryKeyMismatch);
-    }
-  }
-
   Future<UnlockedVaultSession> unlockWithRecoveryKey(String recoveryKey) async {
     RecoveryMetadata metadata =
         await readRecoveryMetadata() ??
@@ -1114,7 +1097,7 @@ class VaultRepository {
   Future<void> _persistTagCatalogToVault(List<TagCatalogItem> catalog) =>
       runVaultMutation(() => _writeTagCatalogWithinMutation(catalog));
 
-  Future<void> _applyTagCatalogFromVaultToIndex() async {
+  Future<void> _applyTagCatalogFromVaultToIndex({bool strict = false}) async {
     try {
       await _tagCatalog.applyToIndex(
         _requireOpenIndex(),
@@ -1124,6 +1107,7 @@ class VaultRepository {
       tagCatalogNeedsRetry.value = false;
     } on TagCatalogException {
       tagCatalogNeedsRetry.value = true;
+      if (strict) rethrow;
     }
   }
 
@@ -1787,20 +1771,9 @@ class VaultRepository {
     final source = attachment.encryptedDraftSource;
     if (source == null) return File(attachment.sourcePath!).readAsBytes();
 
-    final parsed = _cryptoService.parseFileBytes(
-      await File(source.path).readAsBytes(),
-    );
-    if (parsed.header.vaultId != context.vaultId ||
-        parsed.header.fileId !=
-            draftAttachmentDocumentId(
-              source.draftKey,
-              p.basename(source.path),
-            )) {
-      throw const FormatException('草稿附件身分不符。');
-    }
-    return _cryptoService.decryptBytes(
-      headerBytes: parsed.headerBytes,
-      ciphertextBytes: parsed.ciphertextBytes,
+    return readEncryptedDraftAttachment(
+      crypto: _cryptoService,
+      source: source,
       context: context,
     );
   }
@@ -2389,9 +2362,157 @@ class VaultRepository {
   Future<void> closeUnlockedResources() async {
     // 鎖定時的最後一次暫存仍需要索引，先完成已排入的寫入再關閉。
     await _mutationTail;
+    await _closeResources();
+  }
+
+  Future<void> _closeResources() async {
     _tagCatalogSession = null;
     await _people.closeUnlockedResources();
     await _indexDatabaseManager.close();
+  }
+
+  /// 呼叫端持有日記庫的寫入權，直到新庫可用或回復舊庫為止。
+  Future<void> switchToRestoredVault(
+    VaultRestoreTransaction transaction,
+    UnlockedVaultSession session,
+  ) async {
+    final oldSession = _tagCatalogSession;
+    final oldTagCatalogNeedsRetry = tagCatalogNeedsRetry.value;
+    try {
+      try {
+        await _closeResources();
+      } on Object {
+        await transaction.recover();
+        rethrow;
+      }
+      await transaction.commit(
+        openRestoredVault: () async {
+          _cachedRecoveryMetadata = null;
+          await _prepareIndex(session, restoring: true);
+        },
+        closeRestoredVault: _closeResources,
+      );
+    } on Object {
+      _cachedRecoveryMetadata = null;
+      tagCatalogNeedsRetry.value = oldTagCatalogNeedsRetry;
+      if (oldSession != null && !await transaction.hasPendingWork()) {
+        await _openIndexForSession(oldSession, allowRebuild: false);
+      }
+      rethrow;
+    }
+  }
+
+  Future<UnlockedVaultSession> prepareRestoredVault({
+    required Directory workingRoot,
+    required RecoveryMetadata metadata,
+    required UnlockedVaultSession session,
+    String? recoveryKey,
+  }) async {
+    final paths = _RestoredVaultPaths(workingRoot);
+    final index = IndexDatabaseManager(paths);
+    final candidate = VaultRepository(
+      pathStrategy: paths,
+      frontMatterCodec: _frontMatterCodec,
+      cryptoService: _cryptoService,
+      indexDatabaseManager: index,
+      deviceKeyManager: const UnsupportedDeviceKeyManager(),
+      appLockService: const UnsupportedAppLockService(),
+    );
+    try {
+      await paths.ensureBaseDirectories();
+      final resolved = await candidate._recoverInterruptedRecoveryKeyRotation(
+        metadata: metadata,
+        recoveryWrapKey: requireRecoveryWrapKey(session),
+        suppliedRecoveryKey: recoveryKey,
+      );
+      final prepared = session.copyWith(
+        recoveryWrapKey: resolved.recoveryWrapKey,
+        trustedDevice:
+            session.trustedDevice &&
+            metadata.hasSameRecoveryGenerationAs(resolved.metadata),
+      );
+      await candidate._validateRestoredCatalogs(prepared, resolved.metadata);
+      await candidate._openIndexForSession(prepared);
+      final report = await candidate._repair.inspectVaultWithReport(prepared);
+      if (report.findings.any(
+        (finding) => finding.kind != VaultRepairIssueKind.unverifiedOrphanAsset,
+      )) {
+        throw const VaultBackupException(VaultBackupIssue.invalidBackupContent);
+      }
+      await candidate._finalizeRecoveryRotationPending(resolved);
+      final oldRoot = (await paths.vaultRootDirectory()).path + p.separator;
+      final liveRoot =
+          (await _pathStrategy.vaultRootDirectory()).path + p.separator;
+      await index.requireOpen().relocateVaultPaths(oldRoot, liveRoot);
+      return prepared;
+    } finally {
+      await candidate.closeUnlockedResources();
+    }
+  }
+
+  Future<void> _validateRestoredCatalogs(
+    UnlockedVaultSession session,
+    RecoveryMetadata metadata,
+  ) async {
+    final manifest = File(await _pathStrategy.manifestPath());
+    if (await manifest.exists()) {
+      final data = await readVaultJson(
+        manifest,
+        _cryptoService,
+        session,
+        identity: 'manifest',
+      );
+      if (data['vault_id'] != metadata.vaultId) {
+        throw const VaultBackupException(VaultBackupIssue.invalidBackupContent);
+      }
+    } else {
+      await _verifyRecoveryKey(metadata, requireRecoveryWrapKey(session));
+    }
+    final root = await _pathStrategy.vaultRootDirectory();
+    await _tagCatalog.read(session, metadata);
+    await PinnedEntriesStore(_pathStrategy).readIds(strict: true);
+    final people = File(await _pathStrategy.peopleCatalogPath());
+    if (await people.exists()) {
+      await PeopleStore(
+        pathStrategy: _pathStrategy,
+        cryptoService: _cryptoService,
+      ).read(session);
+    }
+    final ai = File(await _pathStrategy.aiSettingsPath());
+    if (await ai.exists()) {
+      AiStoredSettings.fromJson(
+        await readVaultJson(
+          ai,
+          _cryptoService,
+          session,
+          identity: 'ai_settings',
+        ),
+      );
+    }
+    final personas = Directory(p.join(root.path, 'personas'));
+    if (!await personas.exists()) return;
+    await for (final person in personas.list(followLinks: false)) {
+      if (person is! Directory) continue;
+      final state = File(p.join(person.path, 'state.json.enc'));
+      if (await state.exists()) {
+        final personId = p.basename(person.path);
+        final data = await readVaultJson(
+          state,
+          _cryptoService,
+          session,
+          identity: personaStateIdentity(personId),
+        );
+        final record = PersonaRecord.fromJson(data);
+        if (record.personId != personId ||
+            record.vaultId != session.vaultId ||
+            !record.available ||
+            record.draft != null) {
+          throw const VaultBackupException(
+            VaultBackupIssue.invalidBackupContent,
+          );
+        }
+      }
+    }
   }
 
   Future<void> clearTrustedDeviceAccess() async {
@@ -2400,6 +2521,33 @@ class VaultRepository {
       return;
     }
     await _deviceKeyManager.clearTrustedKey(metadata.vaultId);
+  }
+
+  Future<UnlockedVaultSession?> trustedSessionForBackup(
+    RecoveryMetadata backup,
+  ) async {
+    final local = await readRecoveryMetadata();
+    if (local?.hasSameRecoveryGenerationAs(backup) != true) return null;
+    final active = _tagCatalogSession;
+    if (active?.canUseRecovery == true && active!.vaultId == backup.vaultId) {
+      return active;
+    }
+    final record = await _deviceKeyManager.readWrappedRecoveryKey(
+      backup.vaultId,
+    );
+    if (record == null) return null;
+    final wrapKey = await _deviceKeyManager.unwrapWithDeviceKey(
+      vaultId: backup.vaultId,
+      slotId: record.slotId,
+      nonceBase64: record.nonceBase64,
+      ciphertextBase64: record.ciphertextBase64,
+    );
+    return UnlockedVaultSession(
+      vaultId: backup.vaultId,
+      trustedDevice: true,
+      recoveryWrapKey: wrapKey,
+      deviceSlotId: record.slotId,
+    );
   }
 
   /// 目前 session 的 Keystore 保護是否與解鎖模式偏好一致。
@@ -2516,36 +2664,41 @@ class VaultRepository {
 
   /// 解鎖後準備搜尋索引，必要時重建並同步標籤設定。
   ///
-  /// schema 正常時，把索引路徑與 `entries/**/*.md.enc` 對一下，不一致就從正式日記庫重建。
-  /// 重建後仍列不進索引的檔只記住簽名，檔案沒變就不重掃。
-  /// [reconcileEntryFiles] 為 false 時略過對帳，供還原流程使用（緊接著會全量重建）。
-  /// 人物：只確保 analytics 表存在，不解密名冊、不背景全量 rebuild。
-  Future<void> ensureIndexReady(
+  Future<void> ensureIndexReady(UnlockedVaultSession session) =>
+      runVaultMutation(() => _prepareIndex(session));
+
+  Future<void> _prepareIndex(
     UnlockedVaultSession session, {
-    bool reconcileEntryFiles = true,
+    bool restoring = false,
   }) async {
-    await _openIndexForSession(session);
-    await runVaultMutation(() async {
-      try {
-        await _readTagCatalog();
-      } on TagCatalogException {
-        // 標籤錯誤由設定頁重試，正文與索引仍繼續準備。
+    if (restoring &&
+        !await File(await _pathStrategy.indexDatabasePath()).exists()) {
+      throw const VaultBackupException(VaultBackupIssue.invalidBackupContent);
+    }
+    await _openIndexForSession(session, allowRebuild: !restoring);
+    try {
+      await _readTagCatalog();
+    } on TagCatalogException {
+      if (restoring) rethrow;
+    }
+    final index = _requireOpenIndex();
+    if (!await index.hasExpectedIndexSchema()) {
+      if (restoring) {
+        throw const VaultBackupException(VaultBackupIssue.invalidBackupContent);
       }
-    });
-    if (!await _requireOpenIndex().hasExpectedIndexSchema()) {
       await _indexDatabaseManager.deleteDatabaseFiles();
       await _openIndexForSession(session);
-      await rebuildIndex(session);
+      await _repair.inspectVaultWithReport(session);
       await _rememberUnindexedEntryFiles();
       return;
     }
-    if (reconcileEntryFiles && await _entryIndexNeedsRebuild()) {
-      await rebuildIndex(session);
+    if (!restoring && await _entryIndexNeedsRebuild()) {
+      await _repair.inspectVaultWithReport(session);
       await _rememberUnindexedEntryFiles();
       return;
     }
-    await _requireOpenIndex().ensurePeopleAnalyticsTable();
-    await applyTagCatalogToIndex();
+    await index.ensurePeopleAnalyticsTable();
+    await _applyTagCatalogFromVaultToIndex(strict: restoring);
   }
 
   /// 索引與磁碟日記檔的差異：磁碟上有檔沒被索引，或索引指到已不存在的檔。
@@ -2723,12 +2876,27 @@ class VaultRepository {
     UnlockedVaultSession session,
   ) => _people.pendingPeopleAnalysisDocumentCountForTest(session);
 
-  Future<void> _openIndexForSession(UnlockedVaultSession session) async {
-    await _indexDatabaseManager.openForSession(session);
+  Future<void> _openIndexForSession(
+    UnlockedVaultSession session, {
+    bool allowRebuild = true,
+  }) async {
+    await _indexDatabaseManager.openForSession(
+      session,
+      allowRebuild: allowRebuild,
+    );
     _tagCatalogSession = session;
   }
 
   IndexDatabase _requireOpenIndex() => _indexDatabaseManager.requireOpen();
+}
+
+class _RestoredVaultPaths extends VaultPathStrategy {
+  const _RestoredVaultPaths(this.root);
+
+  final Directory root;
+
+  @override
+  Future<Directory> appRootDirectory() async => root;
 }
 
 class _DiaryEntryFile {

@@ -52,13 +52,14 @@ import 'package:quill_diary/presentation/tag/widgets/tag_picker_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
+import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/time_picker/app_time_picker_dialog.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_image_gallery_dialog.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_progress.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 
 class EditorPage extends ConsumerStatefulWidget {
@@ -106,15 +107,15 @@ class _EditorPageState extends ConsumerState<EditorPage>
   int? _draggingEditorImageIndex;
   bool _didOfferDraftRestore = false;
   bool _handlingDraftRestore = false;
-  bool _preservesEditorOnLock = false;
   bool _suppressTagDraftListener = false;
   bool _suppressDraftListener = false;
   bool _hasDraftPersistError = false;
+  bool _heldDraftRestoreFailed = false;
+  late final VoidCallback _unregisterDraftFlusher;
   late final ProviderSubscription<AsyncValue<AppSessionState>>
   _sessionSubscription;
 
   EditorDraftSnapshot? _lastSavedSnapshot;
-  EditorDraftSnapshot? _lastPersistedDraftSnapshot;
   UnlockedVaultSession? _activeSession;
   DiaryEntry? _activeEntry;
   DateOnly? _persistedEntryDate;
@@ -155,11 +156,16 @@ class _EditorPageState extends ConsumerState<EditorPage>
     // 在仍可讀取 Provider 時建立，dispose 只使用已擷取的操作與欄位快照。
     _flowSession = _editorFlow.startSession(
       onDraftPersisted: (result) {
+        if (!mounted) return;
         _draftCreatedAt = result.record.createdAt;
-        _lastPersistedDraftSnapshot = result.snapshot;
-        _hasDraftPersistError = false;
+        if (_hasDraftPersistError) {
+          setState(() => _hasDraftPersistError = false);
+        }
       },
     );
+    _unregisterDraftFlusher = ref
+        .read(appSessionProvider.notifier)
+        .registerEditorDraftFlusher(_persistDraftNow);
 
     WidgetsBinding.instance.addObserver(this);
     _previewMode = _opensInPreview;
@@ -187,6 +193,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _sessionSubscription.close();
+    _unregisterDraftFlusher();
     _persistDraftBeforeDispose();
     _flowSession.close();
     _dateController.removeListener(_onDraftChanged);
@@ -280,7 +287,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
-      unawaited(_persistDraftNow());
+      unawaited(_flushDraftWithFeedback());
     }
   }
 
@@ -395,39 +402,17 @@ class _EditorPageState extends ConsumerState<EditorPage>
       !_saving &&
       !_addingAttachments &&
       !_handlingDraftRestore &&
+      !_heldDraftRestoreFailed &&
       _activeSession != null;
 
-  bool _shouldSkipDraftPersist() {
-    if (!_canPersistDraft) {
-      return true;
-    }
-    final EditorDraftSnapshot current = _currentDraftSnapshot();
-    if (_lastPersistedDraftSnapshot != null &&
-        !editorDraftIsDirty(
-          current: current,
-          saved: _lastPersistedDraftSnapshot,
-        )) {
-      return true;
-    }
-    if (widget.entryId == null &&
-        editorDraftIsEmpty(current, initialCreatedAt: _draftCreatedAt)) {
-      return true;
-    }
-    return false;
-  }
-
   Future<void> _persistDraft() async {
-    if (_shouldSkipDraftPersist()) return;
-    final session = _activeSession;
-    if (session == null) return;
+    if (!_canPersistDraft) return;
     await _flowSession.persistDraft(
       EditorPersistDraftRequest(
         draftKey: _draftKey,
         snapshot: _currentDraftSnapshot(),
-        tagsRaw: _tagsController.text,
-        attachmentIds: List<AssetId>.from(_attachmentIds),
         pendingAttachments: List<PendingAttachment>.from(_pendingAttachments),
-        session: session,
+        session: _activeSession!,
         createdAt: _draftCreatedAt ?? DateTime.now(),
         provisionalEntryId: _provisionalEntryId ??=
             widget.entryId ?? generateEntryId(),
@@ -444,19 +429,34 @@ class _EditorPageState extends ConsumerState<EditorPage>
     try {
       await _persistDraft();
     } on Object catch (error) {
-      if (!mounted || _hasDraftPersistError) return;
-      _hasDraftPersistError = true;
-      showAppFeedbackToast(
-        context,
-        userFacingErrorMessage(error, l10n: context.l10n),
-        tone: AppFeedbackTone.error,
-      );
+      if (!_hasDraftPersistError) _showDraftFailure(error);
     }
   }
 
   Future<void> _persistDraftNow() async {
-    await _persistDraft();
+    final queued = _persistDraft();
+    queued.ignore();
     await _flowSession.flushDrafts();
+  }
+
+  Future<bool> _flushDraftWithFeedback() async {
+    try {
+      await _persistDraftNow();
+      return true;
+    } on Object catch (error) {
+      _showDraftFailure(error);
+      return false;
+    }
+  }
+
+  void _showDraftFailure(Object error) {
+    if (!mounted) return;
+    setState(() => _hasDraftPersistError = true);
+    showAppFeedbackToast(
+      context,
+      userFacingErrorMessage(error, l10n: context.l10n),
+      tone: AppFeedbackTone.error,
+    );
   }
 
   Future<void> _requestClose() async {
@@ -469,50 +469,49 @@ class _EditorPageState extends ConsumerState<EditorPage>
       }
       return;
     }
-    await _persistDraftNow();
-    if (!_isDraftDirty()) {
-      await _discardLocalDraft();
-      if (!mounted) {
-        return;
-      }
-      if (widget.entryId == null) {
-        context.pop();
-      } else {
-        setState(() => _previewMode = true);
-      }
-      return;
+    if (!await _flushDraftWithFeedback() || !mounted) return;
+    if (_isDraftDirty()) {
+      await _confirmDiscardAndClose();
+    } else {
+      await _discardAndClose();
     }
-    final bool? discard = await _showDiscardDraftDialog();
-    if (discard != true) {
-      return;
-    }
-    await _discardLocalDraft();
-    if (!mounted) {
-      return;
-    }
-    if (widget.entryId == null) {
-      context.pop();
-      return;
-    }
-    final DiaryEntry? entry = _activeEntry;
-    if (entry != null) {
-      _syncSavedEntry(entry);
-    }
-    setState(() => _previewMode = true);
   }
 
-  Future<void> _discardLocalDraft() async {
-    _flowSession.reset();
-    await _flowSession.flushDrafts();
-    await _editorFlow.discardDraft(_draftKey);
-    // 記住捨棄時的內容：離開頁面時若內容未變，不再把已捨棄的草稿寫回。
-    _lastPersistedDraftSnapshot = _currentDraftSnapshot();
+  Future<void> _confirmDiscardAndClose() async {
+    if (await _showDiscardDraftDialog() && mounted) await _discardAndClose();
+  }
+
+  Future<void> _discardAndClose() async {
+    if (_saving || _addingAttachments) return;
+    setState(() => _saving = true);
+    try {
+      _flowSession.reset();
+      await _flowSession.flushDrafts();
+      await _editorFlow.discardDraft(_draftKey);
+      if (!mounted) return;
+      if (widget.entryId == null) {
+        // 頁面卸載時略過已明確捨棄的快照。
+        _flowSession.setDraftBaseline(_currentDraftSnapshot());
+        context.pop();
+        return;
+      }
+      if (_activeEntry case final entry?) _syncSavedEntry(entry);
+      setState(() {
+        _hasDraftPersistError = false;
+        _heldDraftRestoreFailed = false;
+        _previewMode = true;
+      });
+    } on Object catch (error) {
+      _showDraftFailure(error);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   void _syncSavedEntry(DiaryEntry entry, {bool updateControllers = true}) {
     _activeEntry = entry;
     _lastSavedSnapshot = editorDraftSnapshotFromEntry(entry);
-    _lastPersistedDraftSnapshot = null;
+    _flowSession.setDraftBaseline(null);
     if (!updateControllers) return;
     _suppressDraftListener = true;
     _suppressTagDraftListener = true;
@@ -555,15 +554,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
           finding,
     ];
     _draftCreatedAt = record.createdAt;
-    _lastPersistedDraftSnapshot = buildEditorDraftSnapshot(
-      titleRaw: record.title ?? '',
-      dateRaw: record.dateValue,
-      entryHour: record.entryHour,
-      entryMinute: record.entryMinute,
-      tagsRaw: record.tags.join(', '),
-      bodyRaw: record.markdownBody,
-      attachmentIds: record.attachmentIds,
-    );
+    _flowSession.setDraftBaseline(_currentDraftSnapshot());
     _showEntryRequiredHint = false;
     _suppressTagDraftListener = false;
     _suppressDraftListener = false;
@@ -580,54 +571,57 @@ class _EditorPageState extends ConsumerState<EditorPage>
       return;
     }
     _handlingDraftRestore = true;
-    final bool isSalvage = widget.salvageToken != null;
-    final EditorDraftRestoreDecision decision = await _editorFlow
-        .restoreDraftIfNeeded(
-          draftKey: _draftKey,
-          session: session,
-          existingEntry: entry,
-          decideRestore: (EditorDraftRecord record) async {
-            // salvage 草稿是使用者剛建立的修復內容，直接套用，不跳出一般草稿確認。
-            if (isSalvage || widget.chatId != null) {
-              return true;
-            }
-            return _showRestoreDraftDialog(
-              record,
-              hasExistingEntry: entry != null,
-            );
-          },
-        );
-    _handlingDraftRestore = false;
-    if (!mounted) {
-      return;
-    }
-    if (decision.kind == EditorDraftRestoreKind.restored) {
-      _applyDraftRestore(decision);
-      return;
-    }
-    if (decision.kind == EditorDraftRestoreKind.discarded && entry != null) {
-      _syncSavedEntry(entry);
-      setState(() {});
+    _heldDraftRestoreFailed = false;
+    try {
+      await _editorFlow.resumeHeldDraft(
+        _draftKey,
+        session,
+        await ref.read(recoveryMetadataProvider.future),
+      );
+      if (!mounted || _activeSession != session) return;
+      final decision = await _editorFlow.restoreDraftIfNeeded(
+        draftKey: _draftKey,
+        session: session,
+        existingEntry: entry,
+        decideRestore: (record) async {
+          if (!mounted || _activeSession != session) return null;
+          if (widget.salvageToken != null || widget.chatId != null) return true;
+          final restore = await _showRestoreDraftDialog(
+            record,
+            hasExistingEntry: entry != null,
+          );
+          return mounted && _activeSession == session ? restore : null;
+        },
+      );
+      if (!mounted || _activeSession != session) return;
+      if (_hasDraftPersistError) setState(() => _hasDraftPersistError = false);
+      if (decision.kind == EditorDraftRestoreKind.restored) {
+        _applyDraftRestore(decision);
+      } else if (decision.kind == EditorDraftRestoreKind.discarded &&
+          entry != null) {
+        _syncSavedEntry(entry);
+        setState(() {});
+      }
+    } on Object {
+      if (mounted && _activeSession == session) {
+        setState(() {
+          _hasDraftPersistError = true;
+          _heldDraftRestoreFailed = true;
+        });
+      }
+    } finally {
+      if (_activeSession == session) _handlingDraftRestore = false;
     }
   }
 
   void _onSessionLocked() {
-    if (_isEditing && _activeSession != null) {
-      _preservesEditorOnLock = true;
-      _didOfferDraftRestore = true;
-    }
-    unawaited(_persistDraftAndMaybeClear());
-  }
-
-  Future<void> _persistDraftAndMaybeClear() async {
-    try {
-      if (mounted && _canPersistDraft) await _persistDraftNow();
-    } finally {
-      if (mounted && !_preservesEditorOnLock) _clearSensitiveLocalState();
-    }
+    _flowSession.suspendDraft(ref.read(recoveryMetadataProvider).value);
+    _clearSensitiveLocalState();
   }
 
   void _clearSensitiveLocalState() {
+    _activeSession = null;
+    _suppressDraftListener = true;
     _titleController.clear();
     _dateController.text = DateOnly.fromDateTime(DateTime.now()).value;
     _tagsController.clear();
@@ -636,13 +630,13 @@ class _EditorPageState extends ConsumerState<EditorPage>
     _attachmentIds = <AssetId>[];
     _savedAssetPathFutures.clear();
     _activeEntry = null;
-    _activeSession = null;
+    _suppressDraftListener = false;
+    _hasDraftPersistError = false;
+    _heldDraftRestoreFailed = false;
     _lastSavedSnapshot = null;
-    _lastPersistedDraftSnapshot = null;
     _didLoadExisting = false;
     _didOfferDraftRestore = false;
     _handlingDraftRestore = false;
-    _flowSession.reset();
     _previewMode = _opensInPreview;
     _entryTime = TimeOfDay.now();
     _provisionalEntryId = widget.entryId ?? generateEntryId();
@@ -655,7 +649,7 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
   void _persistDraftBeforeDispose() {
     if (_canPersistDraft && _isDraftDirty()) {
-      unawaited(_persistDraftNow());
+      _persistDraftNow().ignore();
     }
   }
 
@@ -698,9 +692,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
             _activeSession = session;
             _syncEntryFromProvider(entry, loading: entryAsync.isLoading);
             final currentEntry = _activeEntry ?? entry;
-            if (_preservesEditorOnLock) {
-              _preservesEditorOnLock = false;
-            }
             if (!_didOfferDraftRestore) {
               _didOfferDraftRestore = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -816,13 +807,41 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                 )
                               : null,
                         ),
-                        if (_addingAttachments)
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: AppProgressPanel(
-                              label: context.l10n.editorAddingAttachments,
-                              value: null,
-                            ),
+                        if (_isEditing && _hasDraftPersistError)
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: _saving || _addingAttachments
+                                    ? null
+                                    : () {
+                                        if (_heldDraftRestoreFailed) {
+                                          unawaited(
+                                            _offerDraftRestoreIfNeeded(
+                                              session,
+                                              currentEntry,
+                                            ),
+                                          );
+                                        } else {
+                                          unawaited(_flushDraftWithFeedback());
+                                        }
+                                      },
+                                child: Text(context.l10n.editorDraftSaveFailed),
+                              ),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .error,
+                                ),
+                                onPressed: _saving || _addingAttachments
+                                    ? null
+                                    : _confirmDiscardAndClose,
+                                child: Text(
+                                  context.l10n.editorDiscardDraftConfirm,
+                                ),
+                              ),
+                            ],
                           ),
                         Expanded(
                           child: Stack(
@@ -1260,14 +1279,14 @@ class _EditorPageState extends ConsumerState<EditorPage>
     );
   }
 
-  Future<bool?> _showDiscardDraftDialog() {
-    return showAppDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return const _DiscardDraftDialog();
-      },
-    );
-  }
+  Future<bool> _showDiscardDraftDialog() => showAppConfirmDialog(
+    context: context,
+    title: context.l10n.editorDiscardDraftTitle,
+    content: Text(context.l10n.editorDiscardDraftBody),
+    cancelLabel: context.l10n.commonActionCancel,
+    confirmLabel: context.l10n.editorDiscardDraftConfirm,
+    confirmStyle: AppConfirmStyle.destructive,
+  );
 
   Future<void> _deleteCurrentEntry(UnlockedVaultSession session) async {
     if (widget.entryId == null || _saving) {
@@ -1587,7 +1606,7 @@ class _RestoreDraftDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final l10n = context.l10n;
     final String titleText = record.title?.trim().isNotEmpty == true
         ? record.title!.trim()
         : context.l10n.editorUntitledDraft;
@@ -1598,11 +1617,23 @@ class _RestoreDraftDialog extends StatelessWidget {
     return AppDialogShell(
       title: context.l10n.editorRestoreDraftTitle,
       showClose: false,
-      content: Text(
-        hasExistingEntry
-            ? context.l10n.editorRestoreDraftOverwrite(titleText, updatedAtText)
-            : context.l10n.editorRestoreDraftPrompt(titleText, updatedAtText),
-        style: theme.textTheme.bodyMedium,
+      content: AppScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: <Widget>[
+            AppDialogSummary(
+              icon: Icons.edit_note_rounded,
+              title: titleText,
+              details: <String>[l10n.editorRestoreDraftSavedAt(updatedAtText)],
+            ),
+            if (hasExistingEntry)
+              AppFeedbackBanner(
+                message: l10n.editorRestoreDraftOverwrite,
+                tone: AppFeedbackTone.warning,
+              ),
+          ],
+        ),
       ),
       actions: <Widget>[
         TextButton(
@@ -1612,28 +1643,6 @@ class _RestoreDraftDialog extends StatelessWidget {
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(context.l10n.editorRestoreDraftAccept),
-        ),
-      ],
-    );
-  }
-}
-
-class _DiscardDraftDialog extends StatelessWidget {
-  const _DiscardDraftDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppDialogShell(
-      title: context.l10n.editorDiscardDraftTitle,
-      content: Text(context.l10n.editorDiscardDraftBody),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(context.l10n.commonActionCancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(context.l10n.editorDiscardDraftConfirm),
         ),
       ],
     );

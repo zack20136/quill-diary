@@ -232,6 +232,18 @@ class IndexDatabase extends GeneratedDatabase {
     }
   }
 
+  Future<void> relocateVaultPaths(String from, String to) async {
+    await transaction(() async {
+      for (final table in ['entries_index', 'entry_attachments']) {
+        await customStatement(
+          'UPDATE $table SET file_path = ? || substr(file_path, ?) '
+          'WHERE substr(file_path, 1, ?) = ?',
+          [to, from.length + 1, from.length, from],
+        );
+      }
+    });
+  }
+
   Future<void> upsertEntry({
     required DiaryEntry entry,
     required String filePath,

@@ -17,6 +17,11 @@ void main() {
   );
   final Map<String, Object?> metadataJson = backupMetadata.toJson();
   final Map<String, Object?> kdfJson = backupMetadata.kdf.toJson();
+  final prior = UnlockedVaultSession(
+    vaultId: backupMetadata.vaultId,
+    trustedDevice: true,
+    recoveryWrapKey: List<int>.filled(32, 1),
+  );
 
   RestorePrecheck precheck({
     required RecoveryMetadata? localMetadata,
@@ -37,13 +42,6 @@ void main() {
       },
     });
     final check = precheck(localMetadata: local);
-    final prior = UnlockedVaultSession(
-      vaultId: backupMetadata.vaultId,
-      trustedDevice: true,
-      recoveryWrapKey: List<int>.filled(32, 1),
-    );
-
-    expect(check.expectsRecoveryKeyAfterRestore, isFalse);
     expect(check.canResumeTrustedSession(prior), isTrue);
     expect(check.canResumeTrustedSession(null), isFalse);
     expect(
@@ -74,7 +72,7 @@ void main() {
       );
 
       expect(check.recoveryKeyRotatedSinceBackup, isTrue);
-      expect(check.expectsRecoveryKeyAfterRestore, isTrue);
+      expect(check.canResumeTrustedSession(prior), isFalse);
     }
   });
 
@@ -90,7 +88,7 @@ void main() {
       precheck(localMetadata: backupMetadata, trusted: false),
     ]) {
       expect(check.recoveryKeyRotatedSinceBackup, isFalse);
-      expect(check.expectsRecoveryKeyAfterRestore, isTrue);
+      expect(check.canResumeTrustedSession(prior), isFalse);
     }
   });
 }

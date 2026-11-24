@@ -5,6 +5,9 @@
 /// 預設值與有預設值的可選欄位不升版，不另設提示詞版本或 AI 總版本。
 /// 操作狀態、起始值與可重建快取的規則修訂不放在此處。
 abstract final class DataVersions {
+  /// ZIP 完整備份與加密成員清單。
+  static const int vaultBackup = 2;
+
   /// LDJ2 加密檔頭與封裝結構；日記、附件及加密 JSON 共用。
   static const int encryptedDocument = 1;
 

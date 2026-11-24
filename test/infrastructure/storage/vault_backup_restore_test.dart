@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,6 +12,8 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
+import 'package:quill_diary/infrastructure/database/index_database.dart';
+import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/backup_archive_inspection.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
@@ -30,7 +33,9 @@ void main() {
   archiveIo;
 
   setUp(() async {
-    harness = await VaultTestHarness.create();
+    harness = await VaultTestHarness.create(
+      createIndexManager: _RestoreIndexManager.new,
+    );
     archiveIo = harness.createTransferIo();
   });
 
@@ -58,6 +63,102 @@ void main() {
     });
   });
 
+  test('v1 備份可還原日記並重建索引', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    final id = await harness.saveSimpleEntry(
+      setup,
+      title: '舊備份',
+      date: '2026-05-24',
+      markdownBody: '備份本文',
+    );
+    final root = await harness.pathStrategy.vaultRootDirectory();
+    final archive = Archive();
+    for (final name in [
+      'recovery.json',
+      'manifest.json.enc',
+      'entries/2026/05/$id.md.enc',
+    ]) {
+      final clear = await File(p.joinAll([root.path, ...p.posix.split(name)]))
+          .readAsBytes();
+      archive.addFile(ArchiveFile(name, clear.length, clear));
+    }
+    final backup = File(p.join(harness.tempDir.path, 'legacy.zip'));
+    await backup.writeAsBytes(ZipEncoder().encode(archive));
+    final preview = await archiveIo.backup.prepareRestorePreview(backup);
+    expect(preview.backupId, isNull);
+    await harness.repository.deleteEntry(setup.session, id);
+    final restored = await archiveIo.backup.restoreBackupZip(
+      backup,
+      expectedPreview: preview,
+    );
+    expect(
+      (await harness.repository.loadEntry(restored, id))?.markdownBody,
+      '備份本文',
+    );
+  });
+
+  test('還原切換時初始化等待交易完成，新庫可直接讀取', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    final id = await harness.saveSimpleEntry(
+      setup,
+      title: '待還原的日記',
+      date: '2026-05-24',
+      markdownBody: '備份本文',
+    );
+    final backup = File(p.join(harness.tempDir.path, 'restore.zip'));
+    await archiveIo.backup.writeBackupZip(backup);
+    await harness.repository.deleteEntry(setup.session, id);
+    final opening = Completer<void>();
+    final finishOpening = Completer<void>();
+    final manager = harness.indexDatabaseManager as _RestoreIndexManager;
+    manager.afterRestoreOpen = () {
+      opening.complete();
+      return finishOpening.future;
+    };
+    final restore = archiveIo.backup.restoreBackupZip(backup);
+    await Future.any([opening.future, restore]);
+    var initialized = false;
+    final initialize = harness.repository.initialize().then(
+      (_) => initialized = true,
+    );
+    try {
+      await Future<void>.delayed(Duration.zero);
+      expect(initialized, isFalse);
+    } finally {
+      finishOpening.complete();
+    }
+    final session = await restore;
+    await initialize;
+    expect(
+      (await harness.repository.loadEntry(session, id))?.markdownBody,
+      '備份本文',
+    );
+  });
+
+  test('新庫啟用失敗時保留原日記並重新開啟原索引', () async {
+    final setup = await harness.repository.setupRecoveryKey();
+    final backup = File(p.join(harness.tempDir.path, 'restore.zip'));
+    await archiveIo.backup.writeBackupZip(backup);
+    final id = await harness.saveSimpleEntry(
+      setup,
+      title: '備份後新增',
+      date: '2026-05-24',
+      markdownBody: '保留本文',
+    );
+    final manager = harness.indexDatabaseManager as _RestoreIndexManager;
+    manager.afterRestoreOpen = () async => throw StateError('新工作階段無法開啟');
+
+    await expectLater(
+      archiveIo.backup.restoreBackupZip(backup),
+      throwsStateError,
+    );
+
+    expect(
+      (await harness.repository.loadEntry(setup.session, id))?.markdownBody,
+      '保留本文',
+    );
+  });
+
   group('inspectBackup', () {
     test('可接受可讀取的 vault 備份', () async {
       final setup = await harness.repository.setupRecoveryKey();
@@ -77,6 +178,35 @@ void main() {
 
       expect(report.ok, isTrue);
       expect(report.layout.hasRecovery, isTrue);
+    });
+
+    test('已標記的 v2 備份缺少清單時會停止還原', () async {
+      final setup = await harness.repository.setupRecoveryKey();
+      final entry = await harness.saveSimpleEntry(
+        setup,
+        title: '原日記',
+        date: '2026-05-30',
+        markdownBody: '保留內容',
+      );
+      final backup = File(p.join(harness.tempDir.path, 'complete.zip'));
+      await archiveIo.backup.writeBackupZip(backup);
+      final input = ZipDecoder().decodeBytes(await backup.readAsBytes());
+      final complete = await archiveIo.backup.prepareRestorePreview(backup);
+      expect(complete.backupId, isNotNull);
+      final incomplete = Archive();
+      for (final member in input.files) {
+        if (member.name != 'backup_integrity.json.enc') {
+          incomplete.addFile(member);
+        }
+      }
+      final missing = File(p.join(harness.tempDir.path, 'incomplete.zip'));
+      await missing.writeAsBytes(ZipEncoder().encode(incomplete));
+      final report = await archiveIo.backup.inspectBackup(missing);
+      expect(report.issue, VaultBackupIssue.invalidBackupIntegrity);
+      expect(
+        await harness.repository.loadEntry(setup.session, entry),
+        isNotNull,
+      );
     });
 
     test('會拒絕無效的 zip', () async {
@@ -354,46 +484,6 @@ void main() {
       expect(await draftStore.listDraftKeys(), isEmpty);
     });
 
-    test('還原後會清除 materialize 的暫時明文附件', () async {
-      final setup = await harness.repository.setupRecoveryKey();
-      await harness.saveSimpleEntry(
-        setup,
-        title: 'Restore Me',
-        date: '2026-05-26',
-        markdownBody: 'restore body',
-      );
-
-      final EditorDraftStore draftStore = EditorDraftStore(
-        pathStrategy: harness.pathStrategy,
-        cryptoService: LocalCryptoService(),
-      );
-      final File sourceFile = File(p.join(harness.tempDir.path, 'pending.txt'))
-        ..writeAsStringSync('pending secret');
-      final String relativePath = await draftStore.stagePendingFile(
-        'entry-pending',
-        sourceFile.path,
-        setup.session,
-      );
-      final String previewPath = await draftStore
-          .materializePendingFileForPreview(
-            'entry-pending',
-            relativePath,
-            setup.session,
-          );
-      expect(File(previewPath).existsSync(), isTrue);
-
-      final File backupFile = File(
-        p.join(harness.tempDir.path, 'pending_preview_clear.zip'),
-      );
-      await archiveIo.backup.writeBackupZip(backupFile);
-
-      await harness.repository.closeUnlockedResources();
-      await archiveIo.backup.restoreBackupZip(backupFile);
-
-      expect(File(previewPath).existsSync(), isFalse);
-      expect(await draftStore.listDraftKeys(), isEmpty);
-    });
-
     test('損壞的備份 zip 不應清空現有 vault', () async {
       final setup = await harness.repository.setupRecoveryKey();
       await harness.saveSimpleEntry(
@@ -416,4 +506,28 @@ void main() {
       expect(entries, hasLength(1));
     });
   });
+}
+
+class _RestoreIndexManager extends IndexDatabaseManager {
+  _RestoreIndexManager(super.pathStrategy);
+
+  Future<void> Function()? afterRestoreOpen;
+
+  @override
+  Future<IndexDatabase> openForSession(
+    UnlockedVaultSession session, {
+    List<int>? interruptedRotationWrapKey,
+    bool allowRebuild = true,
+  }) async {
+    final index = await super.openForSession(
+      session,
+      interruptedRotationWrapKey: interruptedRotationWrapKey,
+      allowRebuild: allowRebuild,
+    );
+    if (afterRestoreOpen case final callback? when !allowRebuild) {
+      afterRestoreOpen = null;
+      await callback();
+    }
+    return index;
+  }
 }

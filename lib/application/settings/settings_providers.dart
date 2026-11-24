@@ -41,10 +41,9 @@ final recoveryMetadataProvider = FutureProvider<RecoveryMetadata?>((
   final AppSessionState localState = ref.watch(appSessionProvider);
   if (localState.status == AppLockStatus.uninitialized) {
     await ref.watch(sessionStartupProvider.future);
-  } else {
-    await ref.read(vaultRepositoryProvider).initialize();
   }
-  return ref.read(vaultRepositoryProvider).readRecoveryMetadata();
+  final repository = ref.read(vaultRepositoryProvider);
+  return repository.runVaultMutation(repository.readRecoveryMetadata);
 });
 
 final settingsDriveConnectionProvider =

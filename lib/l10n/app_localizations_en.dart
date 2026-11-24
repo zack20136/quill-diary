@@ -68,6 +68,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingIntroBack => 'Back';
 
   @override
+  String get onboardingIntroSkip => 'Skip';
+
+  @override
   String get onboardingIntroGetStarted => 'Get started';
 
   @override
@@ -472,11 +475,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeUnsavedDraftLabel => 'Unsaved';
 
   @override
-  String get homeHtmlExportLargeTitle => 'HTML File May Be Large';
-
-  @override
   String get homeHtmlExportEmbeddedHint =>
-      'Images are embedded into a single HTML file, which may be slower to open or harder to share.';
+      'Large images can make a single HTML file open slowly. You can export them to a separate folder.';
 
   @override
   String homeHtmlExportImageSize(String size) {
@@ -817,9 +817,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorAttachmentPendingLabel => 'New';
 
   @override
-  String get editorAddingAttachments => 'Adding attachments…';
-
-  @override
   String editorAttachmentFormatMismatch(String fileName) {
     return 'The contents of “$fileName” do not match its extension. Check the file format.';
   }
@@ -837,6 +834,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSaveFailed => 'Could not save the entry. Please try again.';
 
   @override
+  String get editorDraftSaveFailed => 'Draft could not be saved. Tap to retry.';
+
+  @override
   String get editorAttachmentDragTooltip => 'Long-press and drag to reorder';
 
   @override
@@ -852,21 +852,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorUntitledDraft => 'Untitled';
 
   @override
-  String editorRestoreDraftOverwrite(String title, String savedAt) {
-    return 'Draft: $title\nLast saved: $savedAt\n\nRestoring it will replace the content you are currently viewing.';
+  String editorRestoreDraftSavedAt(String savedAt) {
+    return 'Last saved: $savedAt';
   }
 
   @override
-  String editorRestoreDraftPrompt(String title, String savedAt) {
-    return 'Draft: $title\nLast saved: $savedAt\n\nRestore this draft?';
-  }
+  String get editorRestoreDraftOverwrite =>
+      'Restoring this draft replaces the content currently shown in the editor.';
 
   @override
   String get editorDiscardDraftTitle => 'Discard Draft?';
 
   @override
   String get editorDiscardDraftBody =>
-      'Your changes have not been saved as an entry. Discard the draft and leave?';
+      'Leaving deletes this draft and its unsaved changes.';
 
   @override
   String get editorDiscardDraftConfirm => 'Discard';
@@ -983,31 +982,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get defaultTagGratitude => 'Gratitude';
-
-  @override
-  String get postRestoreOutcomeTitle => 'Restore completed';
-
-  @override
-  String get postRestoreOutcomeNextStepLocked =>
-      'One more step: complete biometric or screen-lock verification.';
-
-  @override
-  String get postRestoreOutcomeNextStepRecovery =>
-      'One more step: enter the recovery key saved when this backup was created.';
-
-  @override
-  String get postRestoreOutcomeSecondaryHint =>
-      'The first unlock after restore may take longer while the search index rebuilds.';
-
-  @override
-  String get postRestoreOutcomePrimaryRetryVerification => 'Verify now';
-
-  @override
-  String get postRestoreOutcomePrimaryEnterRecoveryKey => 'Enter recovery key';
-
-  @override
-  String get postRestoreOutcomeUnlockFailedTitle =>
-      'Could not unlock after restore';
 
   @override
   String get peopleEmptyTitle => 'No people yet';
@@ -1400,6 +1374,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get organizationFullText => 'Full result';
 
   @override
+  String get organizationReplyTitle => 'AI revision notes';
+
+  @override
+  String get organizationShowReply => 'More';
+
+  @override
   String get organizationBack => 'Back to chat';
 
   @override
@@ -1412,15 +1392,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get organizationConversationLabel => 'Discuss changes';
 
   @override
-  String get organizationConversationHelp =>
-      'Talk through how to revise this entry before a full draft is written. Takes effect on the next reply after you save.';
-
-  @override
   String get organizationGenerationLabel => 'Generate draft';
 
   @override
   String get organizationGenerationHelp =>
-      'Writes the organized draft from the confirmed request. It must still return JSON with reply and body, and keep protection tokens unchanged.';
+      'Keep protection tokens unchanged and return JSON with reply and body.';
 
   @override
   String get organizationDiscussionRulesPrompt =>
@@ -1453,6 +1429,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get organizationConflict =>
       'The original entry changed. Start over with the latest entry. Your previous drafts remain available to view.';
+
+  @override
+  String get organizationUnsafeCandidate =>
+      'This draft contains protected references not supplied in the current conversation and cannot be applied. Return to chat and generate again; your requests will be kept.';
 
   @override
   String get organizationEditorDraft =>
@@ -1547,10 +1527,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get organizationRulesHelp =>
-      'These rules apply to discussion and draft generation and cannot be edited. Custom prompts must follow them.';
-
-  @override
   String get chatDiaryTitle => 'Chat diary';
 
   @override
@@ -1560,22 +1536,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatDiaryRulesLabel => 'Fixed rules';
 
   @override
-  String get chatDiaryRulesHelp =>
-      'Included in every chat. Covers facts, privacy, safety, and app limits. This part cannot be changed. Conversation guidance and personality are added after it.';
-
-  @override
   String get chatDiaryPersonalityLabel => 'Default personality';
 
   @override
   String get chatDiaryPersonalityHelp =>
-      'Affects only how the default companion speaks. AI personas use their own memories and conversation style.';
+      'Applies only to the default companion.';
 
   @override
   String get chatDiaryGuidanceLabel => 'Conversation guidance';
 
   @override
   String get chatDiaryGuidanceHelp =>
-      'Custom guidance applies to all chat companions, including AI personas.';
+      'Applies to all companions, including AI personas.';
 
   @override
   String get chatDiaryGenerationRulesLabel => 'Generation rules';
@@ -1584,12 +1556,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatDiaryGenerationGuidanceLabel => 'Generation guidance';
 
   @override
-  String get chatDiaryGenerationRulesHelp =>
-      'Fixed source, factual, privacy, and output-format rules applied during generation. Read only.';
-
-  @override
   String get chatDiaryGenerationGuidanceHelp =>
-      'Adjust tone, concision, and paragraph organization within the fixed rules. Existing custom text is kept; conflicting requests do not apply. Saved changes take effect the next time you generate.';
+      'Adjust tone and structure within the generation rules.';
 
   @override
   String get chatDiaryHidePeople => 'Hide people’s names';
@@ -1619,6 +1587,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatDiaryPrivateNotes => 'Private notes';
+
+  @override
+  String get chatDiaryPrivateNotesHint =>
+      'Private text omitted by AI is still added locally under Private notes. Asking AI to exclude it does not remove these notes; you can delete them in the diary editor.';
 
   @override
   String get chatDiaryDraftLabel => 'Draft';
@@ -1690,7 +1662,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatDiaryRequestPreviewHint =>
-      'These are the prompts and content for this request, with text privacy applied. Image contents are not hidden.';
+      'Text masking applies. Photos are unmasked.';
+
+  @override
+  String get chatDiaryPreviewLocalNotes => 'Private notes stay on this device.';
+
+  @override
+  String get chatDiaryGenerationDataLabel =>
+      'Conversation used to write the diary';
+
+  @override
+  String get aiRequestPreviewFullJson => 'Full JSON';
+
+  @override
+  String get aiRequestPreviewJsonHint =>
+      'Shared preview format. Prompts use card titles, and photos use numbers.';
+
+  @override
+  String get chatDiaryGenerationNoSentMessages =>
+      'There are no sent messages to use for the diary yet.';
+
+  @override
+  String chatDiaryGenerationUserCount(int count) {
+    return 'Your messages: $count';
+  }
+
+  @override
+  String chatDiaryGenerationContextCount(int count) {
+    return 'AI replies used for context: $count';
+  }
 
   @override
   String get chatDiaryPreviewUser => 'You';
@@ -1833,6 +1833,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Wording, sentence length and response habits that shape how the persona speaks.';
 
   @override
+  String get personaNeutralMemory =>
+      'No confirmed memories about this person are available yet.';
+
+  @override
+  String get personaNeutralTone =>
+      'Use natural, neutral everyday language without adding specific catchphrases.';
+
+  @override
   String get personaUsageHint =>
       'Choose this persona from “Chat companion” in Chat diary. Replies use saved content without reading the original materials again.';
 
@@ -1851,11 +1859,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String personaRetainedContentTitle(String name) {
+    return 'Locally retained $name';
+  }
+
+  @override
   String get personaSystemPrompt => 'System prompt';
 
   @override
   String get personaBatchHint =>
       'Long material is processed in batches. The same service extracts evidence, reduces it again if needed, and combines it into the final cards.';
+
+  @override
+  String get personaToneLocalRetainedHint =>
+      'No usable original words from this person. The included conversation style will be kept locally.';
+
+  @override
+  String get personaToneLocalNeutralHint =>
+      'No usable original words from this person. A neutral conversation style will be created locally.';
 
   @override
   String get personaManage => 'Manage';
@@ -1894,6 +1915,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get personaHideHint =>
       'When enabled, names and aliases are replaced with tokens. Hide other sensitive text yourself.';
+
+  @override
+  String get personaIncludeCurrentHint =>
+      'Only checked content is included. Current memories may retain information from unselected diaries.';
+
+  @override
+  String get personaIncludeCurrentMemory => 'Include current memories';
+
+  @override
+  String get personaIncludeCurrentTone => 'Include current conversation style';
 
   @override
   String get personaSourceChangedHint =>
@@ -2001,7 +2032,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personaChatRuleIntro =>
-      'This file does not match a known format, so the whole text is kept and is not filtered by date. Select text to hide it. Added names only mark you or the subject; they do not assign a speaker to each line.';
+      'The full file will be imported. Select text to hide it, or add names to identify roles.';
+
+  @override
+  String get personaChatRuleIntroTitle => 'Import as plain text';
+
+  @override
+  String get personaChatRulePreview => 'Original text';
 
   @override
   String get personaChatRuleImport => 'Import';
@@ -2131,6 +2168,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personaRoles => 'Confirm speakers';
+
+  @override
+  String get personaRolesRequireSubject =>
+      'Choose at least one subject before confirming the speakers.';
 
   @override
   String get personaRoleUser => 'Me';
@@ -2270,6 +2311,63 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get personaExtractionRetryPrompt =>
+      'The previous response exceeded the limit or used the wrong format. Use this same batch. Return only the requested string arrays. Trim examples and minor details and keep dates, attribution, and the latest corrections.';
+
+  @override
+  String personaBatchProgress(int round, int completed, int total) {
+    return 'Round $round · $completed of $total batches done';
+  }
+
+  @override
+  String get personaCardLanguageError =>
+      'The model returned a card in the wrong language. Try again.';
+
+  @override
+  String get personaCardOutputLanguage =>
+      'Write the readable prose inside memory and tone in natural English. Keep JSON keys in English. Names, technical terms, and necessary short quotes may stay in their original language.';
+
+  @override
+  String get personaCardRepairPrompt =>
+      'Revise only the requested card fields. Use natural English and stay within the length limits. Keep JSON keys in English and retain names and short quotes.';
+
+  @override
+  String get personaExtracting => 'Batch extraction';
+
+  @override
+  String get personaReducing => 'Evidence reduction';
+
+  @override
+  String get personaIntegrating => 'Card integration';
+
+  @override
+  String get personaExtractingActive => 'Extracting batches';
+
+  @override
+  String get personaReducingActive => 'Reducing evidence';
+
+  @override
+  String get personaIntegratingActive => 'Combining cards';
+
+  @override
+  String get personaCompactingActive => 'Revising cards';
+
+  @override
+  String get personaCompacting => 'Card revision';
+
+  @override
+  String get personaEvidenceError =>
+      'The batch evidence used the wrong format or exceeded its limit. Try again or select less material.';
+
+  @override
+  String get personaCapacityError =>
+      'The reduced material still exceeds the request limit. Select less material and try again.';
+
+  @override
+  String get personaCardLengthError =>
+      'The shortened card still exceeds its limit. Select less material and try again.';
+
+  @override
   String get aiRequestPreviewChat => 'Chat';
 
   @override
@@ -2288,7 +2386,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiSettingsResetHint =>
-      'AI settings cannot be read and may be from another version. Rebuilding replaces custom connections and prompts with defaults while keeping device keys.';
+      'The saved AI settings are unrecognized. Resetting removes custom connections and prompts. API keys stay on this device.';
+
+  @override
+  String get aiSettingsReadFailed =>
+      'Could not load AI settings. Please try again.';
 
   @override
   String get aiOpenSettings => 'Open AI settings';
@@ -2341,47 +2443,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiThinkingFormatHint =>
-      'Choose how to send Thinking parameters for this model. Check the model’s official documentation for supported fields and levels.';
+      'Use the current protocol to build Thinking parameters for this model.';
+
+  @override
+  String get aiThinkingOmitHint => 'Omit Thinking parameters from requests.';
+
+  @override
+  String get aiThinkingCustomHint =>
+      'Set the parameters to send for each thinking level your model supports.';
 
   @override
   String get aiThinkingAdvancedHint =>
-      'Enable the levels supported by your model and enter a JSON object for each. An empty object sends no extra parameters for that level.';
+      'Enable the levels you want to use and enter a JSON object for each. An empty object omits extra parameters for that level.';
 
   @override
-  String get aiThinkingFormat => 'Parameter format';
+  String get aiThinkingFormat => 'Send parameters';
 
   @override
-  String get aiThinkingInherit => 'Use current protocol';
+  String get aiThinkingInherit => 'Use protocol';
 
   @override
-  String get aiThinkingOmit => 'Do not send Thinking parameters';
+  String get aiThinkingOmit => 'Omit parameters';
 
   @override
   String get aiThinkingOmitShort => 'Not sent';
 
   @override
-  String get aiThinkingCustom => 'Manual JSON';
+  String get aiThinkingCustom => 'Custom JSON';
 
   @override
   String get aiThinkingAdvancedOverrideHint =>
-      'Set the JSON parameters to send for each level. Your custom parameters are added directly to requests and may affect response length and cost.';
+      'Custom parameters go directly into requests and may affect response length and cost. Follow the model’s official documentation.';
 
   @override
   String get aiThinkingDefault => 'Default level';
 
   @override
-  String get aiThinkingAdvanced => 'Advanced JSON mapping';
+  String get aiThinkingAdvanced => 'JSON by level';
 
   @override
-  String get aiThinkingPreview => 'Parameters for the default level';
+  String get aiThinkingPreview => 'Thinking parameter preview';
+
+  @override
+  String aiThinkingPreviewLevel(String level) {
+    return 'Previewing level: $level';
+  }
+
+  @override
+  String get aiThinkingPreviewEmpty =>
+      'This setting omits extra Thinking parameters.';
 
   @override
   String get aiThinkingPreviewInvalid =>
-      'Complete a valid JSON mapping to see the preview.';
+      'Set a default level and enter valid JSON to see the preview.';
 
   @override
   String get aiThinkingSelectionRequired =>
-      'Enable at least one level and select a valid default.';
+      'Enable at least one level, then choose a default.';
+
+  @override
+  String aiThinkingJsonLabel(String level) {
+    return 'JSON for $level';
+  }
 
   @override
   String get aiThinkingProtectedFields =>
@@ -2451,79 +2574,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'AI features are off. Turn them back on in the AI section of Settings.';
 
   @override
-  String get personaExtractionRetryPrompt =>
-      'The previous response exceeded the limit or used the wrong format. Use this same batch. Return only the requested string arrays. Trim examples and minor details and keep dates, attribution, and the latest corrections.';
-
-  @override
-  String personaBatchProgress(int round, int completed, int total) {
-    return 'Round $round · $completed of $total batches done';
-  }
-
-  @override
-  String aiGenerationElapsed(String elapsed) {
-    return 'Elapsed $elapsed';
-  }
-
-  @override
-  String get personaCardLanguageError =>
-      'The model returned a card in the wrong language. Try again.';
-
-  @override
-  String get personaCardOutputLanguage =>
-      'Write the readable prose inside memory and tone in natural English. Keep JSON keys in English. Names, technical terms, and necessary short quotes may stay in their original language.';
-
-  @override
-  String get personaCardRepairPrompt =>
-      'Revise only the requested card fields. Use natural English and stay within the length limits. Keep JSON keys in English and retain names and short quotes.';
-
-  @override
-  String get personaExtracting => 'Batch extraction';
-
-  @override
-  String get personaReducing => 'Evidence reduction';
-
-  @override
-  String get personaIntegrating => 'Card integration';
-
-  @override
-  String get personaExtractingActive => 'Extracting batches';
-
-  @override
-  String get personaReducingActive => 'Reducing evidence';
-
-  @override
-  String get personaIntegratingActive => 'Combining cards';
-
-  @override
-  String get personaCompactingActive => 'Revising cards';
-
-  @override
-  String get personaCompacting => 'Card revision';
-
-  @override
-  String get personaEvidenceError =>
-      'The batch evidence used the wrong format or exceeded its limit. Try again or select less material.';
-
-  @override
-  String get personaCapacityError =>
-      'The reduced material still exceeds the request limit. Select less material and try again.';
-
-  @override
-  String get personaCardLengthError =>
-      'The shortened card still exceeds its limit. Select less material and try again.';
-
-  @override
   String get aiPromptsTitle => 'Prompts';
-
-  @override
-  String get aiPromptReadOnlyHelp => 'You can view and copy this prompt.';
 
   @override
   String get aiPromptFullPreview => 'Full preview';
 
   @override
   String get aiPromptPreviewHelp =>
-      'Assembled from the current settings draft. Open the feature\'s request preview to inspect the material for a specific request.';
+      'Based on current settings. Check the request preview for what will be sent.';
 
   @override
   String get aiPromptPreviewVariant => 'Preview mode';
@@ -2547,9 +2605,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String aiPromptStageTarget(String stage, String target) {
     return '$stage ($target)';
   }
-
-  @override
-  String get chatDiaryGenerationDataLabel => 'Diary generation data';
 
   @override
   String get aiPromptRestoreDefault => 'Restore default';
@@ -2602,6 +2657,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'This URL uses HTTP. Text, images, and credentials are transmitted without encryption. Use only a trusted local network.';
 
   @override
+  String get aiHttpConfirmTitle => 'Save unencrypted AI connections?';
+
+  @override
   String get aiHideSelection => 'Hide from AI';
 
   @override
@@ -2612,6 +2670,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiStopGeneration => 'Stop generating';
+
+  @override
+  String aiGenerationElapsed(String elapsed) {
+    return 'Elapsed $elapsed';
+  }
 
   @override
   String get aiErrorConfiguration =>
@@ -2697,6 +2760,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This did not finish. Your content is kept. Try again.';
 
   @override
+  String get aiErrorPrivacy =>
+      'Privacy checks could not finish. No content was sent. Check the settings and try again.';
+
+  @override
   String aiConnectionHttpFailure(int status, String message) {
     return '$message (HTTP $status)';
   }
@@ -2740,10 +2807,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get vaultTransferLocalBackupActionsLockedHint =>
       'Unlock the diary vault and create a recovery key before creating or exporting local backups.';
-
-  @override
-  String get vaultTransferRestoreUnlockFailed =>
-      'The backup was restored, but unlocking with the recovery key failed. Enter the recovery key again in Security Overview.';
 
   @override
   String get vaultTransferPickBackupFileTitle => 'Choose Backup ZIP';
@@ -2812,8 +2875,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'The backup could not be read. Check that the file is intact and is a valid zip backup.';
 
   @override
+  String get vaultBackupIssueInvalidBackupIntegrity =>
+      'Backup integrity verification failed.';
+
+  @override
+  String get vaultBackupIssueInvalidBackupContent =>
+      'The backup contains missing or unreadable vault data.';
+
+  @override
+  String get settingsRestoreLegacyBackupNotice =>
+      'This older backup has no integrity manifest, so some original files could be missing.';
+
+  @override
   String get vaultBackupIssueRecoveryKeyMismatch =>
-      'The recovery key does not match this backup. Enter the key saved when this backup was created.';
+      'The key does not match this backup. Check the key and try again.';
 
   @override
   String get vaultBackupIssueNoEncryptedSample =>
@@ -2832,20 +2907,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'The archive exceeds the limit for file count, expanded size, or compression ratio, so it was not processed.';
 
   @override
-  String get portableExportConfirmTitle => 'Confirm Export';
+  String get portableExportMarkdownTitle => 'Export Markdown';
+
+  @override
+  String get portableExportHtmlTitle => 'Export HTML';
 
   @override
   String get portableExportConfirmAction => 'Export';
 
   @override
   String get portableExportPlaintextWarning =>
-      'Exported files are plaintext. Diary text and images are no longer protected by vault encryption; anyone with the files can read them.';
+      'Exports are unencrypted. Anyone with the files can read them.';
 
   @override
-  String get portableExportMarkdownFormatLabel => 'Format: Markdown ZIP';
+  String get portableExportMarkdownFormatLabel => 'Markdown archive (ZIP)';
 
   @override
-  String get portableExportHtmlFormatLabel => 'Format: HTML';
+  String get portableExportHtmlFormatLabel => 'Single HTML file';
+
+  @override
+  String get portableExportHtmlAssetsLabel => 'HTML with an image folder';
+
+  @override
+  String get portableExportHtmlAssetsHint =>
+      'Save original images separately. Keep the assets folder with the HTML file.';
+
+  @override
+  String get portableExportHtmlAssetsUnavailableHint =>
+      'Include images and select an entry with images to use this option.';
 
   @override
   String get portableExportHtmlDocumentTitle => 'Quill Diary export';
@@ -2870,8 +2959,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String portableExportDate(String date) {
+    return 'Date: $date';
+  }
+
+  @override
   String portableExportDateRange(String start, String end) {
-    return 'Date range: $start – $end';
+    return 'Dates: $start to $end';
   }
 
   @override
@@ -2886,14 +2980,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get portableExportIncludeImagesLabel =>
-      'Include images and attachments';
+      'Include images and attachment details';
 
   @override
   String get portableExportHidePersonNamesLabel => 'Hide person names';
 
   @override
   String get portableExportHidePersonNamesHint =>
-      'Replace names and aliases from your people list with Person A, Person B, and so on.';
+      'Replace names and aliases with labels such as Person A.';
 
   @override
   String get portableExportSelectEntriesLabel => 'Select entries';
@@ -2902,6 +2996,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String portableExportSelectEntriesSummary(int selected, int total) {
     return '$selected of $total selected';
   }
+
+  @override
+  String get portableExportPartialCopy =>
+      'Export failed and may have left incomplete files in the selected folder.';
 
   @override
   String get portableImportConfirmTitle => 'Confirm import';
@@ -3169,18 +3267,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Backup restored. Everything is ready to use.';
 
   @override
-  String get sessionRestoreSuccessLockedMessage =>
-      'Backup restored. Complete biometric or device-lock verification to continue.';
-
-  @override
-  String get sessionRestoreSuccessRecoveryRequiredMessage =>
-      'Backup restored. Enter the recovery key saved when this backup was created.';
-
-  @override
-  String get sessionRestoreStartupFailedMessage =>
-      'Backup restored, but startup failed. Retry from Settings or enter the recovery key.';
-
-  @override
   String get sessionRecoveryKeyMismatchMessage =>
       'The recovery key is incorrect. If this backup predates a key rotation, enter the old key saved with that backup.';
 
@@ -3276,7 +3362,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsActionConfirm => 'Confirm Restore';
+  String get settingsActionConfirm => 'Start restore';
 
   @override
   String get settingsActionVerifyAndRestore => 'Verify and Restore';
@@ -3316,11 +3402,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBackupPhaseRestoring =>
-      'Restoring backup. Please keep the app open…';
+      'Checking and restoring the backup…';
 
   @override
   String get settingsBackupStartingAfterRestore =>
-      'Starting the restored diary vault…';
+      'Opening the restored diary vault…';
 
   @override
   String get settingsSecurityLockStatusPreparing => 'Preparing…';
@@ -3344,10 +3430,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsSecurityLockUnlockWithRecoveryButton =>
       'Unlock with Recovery Key';
-
-  @override
-  String get settingsSecurityLockRecoveryUnlockHint =>
-      'Enter the recovery key to unlock the diary vault.';
 
   @override
   String get settingsSecurityLockRetryVerificationButton => 'Verify Again';
@@ -3424,6 +3506,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsBackupStatusReadFailed =>
       'Unable to read the backup reminder status. Please retry.';
+
+  @override
+  String get settingsBackupStatusUpdateFailedAfterDelivery =>
+      'The backup status could not be updated.';
 
   @override
   String get settingsSecurityOverviewRecoveryKeyReady =>
@@ -3680,7 +3766,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsLocalBackupSectionDescriptionEnabled(int retainCount) {
-    return 'Create full local backups; restoring replaces the current diary vault with the backup copy. (Keeps up to $retainCount local backups)';
+    return 'Create full local backups. Restoring replaces the current diary vault. The retention target is $retainCount local backups.';
   }
 
   @override
@@ -3699,6 +3785,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLocalBackupPickDialogTitle => 'Choose Local Backup';
+
+  @override
+  String get settingsBackupPickInstructions =>
+      'Select a backup to see its restore details.';
+
+  @override
+  String settingsBackupDeleteFailed(String message) {
+    return 'Could not delete the backup. Select Delete again to retry.\n$message';
+  }
 
   @override
   String get settingsLocalBackupNoBackups => 'No local backups yet.';
@@ -3743,7 +3838,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsDriveBackupSectionDescriptionEnabled(int retainCount) {
-    return 'Link a Google Account to create Google Drive backups or restore from Google Drive backups; restoring replaces the current diary vault with the backup copy. Uploads finish in the background, so you can switch apps; do not force-stop this app. (Keeps up to $retainCount Google Drive backups)';
+    return 'Link a Google Account to back up or restore your diary. Restoring replaces the current vault. Uploads can continue in the background. Keep the app running. The retention target is $retainCount Google Drive backups.';
   }
 
   @override
@@ -3830,8 +3925,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDriveBackupUnknownCreatedTime => 'Unknown creation time';
 
   @override
-  String get settingsDriveBackupDeleteConfirmTitle =>
-      'Delete Google Drive Backup?';
+  String get settingsDriveBackupDeleteConfirmTitle => 'Delete cloud backup?';
 
   @override
   String settingsDriveBackupDeleteBackupSuccess(String fileName) {
@@ -3864,7 +3958,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreConfirmOverwriteHeadline =>
-      'Existing data will be replaced. Follow the prompts to unlock after restore.';
+      'This backup will replace your current diary vault. Restoring cannot be undone.';
 
   @override
   String get settingsRestoreConfirmFreshVaultHeadline =>
@@ -3872,14 +3966,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestoreConfirmOverwriteAcknowledgeCheckbox =>
-      'I understand existing entries will be overwritten and cannot be recovered.';
+      'I agree to replace the current diary vault.';
 
   @override
   String get settingsRestorePrecheckSameVaultTitle => 'Same Vault';
-
-  @override
-  String get settingsRestorePrecheckSameVaultBody =>
-      'This backup belongs to the same vault as this device.';
 
   @override
   String get settingsRestorePrecheckOtherVaultTitle =>
@@ -3887,76 +3977,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsRestorePrecheckOtherVaultBody =>
-      'This backup is from another device or a different vault.';
+      'This backup belongs to a different diary vault.';
 
   @override
-  String get settingsRestorePrecheckRotatedTitle => 'Recovery Key Rotated';
+  String get settingsRestorePrecheckRotatedTitle =>
+      'Previous recovery key required';
 
   @override
   String get settingsRestorePrecheckRotatedBody =>
-      'This backup was created before the recovery key was updated. Use the old key saved with that backup.';
-
-  @override
-  String get settingsRestorePrecheckTrustedUnlockTitle => 'May Auto-Unlock';
+      'This backup was created before the key was updated.';
 
   @override
   String get settingsRestorePrecheckTrustedUnlockBody =>
-      'If the backup uses the same recovery key as this device, you can usually continue without extra steps.';
+      'You can continue with your current unlocked session.';
 
   @override
-  String get settingsRestorePrecheckRecoveryKeyTitle =>
-      'Recovery Key Required After Restore';
+  String get settingsRestorePrecheckRecoveryKeyTitle => 'Recovery key required';
 
   @override
   String get settingsRestorePrecheckRecoveryKeyBody =>
-      'Have the recovery key saved when this backup was created.';
+      'Next, you’ll enter the recovery key for this backup.';
 
   @override
-  String get settingsRestorePrecheckHintTitle => 'Key Hint';
+  String get settingsRestorePrecheckHintTitle => 'Key hint';
 
   @override
-  String get settingsRestorePrecheckRebuildIndexTitle => 'Rebuild Search Index';
-
-  @override
-  String get settingsRestorePrecheckRebuildIndexBody =>
-      'The search index will be rebuilt after unlock.';
-
-  @override
-  String get settingsRestorePrecheckRewrapTitle =>
-      'First Unlock May Take Longer';
-
-  @override
-  String get settingsRestorePrecheckRewrapBody =>
-      'The first unlock after restore may take longer. Keep the app open.';
-
-  @override
-  String settingsRestoreDialogDriveFileLine(String name) {
-    return 'Backup: $name';
+  String settingsRestoreKeyEnding(String hint) {
+    return 'Key ends in $hint';
   }
 
   @override
-  String get settingsRestoreDialogRecoveryKeyTitle =>
-      'Enter Backup Recovery Key';
+  String get settingsRestorePrecheckRebuildIndexTitle => 'Before restoring';
+
+  @override
+  String get settingsRestorePrecheckRebuildIndexBody =>
+      'The app checks the backup and rebuilds the search index before restoring the diary vault.';
+
+  @override
+  String get settingsRestoreSelectedDriveFile => 'Selected backup file';
+
+  @override
+  String get settingsRestoreEnterKeyNext => 'Next';
+
+  @override
+  String get settingsRestoreDialogRecoveryKeyTitle => 'Enter recovery key';
+
+  @override
+  String get settingsRestoreDialogOlderKeyTitle =>
+      'Enter previous recovery key';
 
   @override
   String get settingsRestoreDialogRecoveryKeyEmptyError =>
       'Enter the recovery key.';
 
   @override
-  String get settingsRestoreDialogRecoveryKeyVerifyNote =>
-      'Restore starts only if the key is correct.';
-
-  @override
   String get settingsRestoreDialogSubtitleRotatedBackup =>
-      'This backup was created before the recovery key was updated. Enter the old key saved when that backup was created, not the current new key.';
+      'Enter the full key saved for this backup before the key was updated.';
 
   @override
-  String get settingsRestoreDialogSubtitleSameVaultManual =>
-      'This device cannot auto-unlock this backup. Enter the recovery key saved when it was created.';
-
-  @override
-  String get settingsRestoreDialogSubtitleOtherVault =>
-      'This backup is from another device. Enter the recovery key saved when it was created.';
+  String get settingsRestoreDialogKeyInstructions =>
+      'Enter the full recovery key for this backup.';
 
   @override
   String get settingsRepairVaultReadyMessage =>
@@ -5526,53 +5606,4 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutTabBackupRestoreSection5Item1Body =>
       'Google Drive is a place to manually create and restore full backups, not to sync entries live. Imported entries and their source files are independent, so later changes do not automatically update the other copy.';
-
-  @override
-  String get personaIncludeCurrentMemory => 'Include current memories';
-
-  @override
-  String get personaIncludeCurrentTone => 'Include current conversation style';
-
-  @override
-  String get personaIncludeCurrentHint =>
-      'Only checked content is included. Current memories may retain information from unselected diaries.';
-
-  @override
-  String get personaNeutralMemory =>
-      'No confirmed memories about this person are available yet.';
-
-  @override
-  String get personaNeutralTone =>
-      'Use natural, neutral everyday language without adding specific catchphrases.';
-
-  @override
-  String personaRetainedContentTitle(String name) {
-    return 'Locally retained $name';
-  }
-
-  @override
-  String get organizationReplyTitle => 'AI revision notes';
-
-  @override
-  String get organizationShowReply => 'More';
-
-  @override
-  String get organizationUnsafeCandidate =>
-      'This draft contains protected references not supplied in the current conversation and cannot be applied. Return to chat and generate again; your requests will be kept.';
-
-  @override
-  String get chatDiaryPrivateNotesHint =>
-      'Private text omitted by AI is still added locally under Private notes. Asking AI to exclude it does not remove these notes; you can delete them in the diary editor.';
-
-  @override
-  String get personaToneLocalRetainedHint =>
-      'No usable original words from this person. The included conversation style will be kept locally.';
-
-  @override
-  String get personaToneLocalNeutralHint =>
-      'No usable original words from this person. A neutral conversation style will be created locally.';
-
-  @override
-  String get aiErrorPrivacy =>
-      'Privacy checks could not finish. No content was sent. Check the settings and try again.';
 }

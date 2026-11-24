@@ -1,13 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:quill_diary/application/restore/post_restore_session.dart';
 import 'package:quill_diary/application/session/session_providers.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/application/settings/personalization_providers.dart';
+import 'package:quill_diary/application/settings/settings_providers.dart';
 import 'package:quill_diary/application/vault/vault_providers.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
+import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/shared/platform/vault_platform_support.dart';
 
 import '../../helpers/session/fake_session_vault_repository.dart';
@@ -87,6 +90,48 @@ void main() {
       expect(repository.openTrustedSessionCalls, 1);
     },
   );
+
+  test('讀取已啟動的日記庫中繼資料不會再次初始化', () async {
+    final metadata = _fakeMetadata();
+    final repository = FakeSessionVaultRepository(
+      metadata: metadata,
+      initializeError: StateError('不可再次初始化'),
+    );
+    final container = _buildSessionContainer(repository);
+    addTearDown(container.dispose);
+    container
+        .read(appSessionProvider.notifier)
+        .adoptBootstrapState(
+          const AppSessionState(status: AppLockStatus.recoveryRequired),
+        );
+    expect(
+      await container.read(recoveryMetadataProvider.future),
+      same(metadata),
+    );
+  });
+
+  test('提交後裝置信任更新失敗時保留已驗證的復原工作階段', () async {
+    final repository = _UnavailableDeviceTrustRepository();
+    final container = _buildSessionContainer(repository);
+    addTearDown(container.dispose);
+    const restored = UnlockedVaultSession(
+      vaultId: 'vault-restored',
+      trustedDevice: false,
+      recoveryWrapKey: <int>[1, 2, 3],
+    );
+    final postRestore = Provider(
+      (ref) =>
+          () => finishRestoreSession(ref, restored),
+    );
+
+    await container.read(postRestore)();
+
+    expect(container.read(appSessionProvider).status, AppLockStatus.unlocked);
+    expect(
+      (await container.read(effectiveAppSessionProvider.future)).session,
+      same(restored),
+    );
+  });
 }
 
 ProviderContainer _buildSessionContainer(
@@ -112,6 +157,16 @@ RecoveryMetadata _fakeMetadata() {
     createdAt: DateTime(2024, 1, 1),
     kdf: KdfDescriptor.argon2idRecovery(saltBytes: List<int>.filled(16, 1)),
   );
+}
+
+class _UnavailableDeviceTrustRepository extends FakeSessionVaultRepository {
+  @override
+  Future<UnlockedVaultSession> ensureKeystoreMatchesUnlockMode(
+    UnlockedVaultSession session, {
+    AppUnlockMode? targetMode,
+  }) async {
+    throw StateError('裝置信任更新失敗');
+  }
 }
 
 class _FixedPersonalizationPreferencesController

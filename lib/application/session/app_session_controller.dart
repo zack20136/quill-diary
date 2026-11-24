@@ -21,6 +21,12 @@ class AppSessionController extends Notifier<AppSessionState> {
   final SessionResumeCoordinator _resumeCoordinator =
       SessionResumeCoordinator();
   Future<UnlockOutcome>? _trustedUnlockInFlight;
+  final _editorDraftFlushers = <Future<void> Function()>{};
+
+  VoidCallback registerEditorDraftFlusher(Future<void> Function() flush) {
+    _editorDraftFlushers.add(flush);
+    return () => _editorDraftFlushers.remove(flush);
+  }
 
   SessionStartupCoordinator get _startupCoordinator =>
       SessionStartupCoordinator(ref);
@@ -165,14 +171,9 @@ class AppSessionController extends Notifier<AppSessionState> {
     }
   }
 
-  Future<void> beginPostRestoreStartup() async {
+  void beginPostRestoreStartup() {
     _resumeCoordinator.reset();
-    final AppLocalizations l10n = await loadSessionL10n(ref);
-    state = AppSessionState(
-      status: AppLockStatus.unlocking,
-      message: l10n.settingsBackupStartingAfterRestore,
-    );
-    await _vault.closeUnlockedResources();
+    state = const AppSessionState(status: AppLockStatus.unlocking);
   }
 
   void notifyAppBackground() {
@@ -292,6 +293,14 @@ class AppSessionController extends Notifier<AppSessionState> {
     if (lockReason == SessionLockReason.inactivity) {
       _navigationCoordinator.saveLockedRestoreRoute();
     }
+    if (_editorDraftFlushers.isNotEmpty) {
+      try {
+        await Future.wait(_editorDraftFlushers.toList().map((flush) => flush()))
+            .timeout(const Duration(milliseconds: 750));
+      } on Object {
+        // 寫入失敗或逾時仍須鎖定。
+      }
+    }
     state = AppSessionState(
       status: AppLockStatus.locked,
       lockReason: lockReason,
@@ -303,9 +312,6 @@ class AppSessionController extends Notifier<AppSessionState> {
 
   Future<void> _cleanupUnlockedResourcesIfPossible() async {
     await _resumeCoordinator.cleanupUnlockedResourcesIfPossible(() async {
-      await ref
-          .read(editorDraftStoreProvider)
-          .clearAllMaterializedPendingFiles();
       await _vault.closeUnlockedResources();
     });
   }
@@ -318,38 +324,20 @@ class AppSessionController extends Notifier<AppSessionState> {
     }
   }
 
-  Future<AppSessionState> bootstrapAfterRestore() {
+  Future<AppSessionState> bootstrapSession() {
     return _bootstrapSession();
   }
 
-  Future<AppSessionState> resumeSessionAfterRestore(
-    UnlockedVaultSession priorSession,
-  ) async {
-    return _startupCoordinator.resumeSessionAfterRestore(
-      priorSession,
-      applyState: _setState,
-      activateUnlockedState: _activateUnlockedState,
-      friendlyErrorMessage:
-          (Object error, {bool afterRestoreTrustedUnlock = false}) async {
-            final AppLocalizations l10n = await loadSessionL10n(ref);
-            return friendlySessionErrorMessage(
-              l10n,
-              error,
-              afterRestoreTrustedUnlock: afterRestoreTrustedUnlock,
-            );
-          },
-      disarmSessionWatchdog: _disarmSessionWatchdog,
-    );
-  }
-
-  AppSessionState enterRecoveryRequiredAfterRestore() {
-    final AppSessionState next = AppSessionState(
-      status: AppLockStatus.recoveryRequired,
-      message: (sessionL10n(ref)).sessionTrustedUnlockFailedAfterRestoreMessage,
-    );
-    state = next;
-    _resumeCoordinator.disarm();
-    return next;
+  Future<void> activateRestoredSession(UnlockedVaultSession restored) async {
+    var session = restored;
+    if (!session.trustedDevice) {
+      try {
+        session = await _vault.ensureKeystoreMatchesUnlockMode(restored);
+      } on Object {
+        // 裝置信任更新失敗時，保留本次已驗證的復原工作階段。
+      }
+    }
+    activateSession(session);
   }
 
   Future<AppSessionState> _setState(AppSessionState next) async {

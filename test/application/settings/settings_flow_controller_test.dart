@@ -20,15 +20,12 @@ import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/vault_maintenance_models.dart';
-import 'package:quill_diary/infrastructure/crypto/crypto_service.dart';
-import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/markdown/front_matter_codec.dart';
 import 'package:quill_diary/infrastructure/security/app_unlock_mode.dart';
 import 'package:quill_diary/infrastructure/security/device_key_manager.dart';
 import 'package:quill_diary/infrastructure/storage/backup_status_store.dart';
 import 'package:quill_diary/infrastructure/storage/backup_task_progress.dart';
-import 'package:quill_diary/infrastructure/storage/editor_draft_store.dart';
 import 'package:quill_diary/infrastructure/storage/external_directory_store.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_export_io.dart';
 import 'package:quill_diary/infrastructure/storage/portable/portable_import_io.dart';
@@ -53,11 +50,6 @@ class _FlowBackupService extends VaultBackupService {
          backupIo: VaultBackupIo(
            pathStrategy: DummyVaultPathStrategy(),
            repository: FakeSessionVaultRepository(),
-           indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-           editorDraftStore: EditorDraftStore(
-             pathStrategy: DummyVaultPathStrategy(),
-             cryptoService: LocalCryptoService(),
-           ),
          ),
          driveBackupService: _UnusedDriveBackupService(),
          externalDirectoryStore: ExternalDirectoryStore(
@@ -99,11 +91,6 @@ class _FlowRestoreService extends VaultRestoreService {
         backupIo: VaultBackupIo(
           pathStrategy: DummyVaultPathStrategy(),
           repository: FakeSessionVaultRepository(),
-          indexDatabaseManager: IndexDatabaseManager(DummyVaultPathStrategy()),
-          editorDraftStore: EditorDraftStore(
-            pathStrategy: DummyVaultPathStrategy(),
-            cryptoService: LocalCryptoService(),
-          ),
         ),
         vaultRepository: FakeSessionVaultRepository(),
         backupService: _FlowBackupService(),
@@ -420,6 +407,38 @@ void main() {
     });
 
     group('recordBackupPersistResult', () {
+      test('備份狀態損壞時仍顯示已交付的備份', () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'settings_backup_status_error_',
+        );
+        addTearDown(() => directory.delete(recursive: true));
+        final statusFile = await File('${directory.path}/backup_status.json')
+            .writeAsString('{');
+        final container = ProviderContainer(
+          overrides: [
+            backupStatusStoreProvider.overrideWithValue(
+              BackupStatusStore(storageFile: statusFile),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final feedback = await container
+            .read(settingsFlowControllerProvider)
+            .recordBackupPersistResult(
+              l10n: testZhL10n,
+              result: const BackupPersistResult(
+                status: BackupPersistStatus.success,
+                savedPath: 'C:/backup/delivered.zip',
+              ),
+              action: BackupStatusAction.externalExport,
+              onSuccess: (path) => '已交付 $path',
+            );
+
+        expect(feedback?.message, contains('delivered.zip'));
+        expect(feedback?.tone, SettingsFlowFeedbackTone.warning);
+        expect(await statusFile.readAsString(), '{');
+      });
+
       test('會寫入狀態並回傳成功訊息', () async {
         final Directory tempDir = Directory.systemTemp.createTempSync(
           'settings_flow_status_test',

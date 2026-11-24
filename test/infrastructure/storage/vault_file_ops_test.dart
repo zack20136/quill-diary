@@ -55,17 +55,25 @@ void main() {
   test('清理僅回收前次程序暫存及舊備份半成品', () async {
     final paths = TestVaultPathStrategy(directory);
     final transfer = await paths.transferWorkDirectory();
-    final previews = await paths.editorDraftPreviewWorkDirectory();
+    final previews = await paths.editorDraftPreviewRootDirectory();
     final backups = await paths.localBackupsDirectory();
     final active = [
       File(p.join(transfer.path, 'working.zip')),
-      File(p.join(previews.path, 'current.jpg')),
+      File(p.join(previews.path, 'external', 'current.jpg')),
       File(p.join(backups.path, 'backup.zip')),
       File(p.join((await paths.vaultRootDirectory()).path, 'recovery.json')),
     ];
     final abandoned = [
-      File(p.join(transfer.parent.path, 'old_run', 'working.zip')),
-      File(p.join(previews.parent.path, 'old_run', 'preview.jpg')),
+      File(
+        p.join(
+          transfer.parent.path,
+          'run_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+          'working.zip',
+        ),
+      ),
+      File(
+        p.join(previews.path, 'run_01ARZ3NDEKTSV4RRFFQ69G5FAV', 'preview.jpg'),
+      ),
       File(p.join(backups.path, '${generateBackupId()}.partial')),
     ];
     for (final file in [...active, ...abandoned]) {

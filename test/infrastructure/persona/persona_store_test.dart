@@ -672,7 +672,8 @@ void main() {
       ))!.cards![PersonaCardKind.memory]!.text,
       '備份後更新的記憶',
     );
-    await io.restoreBackupZip(backup);
+    final key = await io.verifyBackupRecoveryKey(backup, setup.recoveryKey);
+    await io.restoreBackupZip(backup, verifiedKey: key);
     final session = await harness.repository.unlockWithRecoveryKey(
       setup.recoveryKey,
     );

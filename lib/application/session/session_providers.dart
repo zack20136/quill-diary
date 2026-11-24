@@ -9,7 +9,7 @@ final appSessionProvider =
     );
 
 final sessionStartupProvider = FutureProvider<AppSessionState>((Ref ref) async {
-  return ref.read(appSessionProvider.notifier).bootstrapAfterRestore();
+  return ref.read(appSessionProvider.notifier).bootstrapSession();
 });
 
 class IndexQueryableVaultSession extends Notifier<UnlockedVaultSession?> {

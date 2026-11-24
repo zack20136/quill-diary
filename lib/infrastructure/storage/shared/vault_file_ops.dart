@@ -4,7 +4,11 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/dart.dart';
+import 'package:flutter/services.dart'
+    show MissingPluginException, PlatformException;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
@@ -14,6 +18,24 @@ import 'package:quill_diary/infrastructure/storage/vault_path_strategy.dart';
 
 String draftAttachmentDocumentId(String draftKey, String encryptedFileName) =>
     'draft_pending_${draftKey}_$encryptedFileName';
+
+Future<List<int>> readEncryptedDraftAttachment({
+  required CryptoService crypto,
+  required ({String draftKey, String path}) source,
+  required DecryptionContext context,
+}) async {
+  final parsed = crypto.parseFileBytes(await File(source.path).readAsBytes());
+  if (parsed.header.vaultId != context.vaultId ||
+      parsed.header.fileId !=
+          draftAttachmentDocumentId(source.draftKey, p.basename(source.path))) {
+    throw const FormatException('草稿附件身分不符。');
+  }
+  return crypto.decryptBytes(
+    headerBytes: parsed.headerBytes,
+    ciphertextBytes: parsed.ciphertextBytes,
+    context: context,
+  );
+}
 
 /// 帶進度的複製會等待寫入端，以限制緩衝區。
 Future<void> copyFileToPath(
@@ -63,6 +85,15 @@ Future<void> writeByteStreamToFile(
   await sink.close();
 }
 
+Future<Hash> sha256File(File file) async {
+  final sink = const DartSha256().newHashSink();
+  await for (final bytes in file.openRead()) {
+    sink.add(bytes);
+  }
+  sink.close();
+  return sink.hash();
+}
+
 /// 在 app 暫存目錄建立唯一工作資料夾。
 Future<Directory> createWorkingDirectory(
   VaultPathStrategy pathStrategy,
@@ -73,27 +104,70 @@ Future<Directory> createWorkingDirectory(
   return tempRoot.createTemp('${prefix}_');
 }
 
-/// 修復時清除前次程序的暫存。整個現行程序目錄保留，內部可能有其他工作。
-Future<void> cleanupAbandonedLocalArtifacts(VaultPathStrategy paths) async {
-  for (final active in [
-    await paths.editorDraftPreviewWorkDirectory(),
-    await paths.transferWorkDirectory(),
+Future<void> deleteWorkingDirectory(Directory directory) async {
+  try {
+    await directory.delete(recursive: true);
+  } on FileSystemException {
+    // 清理失敗時保留原本的操作結果。
+  }
+}
+
+Future<void> cleanupAbandonedWorkFiles(VaultPathStrategy paths) async {
+  final active = await paths.transferWorkDirectory();
+  final runDirectory = RegExp(r'^run_[0-9A-HJKMNP-TV-Z]{26}$');
+  for (final root in [
+    await paths.editorDraftPreviewRootDirectory(),
+    active.parent,
   ]) {
-    final Directory root = active.parent;
-    if (!root.existsSync()) continue;
     try {
+      if (await FileSystemEntity.type(root.path, followLinks: false) !=
+          FileSystemEntityType.directory) {
+        continue;
+      }
       await for (final artifact in root.list(followLinks: false)) {
-        if (p.equals(artifact.path, active.path)) continue;
+        if (artifact is! Directory ||
+            !runDirectory.hasMatch(p.basename(artifact.path)) ||
+            p.equals(artifact.path, active.path)) {
+          continue;
+        }
         try {
-          await artifact.delete(recursive: artifact is Directory);
+          await artifact.delete(recursive: true);
         } on FileSystemException {
-          // 保留無法清除的項目，讓其他暫存仍可清理。
+          continue;
         }
       }
     } on FileSystemException {
-      // 掃描失敗時留到下次修復再試。
+      continue;
     }
   }
+  if (Platform.isAndroid) {
+    try {
+      final cache = await getTemporaryDirectory();
+      if (p.equals(
+        await cache.resolveSymbolicLinks(),
+        await Directory.systemTemp.resolveSymbolicLinks(),
+      )) {
+        await for (final item in cache.list(followLinks: false)) {
+          if (item is File &&
+              RegExp(r'^quill_diary_\d+\.jpg$')
+                  .hasMatch(p.basename(item.path))) {
+            await deleteFileIfExists(item.path);
+          }
+        }
+      }
+    } on Exception catch (error) {
+      if (error is! FileSystemException &&
+          error is! PlatformException &&
+          error is! MissingPluginException &&
+          error is! MissingPlatformDirectoryException) {
+        rethrow;
+      }
+    }
+  }
+}
+
+Future<void> cleanupAbandonedLocalArtifacts(VaultPathStrategy paths) async {
+  await cleanupAbandonedWorkFiles(paths);
   final backups = await paths.localBackupsDirectory();
   if (!backups.existsSync()) return;
   try {

@@ -8,8 +8,8 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
-import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 typedef _IntroBullet = ({IconData icon, String text});
@@ -89,10 +89,9 @@ class OnboardingIntroDialog extends ConsumerStatefulWidget {
 }
 
 class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
-  static const double _dialogHeight = 480;
-
   final PageController _pageController = PageController();
   int _page = 0;
+  bool _completing = false;
 
   @override
   void dispose() {
@@ -109,11 +108,14 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
   }
 
   Future<void> _complete() async {
-    await ref.read(hasSeenOnboardingIntroProvider.notifier).markCompleted();
-    if (!mounted) {
-      return;
+    if (_completing) return;
+    _completing = true;
+    try {
+      await ref.read(hasSeenOnboardingIntroProvider.notifier).markCompleted();
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      _completing = false;
     }
-    Navigator.of(context).pop();
   }
 
   @override
@@ -123,6 +125,10 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
     final ColorScheme colors = theme.colorScheme;
     final List<_IntroPage> pages = _onboardingIntroPages(l10n);
     final bool isLastPage = _page == pages.length - 1;
+    final double textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
+    final bool languageBelowTitle =
+        MediaQuery.sizeOf(context).width / textScale < 300;
+    const languageToggle = _OnboardingLanguageToggle();
 
     return PopScope(
       canPop: false,
@@ -133,29 +139,30 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
         unawaited(_goToPage(_page - 1));
       },
       child: SizedBox(
-        height: _dialogHeight,
+        height: 384 + (textScale - 1).clamp(0, 0.5) * 160,
         child: AppDialogShell(
           title: pages[_page].title,
-          titleTrailing: const _OnboardingLanguageToggle(),
+          titleTrailing: languageBelowTitle ? null : languageToggle,
           showClose: false,
           fillHeight: true,
           content: Column(
             children: <Widget>[
+              if (languageBelowTitle)
+                const Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: languageToggle,
+                  ),
+                ),
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
                   itemCount: pages.length,
                   onPageChanged: (int index) => setState(() => _page = index),
                   itemBuilder: (BuildContext context, int index) =>
-                      LayoutBuilder(
-                        builder: (context, constraints) => AppScrollView(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minHeight: constraints.maxHeight,
-                            ),
-                            child: _OnboardingPagePanel(page: pages[index]),
-                          ),
-                        ),
+                      AppScrollView(
+                        child: _OnboardingPagePanel(page: pages[index]),
                       ),
                 ),
               ),
@@ -173,6 +180,12 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
               ),
             ],
           ),
+          leading: isLastPage
+              ? null
+              : TextButton(
+                  onPressed: _complete,
+                  child: Text(l10n.onboardingIntroSkip),
+                ),
           actions: <Widget>[
             if (_page > 0)
               TextButton(
@@ -202,17 +215,17 @@ class _OnboardingPagePanel extends StatelessWidget {
   final _IntroPage page;
 
   @override
-  Widget build(BuildContext context) => AppInsetPanel(
-    padding: const EdgeInsets.all(12),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (int i = 0; i < page.bullets.length; i++) ...<Widget>[
-          if (i > 0) const SizedBox(height: 16),
-          _OnboardingBulletRow(bullet: page.bullets[i]),
-        ],
-      ],
-    ),
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: 10,
+    children: <Widget>[
+      for (final bullet in page.bullets)
+        AppDialogSection(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: _OnboardingBulletRow(bullet: bullet),
+        ),
+    ],
   );
 }
 
