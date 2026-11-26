@@ -55,7 +55,7 @@ void main() {
     expect(bottomGap, closeTo(topGap, 0.1));
   });
 
-  testWidgets('dialog 外框文字欄的滑塊貼齊框頂與框底', (tester) async {
+  testWidgets('對話框文字欄的滑塊可在框外從框頂拖到框底', (tester) async {
     final scroll = ScrollController();
     addTearDown(scroll.dispose);
     final text = TextEditingController(
@@ -71,13 +71,15 @@ void main() {
               context: context,
               builder: (_) => AppDialogShell(
                 title: '規則',
+                scrollbarInContentMargin: true,
                 content: SizedBox(
                   width: 320,
                   height: 280,
                   child: AppScrollbar(
                     controller: scroll,
                     track: AppScrollbarTrack.frame,
-                    reserveGutter: true,
+                    placement: AppScrollbarPlacement.gutter,
+                    gutterWidth: AppDialogInsets.horizontal,
                     child: TextField(
                       controller: text,
                       scrollController: scroll,
@@ -102,15 +104,17 @@ void main() {
     await tester.tap(find.text('開啟'));
     await tester.pumpAndSettle();
 
-    final Rect box = tester.getRect(find.byType(AppScrollbar));
+    final Rect box = tester.getRect(find.byType(TextField));
     final thumbFinder = find.byKey(
       const ValueKey<String>('app-scrollbar-thumb'),
     );
     Rect thumb() => tester.getRect(thumbFinder);
 
+    expect(thumb().left, greaterThanOrEqualTo(box.right));
     expect(thumb().top, closeTo(box.top, 1));
-    scroll.jumpTo(scroll.position.maxScrollExtent);
-    await tester.pump();
+    await tester.drag(thumbFinder, const Offset(0, 400));
+    await tester.pumpAndSettle();
+    expect(scroll.offset, closeTo(scroll.position.maxScrollExtent, 1));
     expect(thumb().bottom, closeTo(box.bottom, 1));
   });
 }

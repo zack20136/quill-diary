@@ -50,7 +50,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('長提示詞可捲動，捲動後仍可編輯', (tester) async {
+  testWidgets('長提示詞可拖曳框外滑塊捲動並繼續編輯', (tester) async {
     final text = List.generate(80, (i) => '第 $i 段：保留可編輯的完整提示詞。').join('\n');
     await open(tester, customText: text);
     final Finder field = find.byKey(_field);
@@ -58,7 +58,12 @@ void main() {
       of: field,
       matching: find.byType(Scrollable),
     );
-    await tester.drag(scrollable, const Offset(0, -160));
+    final thumb = find.byKey(const ValueKey<String>('app-scrollbar-thumb'));
+    expect(
+      tester.getRect(thumb).left,
+      greaterThanOrEqualTo(tester.getRect(field).right),
+    );
+    await tester.drag(thumb, const Offset(0, 160));
     await tester.pumpAndSettle();
     expect(
       tester.state<ScrollableState>(scrollable).position.pixels,

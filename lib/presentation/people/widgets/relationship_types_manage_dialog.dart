@@ -12,7 +12,6 @@ import 'package:quill_diary/domain/people/person.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/people_labels.dart';
@@ -26,7 +25,6 @@ const IconData kPeopleRelationshipsIcon = Icons.diversity_3_rounded;
 Future<void> showRelationshipTypesManageDialog(BuildContext context) =>
     showAppDialog<void>(
       context: context,
-      barrierColor: context.appColors.scrim,
       builder: (_) => const _RelationshipTypesManageDialog(),
     );
 
@@ -471,10 +469,10 @@ class _RelationshipTypesManageDialogState
                       ),
                     ),
                   )
-                : AppScrollbar(
-                    controller: _scroll,
-                    reserveGutter: true,
-                    child: AppDialogSection(
+                : AppDialogSection(
+                    child: AppScrollbar(
+                      controller: _scroll,
+                      placement: AppScrollbarPlacement.gutter,
                       child: ReorderableListView.builder(
                         scrollController: _scroll,
                         shrinkWrap: true,

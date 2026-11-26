@@ -9,19 +9,15 @@ Color personAccentColor(Person person) => person.accentArgb == null
     ? defaultPersonAccentColor(person.id)
     : Color(person.accentArgb!);
 
-/// 將頭貼底色預先混合到指定表面，避免同一透明色在不同頁面背景上看起來不一致。
-Color personAvatarBackgroundColor(Person person, Color surface) =>
-    accentColorPair(personAccentColor(person), surface).$1;
-
 /// 人物標籤沿用人物管理頁頭像的底色與前景色，避免不同畫面各自轉色。
-(Color, Color) personLabelColorPair(Person person, Color surface) =>
-    accentColorPair(personAccentColor(person), surface);
+AccentColors personLabelColors(Person person, Color surface) =>
+    accentColorsFor(personAccentColor(person), surface);
 
-(Color, Color) personAccentPairFor({
+AccentColors personAccentColorsFor({
   required String personId,
   required Color surface,
   int? accentArgb,
-}) => accentColorPair(
+}) => accentColorsFor(
   accentArgb == null ? defaultPersonAccentColor(personId) : Color(accentArgb),
   surface,
 );

@@ -1,7 +1,6 @@
 library;
 
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/home_formatters.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
 
 const int kCalendarMaxEntriesPerCell = 2;
@@ -21,9 +20,16 @@ bool calendarIsSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-String calendarWeekdayLabel(AppLocalizations l10n, DateTime day) {
-  return calendarWeekdayLabels(l10n)[day.weekday % 7];
-}
+String calendarWeekdayLabel(AppLocalizations l10n, DateTime day) =>
+    switch (day.weekday) {
+      DateTime.monday => l10n.homeCalendarWeekdayMon,
+      DateTime.tuesday => l10n.homeCalendarWeekdayTue,
+      DateTime.wednesday => l10n.homeCalendarWeekdayWed,
+      DateTime.thursday => l10n.homeCalendarWeekdayThu,
+      DateTime.friday => l10n.homeCalendarWeekdayFri,
+      DateTime.saturday => l10n.homeCalendarWeekdaySat,
+      _ => l10n.homeCalendarWeekdaySun,
+    };
 
 String calendarMonthTitle(AppLocalizations l10n, DateTime month) {
   return DisplayFormat.formatYearMonth(l10n, month.year, month.month);

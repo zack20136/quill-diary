@@ -46,7 +46,9 @@ Future<PortableImportConfirmResult> confirmPortableImport({
               for (final entry in preview.entries)
                 PortableEntryOption<int>(
                   id: entry.previewIndex,
-                  title: entry.displayTitle,
+                  title: entry.displayTitle.isEmpty
+                      ? l10n.editorUntitledDraft
+                      : entry.displayTitle,
                   subtitle: entry.likelyDuplicate
                       ? '${entry.date.value} · ${l10n.portableImportLikelyDuplicateMark}'
                       : entry.date.value,

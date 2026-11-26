@@ -132,13 +132,13 @@ class _PersonaSpeakerLabel extends ConsumerWidget {
         ?.where((person) => person.id == personId)
         .firstOrNull;
     final surface = context.appColors.sectionInset;
-    final (background, accent) = person == null
-        ? personAccentPairFor(
+    final (:background, foreground: accent, accent: _) = person == null
+        ? personAccentColorsFor(
             personId: personId,
             surface: surface,
             accentArgb: accentArgb,
           )
-        : personLabelColorPair(person, surface);
+        : personLabelColors(person, surface);
     return _SpeakerCaption(name: name!, background: background, accent: accent);
   }
 }
@@ -150,11 +150,10 @@ class _DefaultSpeakerLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final background = accentColorPair(
-      accent,
+    final (:background, foreground: accent, accent: _) = accentColorsFor(
+      Theme.of(context).colorScheme.primary,
       context.appColors.sectionInset,
-    ).$1;
+    );
     return _SpeakerCaption(name: name, background: background, accent: accent);
   }
 }

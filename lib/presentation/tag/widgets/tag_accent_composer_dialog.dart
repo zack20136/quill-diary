@@ -25,7 +25,6 @@ Future<String?> showTagAccentComposerDialog({
   Future<bool> Function()? onDelete,
 }) => showAppDialog<String>(
   context: context,
-  barrierColor: context.appColors.scrim,
   builder: (BuildContext dialogContext) => TagAccentComposerDialog(
     titleText: titleText,
     initialDisplayLabel: initialDisplayLabel,
@@ -201,11 +200,11 @@ class _TagAccentComposerDialogState
     ThemeData theme,
     ColorScheme cs,
     String previewText,
-    (Color, Color) previewPair,
+    AccentColors previewColors,
   ) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Color.alphaBlend(cs.primary.withValues(alpha: 0.04), cs.surface),
+        color: context.appColors.accentPreviewSurface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
       ),
@@ -217,13 +216,13 @@ class _TagAccentComposerDialogState
               l10n.tagPreviewLabel,
               style: theme.textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: cs.outline,
+                color: cs.onSurfaceVariant,
               ),
             ),
             const Spacer(),
-            AccentChip.pair(
+            AccentChip(
               label: previewText.isEmpty ? l10n.tagNameHint : previewText,
-              pair: previewPair,
+              colors: previewColors,
             ),
           ],
         ),
@@ -244,10 +243,7 @@ class _TagAccentComposerDialogState
       ' ',
     );
     final AppColors appColors = context.appColors;
-    final (Color previewBg, Color previewFg) = accentColorPair(
-      _accent,
-      appColors.sectionInset,
-    );
+    final previewColors = accentColorsFor(_accent, appColors.sectionInset);
     final bool canDelete = widget.onDelete != null;
     final bool busy = _deleting || _saving;
     final bool customSelected = _isCustom;
@@ -444,7 +440,7 @@ class _TagAccentComposerDialogState
               ),
             ),
             const SizedBox(height: 20),
-            _previewPanel(l10n, theme, cs, previewText, (previewBg, previewFg)),
+            _previewPanel(l10n, theme, cs, previewText, previewColors),
           ],
         ),
       ),

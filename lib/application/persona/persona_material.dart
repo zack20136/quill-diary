@@ -73,7 +73,7 @@ class PersonaMaterial {
         'sent_at_local': date,
         'style_text': styleText,
       },
-      if (previousDay != null) 'previous_local_date': previousDay,
+      'previous_local_date': ?previousDay,
       'text': text,
     };
   }

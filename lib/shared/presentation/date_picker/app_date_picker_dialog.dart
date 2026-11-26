@@ -606,7 +606,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
     return AppScrollbar(
       key: const Key('app-date-picker-month-scrollbar'),
       controller: _monthScrollController,
-      reserveGutter: true,
+      placement: AppScrollbarPlacement.gutter,
+      gutterWidth: AppDialogInsets.horizontal,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-month-view'),
         controller: _monthScrollController,
@@ -645,7 +646,7 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
                       : null,
                   style: _optionStyle(selected: selected),
                   child: Text(
-                    context.l10n.datePickerMonthOption(month),
+                    DisplayFormat.formatMonth(context.l10n, month),
                     textAlign: TextAlign.center,
                   ),
                 );
@@ -663,7 +664,8 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
     return AppScrollbar(
       key: const Key('app-date-picker-year-scrollbar'),
       controller: _yearScrollController,
-      reserveGutter: true,
+      placement: AppScrollbarPlacement.gutter,
+      gutterWidth: AppDialogInsets.horizontal,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-year-view'),
         controller: _yearScrollController,
@@ -739,12 +741,13 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
             _selectedYear,
             _selectedMonth,
           )
-        : context.l10n.datePickerMonthOption(_selectedMonth);
+        : DisplayFormat.formatMonth(context.l10n, _selectedMonth);
     final List<String> weekdayLabels = _weekdayLabels();
     final Widget dayView = AppScrollbar(
       key: const Key('app-date-picker-day-scrollbar'),
       controller: _dayScrollController,
-      reserveGutter: true,
+      placement: AppScrollbarPlacement.gutter,
+      gutterWidth: AppDialogInsets.horizontal,
       child: SingleChildScrollView(
         key: const Key('app-date-picker-day-view'),
         controller: _dayScrollController,
@@ -896,6 +899,7 @@ class _AppDatePickerDialogState<T> extends State<_AppDatePickerDialog<T>> {
   Widget build(BuildContext context) {
     return AppDialogShell(
       title: widget.config.title,
+      scrollbarInContentMargin: true,
       titleTrailing: widget.config.kind == _AppDatePickerKind.date
           ? TextButton(
               key: const Key('app-date-picker-today'),

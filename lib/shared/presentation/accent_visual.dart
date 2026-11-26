@@ -11,18 +11,28 @@ const double kAccentBackgroundMixLight = 0.16;
 const double kAccentBackgroundMixDark = 0.42;
 const double kAccentBorderAlpha = 0.32;
 
+/// accent 為 null 代表中性樣式，否則保留實際選色供邊框及標記使用。
+typedef AccentColors = ({Color background, Color foreground, Color? accent});
+
 /// 依表面明暗產生標籤／人物的背景與前景色。
 ///
 /// 淺色維持淡底；深色提高混色比例，避免幾乎全黑的髒底與色盤亮色脫節。
-(Color, Color) accentColorPair(Color accent, Color surface) {
+AccentColors accentColorsFor(Color accent, Color surface) {
   final bool isDark =
       ThemeData.estimateBrightnessForColor(surface) == Brightness.dark;
-  final Color background = Color.lerp(
+  final Color background = Color.alphaBlend(
+    Color.lerp(
+      surface,
+      accent,
+      isDark ? kAccentBackgroundMixDark : kAccentBackgroundMixLight,
+    )!,
     surface,
-    accent,
-    isDark ? kAccentBackgroundMixDark : kAccentBackgroundMixLight,
-  )!;
-  return (background, accent);
+  );
+  return (
+    background: background,
+    foreground: accentForegroundColor(accent, background),
+    accent: accent,
+  );
 }
 
 /// 可選強調色在色盤上的顯示色（完整色值，非 chip 混色背景）。
@@ -30,21 +40,47 @@ Color accentSwatchColor(Color accent) => accent.withValues(alpha: 1.0);
 
 /// 強調色實心色塊上的對比前景（勾選圖示等）。
 Color accentOnSwatchColor(Color accent) =>
-    ThemeData.estimateBrightnessForColor(accent) == Brightness.dark
+    _contrastingInk(accentSwatchColor(accent));
+
+/// 保留色相，調整字色深淺直到符合一般文字的對比。
+Color accentForegroundColor(Color accent, Color background) {
+  const minimumContrast = 4.5;
+  final base = accent.withValues(alpha: 1);
+  if (_contrastRatio(base, background) >= minimumContrast) {
+    return base;
+  }
+
+  final target = _contrastingInk(background);
+  var low = 0.0;
+  var high = 1.0;
+  for (var i = 0; i < 8; i++) {
+    final mix = (low + high) / 2;
+    final sample = Color.lerp(base, target, mix)!;
+    if (_contrastRatio(sample, background) >= minimumContrast) {
+      high = mix;
+    } else {
+      low = mix;
+    }
+  }
+  return Color.lerp(base, target, high)!;
+}
+
+Color _contrastingInk(Color background) =>
+    _contrastRatio(Colors.white, background) >=
+        _contrastRatio(Colors.black, background)
     ? Colors.white
-    : const Color(0xDE000000);
+    : Colors.black;
 
-Color accentBorderColor(Color accent, {double alpha = kAccentBorderAlpha}) =>
-    accent.withValues(alpha: alpha);
-
-BorderSide accentBorderSide(
-  Color accent, {
-  double width = 0.95,
-  double alpha = kAccentBorderAlpha,
-}) => BorderSide(
-  color: accentBorderColor(accent, alpha: alpha),
-  width: width,
-);
+double _contrastRatio(Color foreground, Color background) {
+  final foregroundLuminance = Color.alphaBlend(
+    foreground,
+    background,
+  ).computeLuminance();
+  final backgroundLuminance = background.computeLuminance();
+  return foregroundLuminance >= backgroundLuminance
+      ? (foregroundLuminance + 0.05) / (backgroundLuminance + 0.05)
+      : (backgroundLuminance + 0.05) / (foregroundLuminance + 0.05);
+}
 
 int colorArgb32(Color color) {
   final double a = (color.a.isFinite ? color.a : 1.0).clamp(0.0, 1.0);
@@ -72,28 +108,21 @@ Color accentColorForStableKey(String key) {
   return accentColorPresets[hash % accentColorPresets.length];
 }
 
-bool _accentPairIsNeutral(
-  ColorScheme scheme,
-  Color background,
-  Color foreground,
-) =>
-    foreground == scheme.onSurfaceVariant &&
-    (background == scheme.surfaceContainerHighest ||
-        background == scheme.surfaceContainerHigh);
-
 BorderSide? accentChipBorderSide(
   AppColors colors,
-  ColorScheme scheme,
-  Color background,
-  Color foreground, {
+  AccentColors accentColors, {
   double width = 0.95,
   double accentBorderAlpha = kAccentBorderAlpha,
 }) {
-  if (_accentPairIsNeutral(scheme, background, foreground)) {
-    final Color? neutralBorder = colors.tagNeutralChipBorder;
+  final accent = accentColors.accent;
+  if (accent == null) {
+    final Color? neutralBorder = colors.neutralChipBorder;
     return neutralBorder == null
         ? null
         : BorderSide(color: neutralBorder, width: width);
   }
-  return accentBorderSide(foreground, width: width, alpha: accentBorderAlpha);
+  return BorderSide(
+    color: accent.withValues(alpha: accentBorderAlpha),
+    width: width,
+  );
 }

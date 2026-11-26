@@ -1,5 +1,20 @@
 enum SettingsEntryAction { focusUnlockMethod, focusExternalRestore }
 
+enum AboutTopic {
+  writing,
+  people,
+  ai,
+  privacy,
+  backup;
+
+  static AboutTopic? fromSegment(String? segment) {
+    for (final topic in values) {
+      if (topic.name == segment) return topic;
+    }
+    return null;
+  }
+}
+
 abstract final class AppRoutes {
   static const String homeRoute = '/';
   static const String editorRoute = '/editor';
@@ -9,6 +24,8 @@ abstract final class AppRoutes {
   static String personaLocation(String personId) => '/persona/$personId';
   static const String settingsRoute = '/settings';
   static const String aboutRoute = '/settings/about';
+  static String aboutTopicLocation(AboutTopic topic) =>
+      '$aboutRoute/${topic.name}';
   static const String personalizationRoute = '/settings/personalization';
   static const String supportRoute = '/settings/support';
   static const String chatDiaryRoutePrefix = '/chat-diary';

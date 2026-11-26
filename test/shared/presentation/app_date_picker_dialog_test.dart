@@ -193,7 +193,10 @@ void main() {
     await tester.tap(find.byKey(const Key('open-picker')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Choose date'), findsOneWidget);
+    expect(
+      find.text(lookupAppLocalizations(appEnLocale).datePickerChooseDate),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('app-date-picker-day-view')), findsOneWidget);
     expect(
       tester

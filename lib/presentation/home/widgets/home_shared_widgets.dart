@@ -12,6 +12,7 @@ import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
@@ -106,6 +107,7 @@ class HomeDiarySliverSection extends StatelessWidget {
     required this.entries,
     this.stripeColor,
     this.trailing,
+    this.entryBackgroundColor,
     super.key,
   });
 
@@ -113,6 +115,7 @@ class HomeDiarySliverSection extends StatelessWidget {
   final List<DiaryEntrySummary> entries;
   final Color? stripeColor;
   final Widget? trailing;
+  final Color? entryBackgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +123,12 @@ class HomeDiarySliverSection extends StatelessWidget {
       title: title,
       stripeColor: stripeColor,
       trailing: trailing,
-      slivers: <Widget>[HomeCompactEntrySliverList(entries: entries)],
+      slivers: <Widget>[
+        HomeCompactEntrySliverList(
+          entries: entries,
+          entryBackgroundColor: entryBackgroundColor,
+        ),
+      ],
     );
   }
 }
@@ -144,7 +152,11 @@ class HomeHeaderTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final Color foreground = active ? cs.onPrimary : cs.onSurfaceVariant;
+    final selection = context.appColors.selectedControl;
+    final Color foreground = active
+        ? selection.foreground
+        : cs.onSurfaceVariant;
+    final BorderRadius borderRadius = BorderRadius.circular(999);
     return Semantics(
       button: true,
       selected: active,
@@ -152,19 +164,17 @@ class HomeHeaderTabButton extends StatelessWidget {
       child: Tooltip(
         message: label,
         child: InkWell(
-          borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
+          borderRadius: borderRadius,
           onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
+          child: Ink(
             height: double.infinity,
             padding: EdgeInsets.symmetric(
               horizontal: showLabel ? 12 : 3,
               vertical: 3,
             ),
             decoration: BoxDecoration(
-              color: active ? cs.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
+              color: active ? selection.background : Colors.transparent,
+              borderRadius: borderRadius,
             ),
             child: Center(
               child: ExcludeSemantics(

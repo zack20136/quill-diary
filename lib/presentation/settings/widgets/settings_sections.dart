@@ -25,29 +25,6 @@ import 'package:quill_diary/shared/presentation/widgets/app_segmented_choice_bar
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 import 'package:quill_diary/shared/presentation/widgets/recovery_key_text_field.dart';
 
-class SettingsSectionCard extends StatelessWidget {
-  const SettingsSectionCard({
-    required this.title,
-    required this.description,
-    required this.child,
-    this.icon,
-    super.key,
-  });
-
-  final String title;
-  final String description;
-  final Widget child;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) => AppSectionCard(
-    title: title,
-    description: description,
-    icon: icon,
-    child: child,
-  );
-}
-
 class SettingsStatusPanel extends StatelessWidget {
   const SettingsStatusPanel({
     required this.sessionState,
@@ -353,7 +330,7 @@ class SettingsFactChip extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
-          '$label：$value',
+          context.l10n.commonLabelValue(label, value),
           style: theme.textTheme.labelMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -505,7 +482,7 @@ class SettingsSecurityOverview extends ConsumerWidget {
             ),
             if (onRetryTrustedUnlock != null)
               AppActionButton(
-                label: l10n.settingsSecurityLockRetryVerificationButton,
+                label: l10n.commonActionVerifyAgain,
                 icon: kSessionRetryVerificationIcon,
                 appearance: AppActionButtonAppearance.primary,
                 onPressed: busy ? null : onRetryTrustedUnlock,
@@ -565,17 +542,21 @@ class _SecurityOverviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final AppColors colors = context.appColors;
-    final Color background = switch (item.level) {
-      SettingsHealthLevel.ok => colors.healthOkFill,
-      SettingsHealthLevel.warning => colors.healthWarningFill,
-      SettingsHealthLevel.error => colors.healthErrorFill,
+    final scheme = theme.colorScheme;
+    final tone = switch (item.level) {
+      SettingsHealthLevel.ok => AppFeedbackTone.success,
+      SettingsHealthLevel.warning => AppFeedbackTone.warning,
+      SettingsHealthLevel.error => AppFeedbackTone.error,
     };
-    final Color foreground = switch (item.level) {
-      SettingsHealthLevel.ok => colors.healthOkForeground,
-      SettingsHealthLevel.warning => colors.healthWarningForeground,
-      SettingsHealthLevel.error => colors.healthErrorForeground,
-    };
+    final feedback = resolveAppFeedbackColors(context, tone);
+    final bool isOk = item.level == SettingsHealthLevel.ok;
+    final Color background = isOk
+        ? scheme.surfaceContainerHigh
+        : feedback.background;
+    final Color titleColor = isOk ? scheme.onSurface : feedback.foreground;
+    final Color detailColor = isOk
+        ? scheme.onSurfaceVariant
+        : feedback.foreground;
     final IconData statusIcon = switch (item.level) {
       SettingsHealthLevel.ok => Icons.check_circle_outline_rounded,
       SettingsHealthLevel.warning => Icons.info_outline_rounded,
@@ -601,7 +582,7 @@ class _SecurityOverviewTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Icon(item.icon, color: foreground),
+              Icon(item.icon, color: titleColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -614,7 +595,7 @@ class _SecurityOverviewTile extends StatelessWidget {
                           child: Text(
                             item.title,
                             style: theme.textTheme.titleSmall?.copyWith(
-                              color: foreground,
+                              color: titleColor,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -623,13 +604,17 @@ class _SecurityOverviewTile extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
-                              Icon(statusIcon, size: 16, color: foreground),
+                              Icon(
+                                statusIcon,
+                                size: 16,
+                                color: feedback.foreground,
+                              ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   statusLabel,
                                   style: theme.textTheme.labelSmall?.copyWith(
-                                    color: foreground,
+                                    color: feedback.foreground,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -643,7 +628,7 @@ class _SecurityOverviewTile extends StatelessWidget {
                     Text(
                       item.message,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: foreground,
+                        color: detailColor,
                         height: 1.35,
                       ),
                     ),
@@ -665,7 +650,7 @@ class _SecurityOverviewTile extends StatelessWidget {
                           ],
                         ),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: foreground,
+                          color: detailColor,
                           height: 1.35,
                         ),
                       ),

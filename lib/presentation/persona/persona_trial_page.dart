@@ -21,6 +21,7 @@ import 'package:quill_diary/presentation/ai/ai_chat_model_picker.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
 import 'package:quill_diary/presentation/ai/ai_message_bubble.dart';
+import 'package:quill_diary/presentation/ai/ai_message_scroll.dart';
 import 'package:quill_diary/shared/app_lifecycle.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -28,6 +29,7 @@ import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text_field.dart';
 
 class PersonaTrialPage extends ConsumerStatefulWidget {
   const PersonaTrialPage({
@@ -64,7 +66,7 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     with WidgetsBindingObserver {
   final input = PrivateTextController();
   final _inputScroll = ScrollController();
-  final _messagesScroll = ScrollController();
+  final _messageScrollKey = GlobalKey<AiMessageScrollState>();
   late AiConnectionConfig _connection = widget.connection;
   final messages = <_TrialMessage>[];
   var _nextMessageId = 0;
@@ -121,7 +123,6 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     chat = null;
     input.dispose();
     _inputScroll.dispose();
-    _messagesScroll.dispose();
     super.dispose();
   }
 
@@ -168,7 +169,7 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
       messages.add(userMessage);
       messages.add(reply);
     });
-    _scrollToEnd();
+    _messageScrollKey.currentState?.followLatest();
     AiClient? requestClient;
     try {
       ensure(version);
@@ -238,7 +239,6 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
           throw const FormatException('試聊回覆過長');
         }
         setState(() => reply.visible = privacy.restore(output.toString()));
-        _scrollToEnd();
       }
       ensure(version);
       if (output.isEmpty) throw const FormatException('試聊沒有回覆');
@@ -259,30 +259,28 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
     }
   }
 
-  void _scrollToEnd() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_messagesScroll.hasClients) return;
-      _messagesScroll.jumpTo(_messagesScroll.position.maxScrollExtent);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final theme = Theme.of(context);
     final bodyStyle = watchPersonalizationPreferences(ref).typography
         .bodyTextStyle(theme.textTheme);
+    const contentPadding = EdgeInsets.only(right: AppDialogInsets.horizontal);
     return AppDialogShell(
       fillHeight: true,
+      scrollbarInContentMargin: !backgrounded,
       title: '${l.personaTrial} · ${l.personaTitle}',
       content: backgrounded
           ? const Center(child: Icon(Icons.lock_outline))
           : Column(
               children: [
-                _header(l, theme),
+                Padding(padding: contentPadding, child: _header(l, theme)),
                 if (failed)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(
+                      right: AppDialogInsets.horizontal,
+                      bottom: 8,
+                    ),
                     child: AppFeedbackBanner(
                       message: l.personaError,
                       tone: AppFeedbackTone.error,
@@ -292,16 +290,17 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                 Expanded(
                   child: messages.isEmpty
                       ? AppScrollView(
+                          gutterWidth: AppDialogInsets.horizontal,
                           child: AppDialogSummary(
                             icon: Icons.chat_bubble_outline,
                             title: l.personaTrialEmpty,
                           ),
                         )
-                      : AppScrollbar(
-                          controller: _messagesScroll,
-                          reserveGutter: true,
-                          child: ListView.builder(
-                            controller: _messagesScroll,
+                      : AiMessageScroll(
+                          key: _messageScrollKey,
+                          gutterWidth: AppDialogInsets.horizontal,
+                          builder: (controller) => ListView.builder(
+                            controller: controller,
                             physics: appBouncingScrollPhysics,
                             padding: const EdgeInsets.fromLTRB(0, 4, 0, 12),
                             itemCount: messages.length,
@@ -324,20 +323,27 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                           ),
                         ),
                 ),
-                AiConnectionSetupNotice(
-                  connection: _connection,
-                  onOpenSettings: busy ? null : _settings,
-                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 4),
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: AiChatModelPicker(
-                    current: _connection,
-                    enabled: !busy && ref.watch(aiEnabledProvider),
-                    onSelected: _selectModel,
+                Padding(
+                  padding: contentPadding,
+                  child: Column(
+                    children: [
+                      AiConnectionSetupNotice(
+                        connection: _connection,
+                        onOpenSettings: busy ? null : _settings,
+                        padding: const EdgeInsets.fromLTRB(0, 8, 0, 4),
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: AiChatModelPicker(
+                          current: _connection,
+                          enabled: !busy && ref.watch(aiEnabledProvider),
+                          onSelected: _selectModel,
+                        ),
+                      ),
+                      _composer(l, theme, bodyStyle),
+                    ],
                   ),
                 ),
-                _composer(l, theme, bodyStyle),
               ],
             ),
     );
@@ -402,7 +408,7 @@ class _PersonaTrialPageState extends ConsumerState<PersonaTrialPage>
                   Expanded(
                     child: AppScrollbar(
                       controller: _inputScroll,
-                      child: TextField(
+                      child: PrivateTextField(
                         controller: input,
                         scrollController: _inputScroll,
                         style: bodyStyle,

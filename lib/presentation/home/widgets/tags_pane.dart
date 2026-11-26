@@ -16,7 +16,6 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/domain/tag/tag.dart';
 import 'package:quill_diary/infrastructure/database/entry_index_sorting.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/home/home_formatters.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
@@ -52,8 +51,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
   final Set<String> _selectedTagKeys = {};
   bool _deletingTags = false;
   int _deleteEpoch = 0;
-  final ValueNotifier<bool> _tagListThumbDragging = ValueNotifier<bool>(false);
-  ScrollHoldController? _pageScrollHold;
 
   @override
   void initState() {
@@ -103,8 +100,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
 
   @override
   void dispose() {
-    _pageScrollHold?.cancel();
-    _tagListThumbDragging.dispose();
     _searchCtrl.dispose();
     _pageScrollController.dispose();
     _tagListScrollController.dispose();
@@ -254,7 +249,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
           ? context.l10n.homeTagsDeleted(labels.length)
           : entryCount == 0
           ? context.l10n.homeTagDeleted(labels.single)
-          : homeTagRemovedFromEntries(context.l10n, entryCount, labels.single),
+          : context.l10n.homeTagRemovedFromEntries(entryCount, labels.single),
       tone: AppFeedbackTone.success,
     );
     return true;
@@ -401,19 +396,6 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
     ];
   }
 
-  void _setTagListThumbDragging(bool dragging) {
-    if (dragging) {
-      if (_pageScrollController.hasClients) {
-        _pageScrollHold?.cancel();
-        _pageScrollHold = _pageScrollController.position.hold(() {});
-      }
-    } else {
-      _pageScrollHold?.cancel();
-      _pageScrollHold = null;
-    }
-    _tagListThumbDragging.value = dragging;
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen(homeTabProvider, (_, next) {
@@ -511,6 +493,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                           child: HomeSearchTextField(
                             controller: _searchCtrl,
                             hintText: context.l10n.homeTagSearchHint,
+                            onClear: _searchCtrl.clear,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -548,40 +531,58 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                   return HomeScrollbarGutter(
                     child: AppStateCard(
                       icon: Icons.search_off_rounded,
-                      title: context.l10n.homeSearchNoResultsTitle,
-                      message: context.l10n.homeSearchNoResultsMessage,
+                      title: context.l10n.commonNoTagSearchResults,
+                      message: context.l10n.homeTagSearchNoResultsMessage,
                       actionLabel: context.l10n.commonClearSearchTooltip,
+                      actionIcon: Icons.close_rounded,
                       onAction: _searchCtrl.clear,
                     ),
                   );
                 }
+                final previewTagLabel = _previewTagLabel;
+                final previewTagKey = previewTagLabel == null
+                    ? null
+                    : normalizeText(previewTagLabel);
                 final List<Widget> tagTiles = <Widget>[
                   for (int i = 0; i < list.length; i++) ...<Widget>[
                     if (i > 0) const SizedBox(height: 6),
                     Builder(
                       builder: (BuildContext context) {
-                        final TagCatalogUsageItem e = list[i];
-                        final (Color bg, Color fg) = tagResolvedAccentPair(
-                          e.label,
+                        final item = list[i];
+                        final tagKey = normalizeText(item.label);
+                        final colors = context.appColors;
+                        final tagColors = resolveTagColors(
+                          item.label,
                           cs,
                           accentMap,
-                          context.appColors,
+                          colors,
                         );
-                        final bool isRowSelected = _selectionMode
-                            ? _selectedTagKeys.contains(normalizeText(e.label))
-                            : _previewTagLabel != null &&
-                                  normalizeText(_previewTagLabel!) ==
-                                      normalizeText(e.label);
+                        final isRowSelected = _selectionMode
+                            ? _selectedTagKeys.contains(tagKey)
+                            : previewTagKey == tagKey;
+                        final accent = tagColors.accent;
+                        final titleColor = accent == null
+                            ? cs.onSurface
+                            : accentForegroundColor(
+                                accent,
+                                isRowSelected
+                                    ? colors.selectedRowFill
+                                    : colors.sectionInset,
+                              );
+                        final accentBorder = accentChipBorderSide(
+                          colors,
+                          tagColors,
+                        );
 
                         return Material(
-                          color: context.appColors.sectionInset,
+                          color: colors.sectionInset,
                           elevation: isRowSelected ? 1.5 : 0,
                           shadowColor: cs.shadow.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(
                             PageStyle.radiusPanel,
                           ),
                           child: ListTile(
-                            key: ValueKey('tag-row-${normalizeText(e.label)}'),
+                            key: ValueKey('tag-row-$tagKey'),
                             dense: true,
                             minVerticalPadding: 0,
                             contentPadding: const EdgeInsets.symmetric(
@@ -594,21 +595,20 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                               ),
                               side: isRowSelected
                                   ? BorderSide(
-                                      color: cs.primary.withValues(alpha: 0.55),
+                                      color: colors.selectedRowBorder,
                                       width: 1.4,
                                     )
                                   : BorderSide.none,
                             ),
                             selected: isRowSelected,
-                            selectedTileColor: cs.primaryContainer.withValues(
-                              alpha: 0.42,
-                            ),
+                            selectedColor: cs.onSurface,
+                            selectedTileColor: colors.selectedRowFill,
                             onTap: _deletingTags
                                 ? null
-                                : () => _onTagTap(e.label),
+                                : () => _onTagTap(item.label),
                             onLongPress: _deletingTags
                                 ? null
-                                : () => _toggleTagSelection(e.label),
+                                : () => _toggleTagSelection(item.label),
                             leading: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
@@ -623,32 +623,24 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                                   height: 38,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: bg,
-                                    border: () {
-                                      final BorderSide? side =
-                                          accentChipBorderSide(
-                                            context.appColors,
-                                            cs,
-                                            bg,
-                                            fg,
-                                          );
-                                      return side == null
-                                          ? null
-                                          : Border.fromBorderSide(side);
-                                    }(),
+                                    color: tagColors.background,
+                                    border: accentBorder == null
+                                        ? null
+                                        : Border.fromBorderSide(accentBorder),
                                   ),
                                   alignment: Alignment.center,
                                   child: Icon(
                                     Icons.sell_rounded,
-                                    color: fg,
+                                    color: tagColors.foreground,
                                     size: 20,
                                   ),
                                 ),
                               ],
                             ),
                             title: Text(
-                              e.label,
+                              item.label,
                               style: theme.textTheme.titleSmall?.copyWith(
+                                color: titleColor,
                                 fontWeight: FontWeight.w700,
                               ),
                               maxLines: 1,
@@ -658,7 +650,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 Text(
-                                  homeTagRowEntryCount(context.l10n, e.count),
+                                  context.l10n.homeTagRowEntryCount(item.count),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: cs.onSurfaceVariant,
                                   ),
@@ -685,7 +677,7 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                                         ? null
                                         : () => _presentComposer(
                                             accentMap: accentMap,
-                                            existingLabel: e.label,
+                                            existingLabel: item.label,
                                           ),
                                     style: IconButton.styleFrom(
                                       fixedSize: const Size(44, 44),
@@ -715,49 +707,41 @@ class _TagsManagePaneState extends ConsumerState<TagsManagePane> {
                           notification.disallowIndicator();
                           return false;
                         },
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: _tagListThumbDragging,
-                      builder: (BuildContext context, bool dragging, _) {
-                        return CustomScrollView(
-                          controller: _pageScrollController,
-                          physics: dragging
-                              ? const NeverScrollableScrollPhysics()
-                              : appBouncingScrollPhysics,
-                          scrollCacheExtent: HomeLayout.entryListCacheExtent,
-                          slivers: <Widget>[
-                            SliverToBoxAdapter(
-                              child: HomeSectionCard(
-                                title: homeTagsSectionTitle(
-                                  context.l10n,
-                                  list.length,
-                                ),
-                                stripeColor: cs.tertiary,
-                                padding: HomeLayout.tagListSectionCardPadding,
-                                child: SizedBox(
-                                  height: HomeLayout.tagListSectionHeight,
-                                  child: NestedPanelScrollbar(
-                                    controller: _tagListScrollController,
-                                    onThumbDragChanged:
-                                        _setTagListThumbDragging,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: tagTiles,
-                                    ),
+                    child: CustomScrollView(
+                      controller: _pageScrollController,
+                      physics: appBouncingScrollPhysics,
+                      scrollCacheExtent: HomeLayout.entryListCacheExtent,
+                      slivers: <Widget>[
+                        SliverToBoxAdapter(
+                          child: HomeSectionCard(
+                            title: context.l10n.homeTagsSectionTitle(
+                              list.length,
+                            ),
+                            stripeColor: cs.tertiary,
+                            padding: HomeLayout.tagListSectionCardPadding,
+                            child: SizedBox(
+                              height: HomeLayout.tagListSectionHeight,
+                              child: AppScrollbar(
+                                controller: _tagListScrollController,
+                                placement: AppScrollbarPlacement.nestedPanel,
+                                child: SingleChildScrollView(
+                                  controller: _tagListScrollController,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: tagTiles,
                                   ),
                                 ),
                               ),
                             ),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: HomeLayout.sectionGap),
-                            ),
-                            ..._tagDiaryPreviewSlivers(records, theme, cs),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 24),
-                            ),
-                          ],
-                        );
-                      },
+                          ),
+                        ),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: HomeLayout.sectionGap),
+                        ),
+                        ..._tagDiaryPreviewSlivers(records, theme, cs),
+                        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                      ],
                     ),
                   ),
                 );

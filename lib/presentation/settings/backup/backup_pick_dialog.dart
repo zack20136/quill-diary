@@ -54,6 +54,7 @@ Future<BackupPickListItem?> showBackupPickDialog({
               if (context.mounted) {
                 deleteError = l10n
                     .settingsBackupDeleteFailed(
+                      deleteTooltip,
                       userFacingErrorMessage(error, l10n: l10n, fallback: ''),
                     )
                     .trim();

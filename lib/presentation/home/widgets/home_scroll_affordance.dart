@@ -84,12 +84,13 @@ class _HomeBackToTopOverlayState extends ConsumerState<_HomeBackToTopOverlay> {
   @override
   void didUpdateWidget(_HomeBackToTopOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) {
-      return;
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleScrollChanged);
+      widget.controller.addListener(_handleScrollChanged);
     }
-    oldWidget.controller.removeListener(_handleScrollChanged);
-    widget.controller.addListener(_handleScrollChanged);
-    _handleScrollChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _handleScrollChanged();
+    });
   }
 
   @override
@@ -99,7 +100,7 @@ class _HomeBackToTopOverlayState extends ConsumerState<_HomeBackToTopOverlay> {
   }
 
   void _handleScrollChanged() {
-    if (!widget.controller.hasClients) {
+    if (widget.controller.positions.length != 1) {
       if (_showBackToTop) {
         setState(() => _showBackToTop = false);
       }
@@ -117,7 +118,7 @@ class _HomeBackToTopOverlayState extends ConsumerState<_HomeBackToTopOverlay> {
   }
 
   Future<void> _scrollToTop() async {
-    if (!widget.controller.hasClients) {
+    if (widget.controller.positions.length != 1) {
       return;
     }
     await widget.controller.animateTo(

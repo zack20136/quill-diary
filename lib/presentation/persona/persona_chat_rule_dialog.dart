@@ -11,6 +11,7 @@ import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text_field.dart';
 
 /// 內建格式失敗後，整份原文匯入。取消回傳 null。
 class PersonaChatRuleDialog extends StatefulWidget {
@@ -223,20 +224,24 @@ class _PersonaChatRuleDialogState extends State<PersonaChatRuleDialog> {
                 onChanged: (role) => setState(() => name.role = role),
               ),
             AppDialogSection(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 8,
                 children: [
-                  Text(
-                    l.personaChatRulePreview,
-                    style: theme.textTheme.titleSmall,
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Text(
+                      l.personaChatRulePreview,
+                      style: theme.textTheme.titleSmall,
+                    ),
                   ),
                   AppScrollbar(
                     controller: _scroll,
                     track: AppScrollbarTrack.frame,
-                    reserveGutter: true,
-                    child: TextField(
+                    placement: AppScrollbarPlacement.gutter,
+                    gutterWidth: 12,
+                    child: PrivateTextField(
                       controller: _text,
                       scrollController: _scroll,
                       readOnly: true,

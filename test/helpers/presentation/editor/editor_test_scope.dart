@@ -22,6 +22,8 @@ pumpEditorHybridBody(WidgetTester tester, {String? bodyText}) async {
   final TextEditingController bodyController = TextEditingController(
     text: bodyText,
   );
+  final scrollController = ScrollController();
+  addTearDown(scrollController.dispose);
   final GlobalKey<EditorHybridBodyState> bodyKey =
       GlobalKey<EditorHybridBodyState>();
 
@@ -30,6 +32,7 @@ pumpEditorHybridBody(WidgetTester tester, {String? bodyText}) async {
       child: EditorHybridBody(
         key: bodyKey,
         bodyController: bodyController,
+        scrollController: scrollController,
         typography: EditorTypographyPreferences.defaults,
         onBodyChanged: () {},
       ),

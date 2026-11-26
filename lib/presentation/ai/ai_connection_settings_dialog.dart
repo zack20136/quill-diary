@@ -1054,7 +1054,7 @@ class _AiConnectionSettingsDialogState
           children: [
             AppActionButton(
               key: ValueKey('ai-test-$id'),
-              label: l10n.aiTestConnection,
+              label: l10n.aiTestConnectionAction,
               icon: Icons.wifi_tethering,
               appearance: AppActionButtonAppearance.outlined,
               loading: _testingConnectionId == id,
@@ -1136,6 +1136,7 @@ class _AiConnectionSettingsDialogState
     }
     final Widget dialog = AppDialogShell(
       title: l10n.aiSettings,
+      scrollbarInContentMargin: _settingsLoaded,
       content: _isLoadingSettings
           ? const Center(child: CircularProgressIndicator())
           : !_settingsLoaded
@@ -1150,7 +1151,8 @@ class _AiConnectionSettingsDialogState
             )
           : AppScrollbar(
               controller: _settingsScroll,
-              reserveGutter: true,
+              placement: AppScrollbarPlacement.gutter,
+              gutterWidth: AppDialogInsets.horizontal,
               child: SingleChildScrollView(
                 key: const ValueKey('ai-settings-scroll'),
                 controller: _settingsScroll,
@@ -1385,26 +1387,15 @@ class _AiModelTile extends StatelessWidget {
     ];
     return Material(
       key: ValueKey('ai-model-${entry.config.connectionId}-${entry.model}'),
-      color: Theme.of(context).brightness == Brightness.dark
-          ? (enabled ? colors.surfaceContainerHigh : colors.surfaceContainer)
-          : enabled
-          ? Color.alphaBlend(
-              colors.primary.withValues(alpha: 0.05),
-              colors.surfaceContainerLowest,
-            )
-          : colors.surfaceContainerLowest,
+      color: enabled
+          ? context.appColors.selectedRowFill
+          : context.appColors.sectionCard,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? (enabled
-                    ? Theme.of(context)
-                          .extension<AppColors>()!
-                          .entrySelectedBorder
-                    : colors.outlineVariant)
-              : enabled
-              ? colors.primary.withValues(alpha: 0.24)
-              : colors.outlineVariant.withValues(alpha: 0.6),
+          color: enabled
+              ? context.appColors.selectedRowBorder
+              : colors.outlineVariant,
         ),
       ),
       child: Padding(

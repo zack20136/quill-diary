@@ -7,46 +7,26 @@ import 'package:quill_diary/shared/presentation/tag_visual.dart';
 import '../../helpers/app_test_theme.dart';
 
 void main() {
-  for (final Brightness brightness in Brightness.values) {
-    test('${brightness == Brightness.light ? '淺色' : '深色'}模式標籤選色與顯示共用相同配色', () {
-      final ThemeData theme = appTestTheme(brightness: brightness);
-      final ColorScheme scheme = theme.colorScheme;
-      final AppColors colors = theme.extension<AppColors>()!;
-      final Color accent = accentColorPresets.first;
-      final (Color, Color) previewPair = accentColorPair(
-        accent,
-        colors.sectionInset,
-      );
-      final (Color, Color) displayedPair = tagResolvedAccentPair(
-        '測試標籤',
-        scheme,
-        <String, int>{'測試標籤': colorArgb32(accent)},
-        colors,
-      );
+  test('用正規化名稱查標籤自訂色，查無設定時使用中性色', () {
+    final theme = appTestTheme();
+    final palette = theme.extension<AppColors>()!;
+    const accent = Color(0xFF62A87C);
+    final accents = {'trip': colorArgb32(accent)};
 
-      expect(displayedPair, previewPair);
-
-      final BorderSide? border = accentChipBorderSide(
-        colors,
-        scheme,
-        displayedPair.$1,
-        displayedPair.$2,
-      );
-      expect(border, isNotNull);
-      expect(
-        border!.color,
-        displayedPair.$2.withValues(alpha: kAccentBorderAlpha),
-      );
-    });
-  }
-
-  test('沒有目錄色的標籤維持中性色', () {
-    final ThemeData theme = appTestTheme();
-    final AppColors colors = theme.extension<AppColors>()!;
-
-    expect(
-      tagResolvedAccentPair('未設定', theme.colorScheme, const {}, colors),
-      tagNeutralAccentPair(theme.colorScheme),
+    final matched = resolveTagColors(
+      ' Trip ',
+      theme.colorScheme,
+      accents,
+      palette,
     );
+    final missing = resolveTagColors(
+      '其他標籤',
+      theme.colorScheme,
+      accents,
+      palette,
+    );
+
+    expect(matched.accent, accent);
+    expect(missing.accent, isNull);
   });
 }

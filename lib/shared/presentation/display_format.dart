@@ -60,6 +60,10 @@ abstract final class DisplayFormat {
     return isEnglishL10n(l10n) ? '$year' : '$year年';
   }
 
+  static String formatMonth(AppLocalizations l10n, int month) {
+    return isEnglishL10n(l10n) ? _englishMonthShort[month - 1] : '$month 月';
+  }
+
   /// 人物生日只顯示月日。
   static String formatBirthday(
     AppLocalizations l10n, {
@@ -159,21 +163,10 @@ abstract final class DisplayFormat {
     return '$year/$month/$day';
   }
 
-  static String formatCharCount(AppLocalizations l10n, int count) {
-    return formatCountUnit(count, l10n.commonUnitCharacters);
-  }
-
   /// 24 小時制時間：`14:30`。
   static String formatTime24h(DateTime local) {
     return DateFormat('HH:mm').format(local.toLocal());
   }
-
-  /// 數字與量詞：`3 天`、`5 篇`。
-  static String formatCountUnit(num count, String unit) => '$count $unit';
-
-  /// 比例與量詞：`1 / 30 天`。
-  static String formatRatio(int numerator, int denominator, String unit) =>
-      '$numerator / $denominator $unit';
 
   /// 檔案大小：`1.2 MB`。
   static String formatBytesForDisplay(int bytes) {

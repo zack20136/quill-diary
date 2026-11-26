@@ -1,14 +1,9 @@
-import 'dart:async' show unawaited;
-import 'dart:math' as math;
-
 import 'package:flutter/gestures.dart';
-import 'package:flutter/rendering.dart' show OverflowBoxFit;
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
-/// 全站 scrollbar 尺寸常數。
 abstract final class AppScrollbarMetrics {
   static const double thickness = 6;
   static const double radius = 5;
@@ -17,29 +12,17 @@ abstract final class AppScrollbarMetrics {
   static const double homeCrossAxisEdgeInset = 4;
   static const double settingsCrossAxisEdgeInset = 5;
 
-  /// 嵌套列表右側 gutter；thumb 畫在欄內，避免與內容重疊或被卡片裁切。
-  static const double nestedScrollbarGutter = 10;
-
-  static const double reservedGutter =
-      minHitTargetWidth + homeCrossAxisEdgeInset;
-  static const double nestedCrossAxisEdgeInset = 0;
-
   static const double minHitTargetWidth = 12;
   static const double mainAxisMarginStart = 12;
   static const double mainAxisMarginEnd = 32;
 
-  /// 外框軌道模式上下共用的留白，與 [mainAxisMarginStart] 同值以保持上下對稱。
   static const double frameMainAxisInset = 12;
+
   static const double nestedMainAxisMarginStart = 6;
   static const double nestedMainAxisMarginEnd = 8;
   static const double minThumbLength = 32;
-  static const Duration extentSmoothDuration = Duration(milliseconds: 160);
 
   static const double nestedThickness = 5;
-  static const double nestedRadius = 5;
-
-  /// 掛載後輪詢 layout 的 frame 數（內容非同步變長時 thumb 需重算）。
-  static const int initialMetricsSyncFrames = 3;
 }
 
 /// 瀏覽用直向捲動：拉過盡頭再彈回。內容比畫面短時也拉得動。
@@ -59,574 +42,294 @@ const ScrollbarThemeData kPrimaryScrollbarTheme = ScrollbarThemeData(
 
 class _AppScrollbarGeometry {
   const _AppScrollbarGeometry({
-    required this.show,
     required this.thumbExtent,
     required this.thumbOffset,
+    required this.pixelsPerTrackPixel,
   });
 
-  final bool show;
   final double thumbExtent;
   final double thumbOffset;
+  final double pixelsPerTrackPixel;
 }
 
-/// thumb 軌道沿用的高度來源。
-///
-/// - [viewport]：捲動區本身的高度（頁面、列表）。
-/// - [frame]：外框高度（TextField 的 outline 等），上下各留 [AppScrollbarMetrics.frameMainAxisInset]。
-///   dialog 內且 [AppScrollbar.reserveGutter] 時兩種軌道都不留白，滑塊貼齊捲動區上下緣。
 enum AppScrollbarTrack { viewport, frame }
+
+enum AppScrollbarPlacement { overlay, gutter, trailingColumn, nestedPanel }
 
 class AppScrollbar extends StatefulWidget {
   const AppScrollbar({
     required this.child,
-    this.controller,
-    this.nested = false,
-    this.trailingGutter = false,
+    required this.controller,
+    this.placement = AppScrollbarPlacement.overlay,
     this.track = AppScrollbarTrack.viewport,
     this.onThumbDragChanged,
     this.crossAxisEdgeInset = AppScrollbarMetrics.homeCrossAxisEdgeInset,
-    this.reserveGutter = false,
+    this.gutterWidth,
     super.key,
-  });
+  }) : assert(gutterWidth == null || placement == AppScrollbarPlacement.gutter);
 
-  final ScrollController? controller;
+  final ScrollController controller;
   final ValueChanged<bool>? onThumbDragChanged;
   final Widget child;
-  final bool nested;
-  final bool trailingGutter;
+  final AppScrollbarPlacement placement;
   final AppScrollbarTrack track;
   final double crossAxisEdgeInset;
 
-  final bool reserveGutter;
+  final double? gutterWidth;
 
   @override
   State<AppScrollbar> createState() => _AppScrollbarState();
 }
 
-class _AppScrollbarState extends State<AppScrollbar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _extentAnimation = AnimationController(
-    vsync: this,
-    duration: AppScrollbarMetrics.extentSmoothDuration,
-  );
+class _AppScrollbarState extends State<AppScrollbar> {
+  ScrollHoldController? _outerScrollHold;
+  ScrollPosition? _dragPosition;
 
-  /// 無 [ScrollController] 時，由 [ScrollNotification] 提供捲動度量。
-  ScrollMetrics? _notificationMetrics;
-  bool _hasInitializedThumbExtent = false;
-  double _displayedThumbExtent = AppScrollbarMetrics.minThumbLength;
-  double _fromThumbExtent = AppScrollbarMetrics.minThumbLength;
-  double _toThumbExtent = AppScrollbarMetrics.minThumbLength;
-  int? _activeThumbPointer;
-  ScrollHoldController? _scrollHold;
+  bool get _isNested => widget.placement == AppScrollbarPlacement.nestedPanel;
 
-  /// 外框模式下最近一次量到的外框高度；頁面模式不使用。
-  double? _frameExtent;
+  double get _edgeInset => _isNested ? 0 : widget.crossAxisEdgeInset;
 
-  bool _inDialog = false;
+  double get _gutterWidth =>
+      widget.gutterWidth ?? AppScrollbarMetrics.minHitTargetWidth + _edgeInset;
 
-  double get _thickness => widget.nested
-      ? AppScrollbarMetrics.nestedThickness
-      : AppScrollbarMetrics.thickness;
-
-  double get _radius => widget.nested
-      ? AppScrollbarMetrics.nestedRadius
-      : AppScrollbarMetrics.radius;
-
-  bool get _dialogGutterFlush => widget.reserveGutter && _inDialog;
-
-  double get _mainAxisMarginStart {
-    if (_dialogGutterFlush) {
-      return 0;
-    }
-    if (widget.track == AppScrollbarTrack.frame) {
-      return AppScrollbarMetrics.frameMainAxisInset;
-    }
-    return widget.nested
-        ? AppScrollbarMetrics.nestedMainAxisMarginStart
-        : AppScrollbarMetrics.mainAxisMarginStart;
-  }
-
-  double get _mainAxisMarginEnd {
-    if (_dialogGutterFlush) {
-      return 0;
-    }
-    if (widget.track == AppScrollbarTrack.frame) {
-      return AppScrollbarMetrics.frameMainAxisInset;
-    }
-    if (widget.nested) {
-      return AppScrollbarMetrics.nestedMainAxisMarginEnd;
-    }
-    // 沒有右側留白的 dialog 捲軸，底部內距在捲動區外側，thumb 需扣掉它才會與頁面底端對齊。
-    return _inDialog
-        ? AppScrollbarMetrics.mainAxisMarginEnd - AppDialogInsets.content.bottom
-        : AppScrollbarMetrics.mainAxisMarginEnd;
-  }
-
-  /// thumb 可移動的軌道長度；所有幾何計算都從這裡取值，確保兩種軌道模式共用同一套公式。
-  double _trackLength(ScrollMetrics metrics) {
-    final double extent = widget.track == AppScrollbarTrack.frame
-        ? (_frameExtent ?? 0)
-        : metrics.viewportDimension;
-    return extent - _mainAxisMarginStart - _mainAxisMarginEnd;
+  ScrollPosition? get _position {
+    final positions = widget.controller.positions;
+    if (positions.length != 1) return null;
+    final position = positions.single;
+    return position.hasContentDimensions ? position : null;
   }
 
   @override
   void initState() {
     super.initState();
-    _extentAnimation.addListener(_handleExtentAnimation);
-    widget.controller?.addListener(_handleControllerChanged);
-    _scheduleMetricsSync(
-      remainingFrames: AppScrollbarMetrics.initialMetricsSyncFrames,
-    );
-  }
-
-  void _scheduleMetricsSync({int remainingFrames = 1}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      _handleControllerChanged();
-      if (remainingFrames > 1) {
-        _scheduleMetricsSync(remainingFrames: remainingFrames - 1);
-      }
+      if (mounted && _position != null) setState(() {});
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _inDialog =
-        context.dependOnInheritedWidgetOfExactType<AppDialogScope>() != null;
-  }
-
-  @override
-  void didUpdateWidget(AppScrollbar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller?.removeListener(_handleControllerChanged);
-      widget.controller?.addListener(_handleControllerChanged);
-    }
-    _scheduleMetricsSync();
   }
 
   @override
   void dispose() {
-    _releaseScrollHold();
-    _extentAnimation.removeListener(_handleExtentAnimation);
-    _extentAnimation.dispose();
-    widget.controller?.removeListener(_handleControllerChanged);
+    _endThumbDrag(notify: false);
     super.dispose();
   }
 
-  void _handleExtentAnimation() {
-    if (!mounted) {
-      return;
+  ({double start, double end}) _trackInsets(bool inDialog) {
+    if (inDialog &&
+        widget.placement == AppScrollbarPlacement.gutter &&
+        _gutterWidth > 0) {
+      return (start: 0, end: 0);
     }
-    setState(() {
-      _displayedThumbExtent = _lerpDouble(
-        _fromThumbExtent,
-        _toThumbExtent,
-        _extentAnimation.value,
+    if (widget.track == AppScrollbarTrack.frame) {
+      const inset = AppScrollbarMetrics.frameMainAxisInset;
+      return (start: inset, end: inset);
+    }
+    if (_isNested) {
+      return (
+        start: AppScrollbarMetrics.nestedMainAxisMarginStart,
+        end: AppScrollbarMetrics.nestedMainAxisMarginEnd,
       );
-    });
+    }
+    return (
+      start: AppScrollbarMetrics.mainAxisMarginStart,
+      end:
+          AppScrollbarMetrics.mainAxisMarginEnd -
+          (inDialog ? AppDialogInsets.content.bottom : 0),
+    );
   }
 
-  void _scheduleRebuild() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  void _handleControllerChanged() {
-    final ScrollController? controller = widget.controller;
-    if (controller == null || !controller.hasClients) {
-      return;
-    }
-    _syncThumbExtent(controller.position);
-  }
-
-  bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.depth != 0) {
-      return false;
-    }
-    if (widget.controller == null) {
-      _notificationMetrics = notification.metrics;
-      _syncThumbExtent(notification.metrics);
-      _scheduleRebuild();
-      return false;
-    }
-    _syncThumbExtent(notification.metrics);
-    return false;
-  }
-
-  ScrollMetrics? _activeScrollMetrics() {
-    final ScrollController? controller = widget.controller;
-    if (controller != null && controller.hasClients) {
-      final ScrollPosition position = controller.position;
-      if (position.hasViewportDimension) {
-        return position;
-      }
-    }
-    return _notificationMetrics;
-  }
-
-  /// 初次 layout 時 [ScrollMetrics.maxScrollExtent] 可能暫時為 0。
-  double _scrollExtent(ScrollMetrics metrics) {
-    if (metrics.maxScrollExtent > 0) {
-      return metrics.maxScrollExtent;
-    }
-    final double overflow = metrics.extentTotal - metrics.viewportDimension;
-    return overflow > 0 ? overflow : 0;
-  }
-
-  void _syncThumbExtent(ScrollMetrics metrics) {
-    final double targetThumbExtent = _naturalThumbExtent(metrics);
-    final bool firstValidMetrics =
-        !_hasInitializedThumbExtent && targetThumbExtent > 0;
-
-    if (firstValidMetrics) {
-      _hasInitializedThumbExtent = true;
-      _displayedThumbExtent = targetThumbExtent;
-      _fromThumbExtent = targetThumbExtent;
-      _toThumbExtent = targetThumbExtent;
-      _scheduleRebuild();
-      return;
-    }
-
-    if ((targetThumbExtent - _toThumbExtent).abs() <= 0.5) {
-      return;
-    }
-
-    _fromThumbExtent = _displayedThumbExtent;
-    _toThumbExtent = targetThumbExtent;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && (_displayedThumbExtent - _toThumbExtent).abs() > 0.5) {
-        unawaited(_extentAnimation.forward(from: 0));
-      }
-    });
-  }
-
-  double _naturalThumbExtent(ScrollMetrics metrics) {
-    final double trackLength = _trackLength(metrics);
-    if (trackLength < AppScrollbarMetrics.minThumbLength) {
-      return 0;
-    }
-
-    final double maxScroll = _scrollExtent(metrics);
-    if (maxScroll <= 0) {
-      return 0;
-    }
-
-    final double totalExtent = maxScroll + metrics.viewportDimension;
-    final double naturalThumb =
-        trackLength * (metrics.viewportDimension / totalExtent);
-    return naturalThumb.clamp(AppScrollbarMetrics.minThumbLength, trackLength);
-  }
-
-  _AppScrollbarGeometry _geometryFor(
-    ScrollMetrics metrics,
-    double thumbExtent,
+  _AppScrollbarGeometry? _geometry(
+    ScrollPosition position,
+    double frameHeight,
+    bool inDialog,
   ) {
-    final double trackLength = _trackLength(metrics);
-    if (trackLength < AppScrollbarMetrics.minThumbLength) {
-      return const _AppScrollbarGeometry(
-        show: false,
-        thumbExtent: 0,
-        thumbOffset: 0,
-      );
+    final insets = _trackInsets(inDialog);
+    final height = widget.track == AppScrollbarTrack.frame
+        ? frameHeight
+        : position.viewportDimension;
+    final trackExtent = height - insets.start - insets.end;
+    final scrollExtent = position.maxScrollExtent - position.minScrollExtent;
+    if (trackExtent <= AppScrollbarMetrics.minThumbLength ||
+        !scrollExtent.isFinite ||
+        scrollExtent <= 0 ||
+        position.viewportDimension <= 0) {
+      return null;
     }
 
-    final double maxScroll = _scrollExtent(metrics);
-    if (maxScroll <= 0 || thumbExtent <= 0) {
-      return const _AppScrollbarGeometry(
-        show: false,
-        thumbExtent: 0,
-        thumbOffset: 0,
-      );
-    }
-
-    final double layoutThumb = thumbExtent.clamp(
+    final fractionVisible =
+        position.viewportDimension /
+        (scrollExtent + position.viewportDimension);
+    final thumbExtent = (trackExtent * fractionVisible).clamp(
       AppScrollbarMetrics.minThumbLength,
-      trackLength,
+      trackExtent,
     );
-    final double scrollableTrack = trackLength - layoutThumb;
-    final double thumbOffset =
-        _mainAxisMarginStart + scrollableTrack * (metrics.pixels / maxScroll);
-
+    final travel = trackExtent - thumbExtent;
+    if (travel <= 0) return null;
+    final progress =
+        ((position.pixels - position.minScrollExtent) / scrollExtent).clamp(
+          0.0,
+          1.0,
+        );
+    final reversed = position.axisDirection == AxisDirection.up;
     return _AppScrollbarGeometry(
-      show: true,
-      thumbExtent: layoutThumb,
-      thumbOffset: thumbOffset,
+      thumbExtent: thumbExtent,
+      thumbOffset: insets.start + travel * (reversed ? 1 - progress : progress),
+      pixelsPerTrackPixel: (reversed ? -scrollExtent : scrollExtent) / travel,
     );
   }
 
-  void _scrollByThumbDelta(double deltaDy) {
-    final ScrollController? controller = widget.controller;
-    final ScrollMetrics? metrics = _activeScrollMetrics();
-    if (controller == null || metrics == null || !controller.hasClients) {
-      return;
-    }
-
-    final double trackLength = _trackLength(metrics);
-    final double maxScroll = _scrollExtent(metrics);
-    final double scrollableTrack = trackLength - _displayedThumbExtent;
-    if (scrollableTrack <= 0 || maxScroll <= 0) {
-      return;
-    }
-
-    final double deltaPixels = deltaDy / scrollableTrack * maxScroll;
-    controller.jumpTo(
-      (controller.offset + deltaPixels).clamp(0, metrics.maxScrollExtent),
-    );
-  }
-
-  void _acquireScrollHold() {
-    _releaseScrollHold();
-    final ScrollableState? outer = context
-        .findAncestorStateOfType<ScrollableState>();
-    if (outer != null) {
-      _scrollHold = outer.position.hold(() {});
-    }
-  }
-
-  void _releaseScrollHold() {
-    _scrollHold?.cancel();
-    _scrollHold = null;
-  }
-
-  void _setThumbDragging(bool dragging) {
-    if (widget.onThumbDragChanged != null) {
-      widget.onThumbDragChanged!(dragging);
-      return;
-    }
-    if (dragging) {
-      _acquireScrollHold();
+  void _startThumbDrag(ScrollPosition position) {
+    _dragPosition = position;
+    final onDrag = widget.onThumbDragChanged;
+    if (onDrag != null) {
+      onDrag(true);
     } else {
-      _releaseScrollHold();
+      _outerScrollHold = Scrollable.maybeOf(context)?.position.hold(() {});
     }
   }
 
-  void _handleOverlayPointerDown(PointerDownEvent event) {
-    _activeThumbPointer = event.pointer;
+  void _endThumbDrag({bool notify = true}) {
+    if (_dragPosition == null) return;
+    _dragPosition = null;
+    _outerScrollHold?.cancel();
+    _outerScrollHold = null;
+    if (notify) widget.onThumbDragChanged?.call(false);
   }
 
-  void _handleOverlayPointerMove(PointerMoveEvent event) {
-    if (_activeThumbPointer != event.pointer) {
-      return;
-    }
-    _scrollByThumbDelta(event.delta.dy);
-  }
-
-  void _handleOverlayPointerEnd(int pointer) {
-    if (_activeThumbPointer != pointer) {
-      return;
-    }
-    _activeThumbPointer = null;
-  }
-
-  double get _hitTargetWidth =>
-      math.max(_thickness, AppScrollbarMetrics.minHitTargetWidth);
-
-  Color _thumbColor(BuildContext context) {
-    final ScrollbarThemeData theme = Theme.of(context).scrollbarTheme;
-    final Color? themed = theme.thumbColor?.resolve(<WidgetState>{});
-    if (themed != null) {
-      return themed;
-    }
-    return Theme.of(context).colorScheme.onSurface
-        .withValues(alpha: widget.nested ? 0.30 : 0.35);
-  }
-
-  Widget _buildThumbVisual(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: SizedBox(
-        key: const ValueKey<String>('app-scrollbar-thumb'),
-        width: _thickness,
-        height: _displayedThumbExtent,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _thumbColor(context),
-            borderRadius: BorderRadius.circular(_radius),
-          ),
-        ),
+  void _dragThumb(double delta, _AppScrollbarGeometry geometry) {
+    final position = _dragPosition;
+    if (position == null || !identical(position, _position)) return;
+    position.jumpTo(
+      (position.pixels + delta * geometry.pixelsPerTrackPixel).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
       ),
     );
   }
 
-  Widget _buildThumb(BuildContext context, _AppScrollbarGeometry geometry) {
-    final Widget thumbVisual = _buildThumbVisual(context);
-
-    final Widget hitTarget = widget.trailingGutter
-        ? GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            dragStartBehavior: DragStartBehavior.down,
-            onVerticalDragStart: (_) => _setThumbDragging(true),
-            onVerticalDragUpdate: (DragUpdateDetails details) {
-              _scrollByThumbDelta(details.delta.dy);
-            },
-            onVerticalDragEnd: (_) => _setThumbDragging(false),
-            onVerticalDragCancel: () => _setThumbDragging(false),
-            child: thumbVisual,
-          )
-        : Listener(
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: _handleOverlayPointerDown,
-            onPointerMove: _handleOverlayPointerMove,
-            onPointerUp: (PointerUpEvent event) =>
-                _handleOverlayPointerEnd(event.pointer),
-            onPointerCancel: (PointerCancelEvent event) =>
-                _handleOverlayPointerEnd(event.pointer),
-            child: thumbVisual,
-          );
-
-    return Positioned(
-      top: geometry.thumbOffset,
-      right: _thumbRight,
-      width: _hitTargetWidth,
-      height: _displayedThumbExtent,
-      child: hitTarget,
-    );
-  }
-
-  Widget _buildThumbRail(BuildContext context, _AppScrollbarGeometry geometry) {
-    return SizedBox(
-      width: AppScrollbarMetrics.nestedScrollbarGutter,
-      child: geometry.show
-          ? Stack(
-              clipBehavior: Clip.none,
-              children: <Widget>[_buildThumb(context, geometry)],
-            )
-          : null,
-    );
-  }
-
-  _AppScrollbarGeometry _geometryFromActiveMetrics() {
-    final ScrollMetrics? metrics = _activeScrollMetrics();
-    if (metrics == null) {
-      return const _AppScrollbarGeometry(
-        show: false,
-        thumbExtent: 0,
-        thumbOffset: 0,
-      );
-    }
-    return _geometryFor(metrics, _displayedThumbExtent);
-  }
-
-  Widget _buildThumbLayer(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _extentAnimation,
-      builder: (BuildContext context, Widget? child) {
-        final ScrollController? controller = widget.controller;
-        if (controller != null) {
-          return ListenableBuilder(
-            listenable: controller,
-            builder: (BuildContext context, Widget? child) {
-              final _AppScrollbarGeometry geometry =
-                  _geometryFromActiveMetrics();
-              if (!geometry.show) {
-                return const SizedBox.shrink();
-              }
-              if (widget.trailingGutter) {
-                return _buildThumbRail(context, geometry);
-              }
-              return _buildThumb(context, geometry);
-            },
-          );
-        }
-
-        final _AppScrollbarGeometry geometry = _geometryFromActiveMetrics();
-        if (!geometry.show) {
-          return const SizedBox.shrink();
-        }
-        if (widget.trailingGutter) {
-          return _buildThumbRail(context, geometry);
-        }
-        return _buildThumb(context, geometry);
-      },
-    );
-  }
-
-  bool get _overlaysDialogMargin => widget.reserveGutter && _inDialog;
-
-  double get _thumbRight => _overlaysDialogMargin
-      ? -(AppDialogInsets.horizontal + AppScrollbarMetrics.thickness) / 2
-      : widget.crossAxisEdgeInset;
-
-  Widget _buildDialogOverlayGutter(Widget body) => LayoutBuilder(
-    builder: (BuildContext context, BoxConstraints constraints) {
-      final double width = constraints.maxWidth + AppDialogInsets.horizontal;
-      return OverflowBox(
-        alignment: AlignmentDirectional.topStart,
-        fit: OverflowBoxFit.deferToChild,
-        minWidth: width,
-        maxWidth: width,
-        child: Padding(
-          padding: const EdgeInsets.only(right: AppDialogInsets.horizontal),
-          child: body,
-        ),
-      );
-    },
-  );
-
-  /// 外框模式：量測外框高度供軌道計算，並關閉內容自帶的 Material scrollbar 避免重複。
-  Widget _buildFrameScrollable(BuildContext context, Widget child) {
-    final ScrollBehavior behavior = ScrollConfiguration.of(context)
-        .copyWith(scrollbars: false);
+  Widget _buildThumbLayer(bool inDialog) {
     return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double? extent = constraints.hasBoundedHeight
-            ? constraints.maxHeight
-            : null;
-        if (_frameExtent != extent) {
-          _frameExtent = extent;
-          _scheduleMetricsSync();
-        }
-        return ScrollConfiguration(behavior: behavior, child: child);
-      },
+      builder: (context, constraints) => ListenableBuilder(
+        listenable: widget.controller,
+        builder: (context, _) {
+          final position = _position;
+          final geometry = position == null
+              ? null
+              : _geometry(position, constraints.maxHeight, inDialog);
+          final dragPosition = _dragPosition;
+          if (dragPosition != null &&
+              (geometry == null || !identical(position, dragPosition))) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && identical(_dragPosition, dragPosition)) {
+                _endThumbDrag();
+              }
+            });
+          }
+          if (position == null || geometry == null) {
+            return const SizedBox.shrink();
+          }
+          final thickness = _isNested
+              ? AppScrollbarMetrics.nestedThickness
+              : AppScrollbarMetrics.thickness;
+          const hitWidth = AppScrollbarMetrics.minHitTargetWidth;
+          final gutterWidth = widget.gutterWidth;
+          final rightInset = switch (gutterWidth) {
+            final width? => ((width - hitWidth) / 2).clamp(0.0, width),
+            null => _edgeInset,
+          };
+          final theme = Theme.of(context);
+          final color =
+              theme.scrollbarTheme.thumbColor?.resolve({}) ??
+              theme.colorScheme.onSurface.withValues(
+                alpha: _isNested ? 0.30 : 0.35,
+              );
+          return Stack(
+            children: [
+              Positioned(
+                top: geometry.thumbOffset,
+                right: rightInset,
+                width: hitWidth,
+                height: geometry.thumbExtent,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  dragStartBehavior: DragStartBehavior.down,
+                  onVerticalDragStart: (_) => _startThumbDrag(position),
+                  onVerticalDragUpdate: (details) =>
+                      _dragThumb(details.delta.dy, geometry),
+                  onVerticalDragEnd: (_) => _endThumbDrag(),
+                  onVerticalDragCancel: _endThumbDrag,
+                  child: Align(
+                    alignment: gutterWidth == null
+                        ? Alignment.centerRight
+                        : Alignment.center,
+                    child: SizedBox(
+                      key: const ValueKey<String>('app-scrollbar-thumb'),
+                      width: thickness,
+                      height: geometry.thumbExtent,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(
+                            AppScrollbarMetrics.radius,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final Widget notifier = NotificationListener<ScrollNotification>(
-      onNotification: _handleScrollNotification,
-      child: widget.child,
+    final inDialog =
+        context.dependOnInheritedWidgetOfExactType<AppDialogScope>() != null;
+    final scrollable = NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        if (notification.depth == 0 &&
+            notification.metrics.axis == Axis.vertical) {
+          setState(() {});
+        }
+        return false;
+      },
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: widget.child,
+      ),
     );
-    final Widget body = widget.track == AppScrollbarTrack.frame
-        ? _buildFrameScrollable(context, notifier)
-        : notifier;
-    final Widget scrollable = !widget.reserveGutter
-        ? body
-        : _overlaysDialogMargin
-        ? _buildDialogOverlayGutter(body)
-        : Padding(
-            padding: const EdgeInsets.only(
-              right: AppScrollbarMetrics.reservedGutter,
-            ),
-            child: body,
-          );
-
-    if (widget.trailingGutter) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Expanded(child: scrollable),
-          _buildThumbLayer(context),
-        ],
-      );
+    final thumb = _buildThumbLayer(inDialog);
+    switch (widget.placement) {
+      case AppScrollbarPlacement.trailingColumn:
+      case AppScrollbarPlacement.nestedPanel:
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: scrollable),
+            SizedBox(width: _gutterWidth, child: thumb),
+          ],
+        );
+      case AppScrollbarPlacement.overlay:
+      case AppScrollbarPlacement.gutter:
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            if (widget.placement == AppScrollbarPlacement.gutter &&
+                _gutterWidth > 0)
+              Padding(
+                padding: EdgeInsets.only(right: _gutterWidth),
+                child: scrollable,
+              )
+            else
+              scrollable,
+            Positioned.fill(child: thumb),
+          ],
+        );
     }
-
-    return Stack(
-      clipBehavior: Clip.none,
-      fit: StackFit.passthrough,
-      children: <Widget>[scrollable, _buildThumbLayer(context)],
-    );
   }
-}
-
-double _lerpDouble(double from, double to, double t) {
-  return from + (to - from) * t;
 }
 
 class AppScrollablePageBody extends StatefulWidget {
@@ -697,14 +400,21 @@ class _AppScrollablePageBodyState extends State<AppScrollablePageBody> {
 
 /// 高度受限的對話框、sheet 內容的垂直捲動區：等同 [SingleChildScrollView] 並顯示 [AppScrollbar]。
 class AppScrollView extends StatelessWidget {
-  const AppScrollView({required this.child, this.padding, super.key});
+  const AppScrollView({
+    required this.child,
+    this.padding,
+    this.gutterWidth,
+    super.key,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final double? gutterWidth;
 
   @override
   Widget build(BuildContext context) {
     return AppScrollableContent(
+      gutterWidth: gutterWidth,
       builder: (context, controller) => SingleChildScrollView(
         controller: controller,
         padding: padding,
@@ -718,10 +428,17 @@ class AppScrollView extends StatelessWidget {
 ///
 /// [builder] 會收到同一個 controller，交給捲動元件綁定。
 class AppScrollableContent extends StatefulWidget {
-  const AppScrollableContent({required this.builder, super.key});
+  const AppScrollableContent({
+    required this.builder,
+    this.placement = AppScrollbarPlacement.gutter,
+    this.gutterWidth,
+    super.key,
+  });
 
   final Widget Function(BuildContext context, ScrollController controller)
   builder;
+  final AppScrollbarPlacement placement;
+  final double? gutterWidth;
 
   @override
   State<AppScrollableContent> createState() => _AppScrollableContentState();
@@ -740,40 +457,9 @@ class _AppScrollableContentState extends State<AppScrollableContent> {
   Widget build(BuildContext context) {
     return AppScrollbar(
       controller: _controller,
-      reserveGutter: true,
+      placement: widget.placement,
+      gutterWidth: widget.gutterWidth,
       child: widget.builder(context, _controller),
-    );
-  }
-}
-
-/// 卡片內可捲動面板：內容與 thumb 分列，避免嵌套在外層 [CustomScrollView] 時手勢衝突。
-class NestedPanelScrollbar extends StatelessWidget {
-  const NestedPanelScrollbar({
-    required this.controller,
-    required this.child,
-    this.contentPadding,
-    this.onThumbDragChanged,
-    super.key,
-  });
-
-  final ScrollController controller;
-  final Widget child;
-  final EdgeInsetsGeometry? contentPadding;
-  final ValueChanged<bool>? onThumbDragChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppScrollbar(
-      controller: controller,
-      nested: true,
-      trailingGutter: true,
-      onThumbDragChanged: onThumbDragChanged,
-      crossAxisEdgeInset: AppScrollbarMetrics.nestedCrossAxisEdgeInset,
-      child: SingleChildScrollView(
-        controller: controller,
-        padding: contentPadding,
-        child: child,
-      ),
     );
   }
 }

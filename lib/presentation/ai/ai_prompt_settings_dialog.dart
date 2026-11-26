@@ -7,6 +7,7 @@ import 'package:quill_diary/domain/ai/ai_stored_settings.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/ai/ai_prompt_dialog.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -47,13 +48,9 @@ class _AiPromptSettingsDialogState extends State<AiPromptSettingsDialog> {
     leading: fullPreview ? const Icon(Icons.preview_outlined, size: 22) : null,
     minLeadingWidth: 22,
     horizontalTitleGap: 12,
-    tileColor: fullPreview
-        ? Color.alphaBlend(
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.10),
-            Theme.of(context).colorScheme.surfaceContainerLow,
-          )
-        : null,
-    iconColor: fullPreview ? Theme.of(context).colorScheme.primary : null,
+    tileColor: fullPreview ? context.appColors.infoFeedback.background : null,
+    iconColor: fullPreview ? context.appColors.infoFeedback.foreground : null,
+    textColor: fullPreview ? context.appColors.infoFeedback.foreground : null,
     titleTextStyle: fullPreview
         ? Theme.of(context).textTheme.titleSmall
         : Theme.of(context).textTheme.bodyMedium,

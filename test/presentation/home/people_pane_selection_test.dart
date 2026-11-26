@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/errors/user_facing_error.dart';
 import 'package:quill_diary/application/home/home_browse_state.dart';
+import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
@@ -13,7 +14,10 @@ void main() {
   late PeopleTestRepository repository;
   late ProviderContainer container;
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(
+    WidgetTester tester, {
+    List<RelationshipType> relationshipTypes = const [],
+  }) async {
     tester.view.physicalSize = const Size(400, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -23,7 +27,10 @@ void main() {
       peopleTestPerson('p-beta', '小美'),
       peopleTestPerson('p-gamma', '王大哉'),
     ]);
-    container = peopleTestContainer(repository);
+    container = peopleTestContainer(
+      repository,
+      relationshipTypes: relationshipTypes,
+    );
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
       container.dispose();
@@ -46,6 +53,29 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   }
+
+  testWidgets('人物搜尋欄可同時清除文字與關係篩選', (tester) async {
+    await open(
+      tester,
+      relationshipTypes: const [
+        RelationshipType(id: 'family', labelZh: '家人', labelEn: 'Family'),
+      ],
+    );
+    final filter = find.byType(FilterChip).first;
+    await tester.tap(filter);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '阿明');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(testL10n.peopleClearSearchAndFilters));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<FilterChip>(filter).selected, isFalse);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      isEmpty,
+    );
+    expect(row('p-beta').hitTestable(), findsOneWidget);
+  });
 
   testWidgets('長按進入選取，點擊切換勾選且每列都顯示同一勾選指示', (tester) async {
     await open(tester);

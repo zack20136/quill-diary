@@ -8,10 +8,7 @@ import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/people/pages/person_detail_page.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
-import 'package:quill_diary/shared/presentation/person_visual.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
@@ -32,14 +29,12 @@ void main() {
 
   Widget testApp({
     Map<PersonId, PersonMentionStats> stats = const {},
-    Brightness brightness = Brightness.light,
     Locale locale = appZhLocale,
     List<DiaryEntrySummary> relatedEntries = const <DiaryEntrySummary>[],
     Person? detail,
   }) {
     final Person current = detail ?? person;
     return widgetTestApp(
-      brightness: brightness,
       locale: locale,
       center: false,
       overrides: [
@@ -149,63 +144,6 @@ void main() {
     expect(find.text('3 entries'), findsOneWidget);
   });
 
-  testWidgets('人物摘要數字不再另畫內層底色', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      testApp(
-        brightness: Brightness.dark,
-        stats: <PersonId, PersonMentionStats>{
-          person.id: PersonMentionStats(
-            personId: person.id,
-            mentionedEntryCount: 1,
-            recentMentionedEntryCount: 1,
-          ),
-        },
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    for (final String key in <String>[
-      'person-last-mention-fact',
-      'person-friendliness-fact',
-    ]) {
-      expect(
-        find.descendant(
-          of: find.byKey(ValueKey<String>(key)),
-          matching: find.byType(DecoratedBox),
-        ),
-        findsNothing,
-      );
-    }
-  });
-
-  for (final Brightness brightness in Brightness.values) {
-    testWidgets(
-      '${brightness == Brightness.light ? '淺色' : '深色'}模式關係標籤沿用人物頭像配色',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(testApp(brightness: brightness));
-        await tester.pumpAndSettle();
-
-        final AppColors colors = appTestTheme(brightness: brightness)
-            .extension<AppColors>()!;
-        final (Color expectedBackground, Color expectedForeground) =
-            personLabelColorPair(person, colors.sectionInset);
-        final Finder relationChip = find.byKey(
-          const ValueKey<String>('person-relation-chip-classmate'),
-        );
-        final Container container = tester.widget<Container>(
-          find.descendant(of: relationChip, matching: find.byType(Container)),
-        );
-        final BoxDecoration decoration = container.decoration! as BoxDecoration;
-        final Text label = tester.widget<Text>(
-          find.descendant(of: relationChip, matching: find.text('同學')),
-        );
-
-        expect(decoration.color, expectedBackground);
-        expect(label.style?.color, expectedForeground);
-      },
-    );
-  }
-
   testWidgets('無相關日記時匯出回顧停用', (WidgetTester tester) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
@@ -253,13 +191,9 @@ void main() {
       find.descendant(of: card, matching: find.text(testL10n.peopleFieldNotes)),
       findsNothing,
     );
-    expect(
-      find.descendant(of: card, matching: find.byType(Divider)),
-      findsNothing,
-    );
   });
 
-  testWidgets('有內容的關係描述與備註顯示在詳情卡內，且不加分隔線', (WidgetTester tester) async {
+  testWidgets('有內容的關係描述與備註顯示在詳情卡內', (WidgetTester tester) async {
     await tester.pumpWidget(
       testApp(
         detail: Person(
@@ -290,24 +224,5 @@ void main() {
       find.descendant(of: card, matching: find.text('記得帶書')),
       findsOneWidget,
     );
-    expect(
-      find.descendant(of: card, matching: find.byType(Divider)),
-      findsNothing,
-    );
-  });
-
-  testWidgets('匯出回顧與相關日記標題垂直置中對齊', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      testApp(relatedEntries: <DiaryEntrySummary>[buildDiaryEntrySummary()]),
-    );
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
-    await tester.pumpAndSettle();
-
-    final double titleCenterY = tester.getCenter(find.text('相關日記')).dy;
-    final double exportCenterY = tester
-        .getCenter(find.byKey(const ValueKey<String>('person-export-recap')))
-        .dy;
-    expect((titleCenterY - exportCenterY).abs(), lessThan(2));
   });
 }

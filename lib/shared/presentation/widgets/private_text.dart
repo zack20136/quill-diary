@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
-import 'package:quill_diary/shared/presentation/private_text_spans.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 
 /// 按實際行高繪製隱藏底色，避免混合字型的字面高度不同。
 class PrivateText extends SingleChildRenderObjectWidget {
@@ -49,7 +49,7 @@ class PrivateText extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => RenderPrivateText(
     mergePrivateRanges(ranges, text.length),
-    privateTextHighlight(Theme.of(context).colorScheme),
+    context.appColors.privateTextHighlight,
   );
 
   @override
@@ -59,7 +59,7 @@ class PrivateText extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..ranges = mergePrivateRanges(ranges, text.length)
-      ..color = privateTextHighlight(Theme.of(context).colorScheme);
+      ..color = context.appColors.privateTextHighlight;
   }
 }
 

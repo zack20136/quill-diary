@@ -16,8 +16,8 @@ import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_export_actions.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
-import 'package:quill_diary/presentation/people/widgets/person_detail_section_card.dart';
 import 'package:quill_diary/presentation/persona/persona_summary_section.dart';
+import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
@@ -153,7 +153,10 @@ class PersonDetailPage extends ConsumerWidget {
               ),
             );
           }
-          final Color accent = personAccentColor(person);
+          final avatarColors = personLabelColors(
+            person,
+            context.appColors.sectionInset,
+          );
           final PersonMentionStats? stats = statsAsync.asData?.value[person.id];
           final List<_PersonFactChip> summaryItems = <_PersonFactChip>[
             if (stats != null) ...<_PersonFactChip>[
@@ -229,8 +232,10 @@ class PersonDetailPage extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: AppScrollbar(
-                  child: CustomScrollView(
+                child: AppScrollableContent(
+                  placement: AppScrollbarPlacement.overlay,
+                  builder: (context, controller) => CustomScrollView(
+                    controller: controller,
                     slivers: <Widget>[
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -247,16 +252,14 @@ class PersonDetailPage extends ConsumerWidget {
                                       CircleAvatar(
                                         radius: 28,
                                         backgroundColor:
-                                            personAvatarBackgroundColor(
-                                              person,
-                                              context.appColors.sectionInset,
-                                            ),
-                                        foregroundColor: accent,
+                                            avatarColors.background,
+                                        foregroundColor:
+                                            avatarColors.foreground,
                                         child: Text(
                                           personInitials(person.name),
                                           style: theme.textTheme.titleLarge
                                               ?.copyWith(
-                                                color: accent,
+                                                color: avatarColors.foreground,
                                                 fontWeight: FontWeight.w800,
                                               ),
                                         ),
@@ -282,7 +285,11 @@ class PersonDetailPage extends ConsumerWidget {
                                                 .isNotEmpty) ...<Widget>[
                                               const SizedBox(height: 4),
                                               Text(
-                                                person.aliases.join('、'),
+                                                person.aliases.join(
+                                                  context
+                                                      .l10n
+                                                      .commonListSeparator,
+                                                ),
                                                 style: theme
                                                     .textTheme
                                                     .bodyMedium
@@ -300,7 +307,14 @@ class PersonDetailPage extends ConsumerWidget {
                                   ),
                                   if (summaryItems.isNotEmpty) ...<Widget>[
                                     const SizedBox(height: 14),
-                                    PersonDetailSectionCard(
+                                    AppSectionCard(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        14,
+                                        14,
+                                        14,
+                                        16,
+                                      ),
+                                      headerGap: 12,
                                       key: const ValueKey<String>(
                                         'person-mention-overview-card',
                                       ),
@@ -424,7 +438,7 @@ class _PersonRelationChip extends StatelessWidget {
   });
 
   final String label;
-  final (Color, Color) colors;
+  final AccentColors colors;
 
   @override
   Widget build(BuildContext context) {
@@ -433,13 +447,13 @@ class _PersonRelationChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: colors.$1,
+        color: colors.background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
         style: theme.textTheme.labelLarge?.copyWith(
-          color: colors.$2,
+          color: colors.foreground,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -462,7 +476,7 @@ class _PersonProfileBodyCard extends ConsumerWidget {
     final List<RelationshipType> relationshipTypes =
         ref.watch(peopleRelationshipTypesProvider).asData?.value ??
         const <RelationshipType>[];
-    final (Color, Color) personColors = personLabelColorPair(
+    final personColors = personLabelColors(
       person,
       context.appColors.sectionInset,
     );
@@ -474,7 +488,9 @@ class _PersonProfileBodyCard extends ConsumerWidget {
     final String description = person.relationshipDescription.trim();
     final String notes = person.notes.trim();
 
-    return PersonDetailSectionCard(
+    return AppSectionCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      headerGap: 12,
       key: const ValueKey<String>('person-profile-details-card'),
       title: l10n.peopleProfileDetailsTitle,
       child: Column(

@@ -131,6 +131,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
     final DateOnly selectedDate =
         selectedDateRaw ?? DateOnly.fromDateTime(DateTime.now());
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final calendar = context.appColors.calendar;
     final ThemeData theme = Theme.of(context);
     final Map<String, int> tagAccents = ref
         .watch(tagAccentArgbMapProvider)
@@ -297,39 +298,27 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                           tablePadding: EdgeInsets.zero,
                                           tableBorder: TableBorder(
                                             top: BorderSide(
-                                              color: context
-                                                  .appColors
-                                                  .calendarGridLine,
+                                              color: calendar.gridLine,
                                               width: 0.5,
                                             ),
                                             bottom: BorderSide(
-                                              color: context
-                                                  .appColors
-                                                  .calendarGridLine,
+                                              color: calendar.gridLine,
                                               width: 0.5,
                                             ),
                                             left: BorderSide(
-                                              color: context
-                                                  .appColors
-                                                  .calendarGridLine,
+                                              color: calendar.gridLine,
                                               width: 0.5,
                                             ),
                                             right: BorderSide(
-                                              color: context
-                                                  .appColors
-                                                  .calendarGridLine,
+                                              color: calendar.gridLine,
                                               width: 0.5,
                                             ),
                                             horizontalInside: BorderSide(
-                                              color: context
-                                                  .appColors
-                                                  .calendarGridLine,
+                                              color: calendar.gridLine,
                                               width: 0.5,
                                             ),
                                             verticalInside: BorderSide(
-                                              color: context
-                                                  .appColors
-                                                  .calendarGridLine,
+                                              color: calendar.gridLine,
                                               width: 0.5,
                                             ),
                                           ),
@@ -496,62 +485,47 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                                               ),
                                             );
                                           },
-                                          dowBuilder:
-                                              (
-                                                BuildContext context,
-                                                DateTime day,
-                                              ) {
-                                                final bool isSun =
-                                                    calendarIsSunday(day);
-                                                final bool isSat =
-                                                    calendarIsSaturday(day);
-                                                return DecoratedBox(
-                                                  decoration: BoxDecoration(
-                                                    color: cs
-                                                        .surfaceContainerHigh
-                                                        .withValues(
-                                                          alpha: 0.45,
-                                                        ),
-                                                    border: Border(
-                                                      bottom: BorderSide(
-                                                        color: context
-                                                            .appColors
-                                                            .calendarGridLine,
-                                                        width: 0.5,
-                                                      ),
-                                                    ),
+                                          dowBuilder: (BuildContext context, DateTime day) {
+                                            final bool isSun = calendarIsSunday(
+                                              day,
+                                            );
+                                            final bool isSat =
+                                                calendarIsSaturday(day);
+                                            return DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: calendar.weekday,
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                    color: calendar.gridLine,
+                                                    width: 0.5,
                                                   ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      calendarWeekdayLabel(
-                                                        context.l10n,
-                                                        day,
-                                                      ),
-                                                      style: theme
-                                                          .textTheme
-                                                          .labelSmall
-                                                          ?.copyWith(
-                                                            fontSize: 10.5,
-                                                            color: isSun
-                                                                ? cs.error
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.78,
-                                                                      )
-                                                                : isSat
-                                                                ? cs.primary
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.72,
-                                                                      )
-                                                                : cs.onSurfaceVariant,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                          ),
-                                                    ),
+                                                ),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  calendarWeekdayLabel(
+                                                    context.l10n,
+                                                    day,
                                                   ),
-                                                );
-                                              },
+                                                  style: theme
+                                                      .textTheme
+                                                      .labelSmall
+                                                      ?.copyWith(
+                                                        fontSize: 10.5,
+                                                        color: isSun
+                                                            ? calendar
+                                                                  .sundayForeground
+                                                            : isSat
+                                                            ? calendar
+                                                                  .saturdayForeground
+                                                            : cs.onSurfaceVariant,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                ),
+                                              ),
+                                            );
+                                          },
                                           defaultBuilder:
                                               (
                                                 BuildContext context,
@@ -689,6 +663,7 @@ class _CalendarPaneState extends ConsumerState<CalendarPane> {
                   return HomeDiarySliverSection(
                     title: title,
                     stripeColor: cs.primary,
+                    entryBackgroundColor: calendar.entryCard,
                     entries: entries,
                   );
                 }

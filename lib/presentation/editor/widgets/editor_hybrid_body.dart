@@ -6,14 +6,13 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_checkbox_block_row.dart';
 import 'package:quill_diary/presentation/people/widgets/person_mention_text_field.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 
 class EditorHybridBody extends StatefulWidget {
   const EditorHybridBody({
     super.key,
     required this.bodyController,
+    required this.scrollController,
     required this.typography,
     required this.onBodyChanged,
     this.mentionController,
@@ -21,6 +20,7 @@ class EditorHybridBody extends StatefulWidget {
   });
 
   final TextEditingController bodyController;
+  final ScrollController scrollController;
   final EditorTypographyPreferences typography;
   final VoidCallback onBodyChanged;
   final PersonMentionController? mentionController;
@@ -37,7 +37,6 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       <String, TextEditingController>{};
   final Map<String, FocusNode> _lineFocusNodes = <String, FocusNode>{};
   final FocusNode _plainTextFocusNode = FocusNode();
-  final ScrollController _scroll = ScrollController();
   String? _focusedLineId;
   String? _syncingFromController;
   String? _pendingFocusLineId;
@@ -67,7 +66,6 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
     widget.bodyController.removeListener(_onExternalControllerChanged);
     _plainTextFocusNode.removeListener(_onPlainTextFocusChanged);
     _plainTextFocusNode.dispose();
-    _scroll.dispose();
     _disposeControllers();
     super.dispose();
   }
@@ -662,7 +660,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       isDense: true,
       hintText: context.l10n.editorBodyHint,
       hintStyle: style.copyWith(
-        color: context.appColors.mutedForeground,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         fontStyle: FontStyle.italic,
       ),
     );
@@ -688,6 +686,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       if (widget.mentionController == null) {
         return TextField(
           controller: widget.bodyController,
+          scrollController: widget.scrollController,
           focusNode: _plainTextFocusNode,
           expands: true,
           maxLines: null,
@@ -700,6 +699,7 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       }
       return PersonMentionTextField(
         controller: widget.bodyController,
+        scrollController: widget.scrollController,
         focusNode: _plainTextFocusNode,
         mentionController: widget.mentionController,
         onMentionKeyEvent: widget.onMentionKeyEvent,
@@ -713,30 +713,27 @@ class EditorHybridBodyState extends State<EditorHybridBody> {
       );
     }
 
-    return AppScrollbar(
-      controller: _scroll,
-      child: ReorderableListView.builder(
-        scrollController: _scroll,
-        padding: EdgeInsets.zero,
-        buildDefaultDragHandles: false,
-        itemCount: _lines.length,
-        onReorderItem: _onReorderLine,
-        itemBuilder: (BuildContext context, int lineIndex) {
-          final EditorBodyLine line = _lines[lineIndex];
-          return KeyedSubtree(
-            key: ValueKey<String>(line.id),
-            child: switch (line) {
-              EditorTextLine() => _buildTextLine(context, lineIndex, bodyStyle),
-              EditorCheckboxLine() => _buildCheckboxLine(
-                context,
-                lineIndex,
-                bodyStyle,
-                reorderIndex: lineIndex,
-              ),
-            },
-          );
-        },
-      ),
+    return ReorderableListView.builder(
+      scrollController: widget.scrollController,
+      padding: EdgeInsets.zero,
+      buildDefaultDragHandles: false,
+      itemCount: _lines.length,
+      onReorderItem: _onReorderLine,
+      itemBuilder: (BuildContext context, int lineIndex) {
+        final EditorBodyLine line = _lines[lineIndex];
+        return KeyedSubtree(
+          key: ValueKey<String>(line.id),
+          child: switch (line) {
+            EditorTextLine() => _buildTextLine(context, lineIndex, bodyStyle),
+            EditorCheckboxLine() => _buildCheckboxLine(
+              context,
+              lineIndex,
+              bodyStyle,
+              reorderIndex: lineIndex,
+            ),
+          },
+        );
+      },
     );
   }
 

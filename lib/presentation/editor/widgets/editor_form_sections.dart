@@ -9,7 +9,6 @@ import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.
 import 'package:quill_diary/presentation/people/widgets/person_mention_text_field.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
@@ -79,7 +78,7 @@ class EditorTitleSection extends StatelessWidget {
             titleText.isEmpty ? context.l10n.editorUntitledDraft : titleText,
             style: titleStyle.copyWith(
               color: titleText.isEmpty
-                  ? context.appColors.mutedForeground
+                  ? Theme.of(context).colorScheme.onSurfaceVariant
                   : null,
             ),
           ),
@@ -115,7 +114,7 @@ class EditorTitleSection extends StatelessWidget {
       hintStyle: theme.textTheme.titleLarge?.copyWith(
         fontWeight: FontWeight.w700,
         fontStyle: FontStyle.italic,
-        color: context.appColors.mutedForeground,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       errorStyle: theme.textTheme.labelSmall?.copyWith(
         color: theme.colorScheme.error,
@@ -173,13 +172,14 @@ class EditorTitleSection extends StatelessWidget {
   }
 }
 
-class EditorBodySection extends StatelessWidget {
+class EditorBodySection extends StatefulWidget {
   const EditorBodySection({
     super.key,
     required this.previewMode,
     required this.bodyController,
     required this.typography,
     required this.onBodyChanged,
+    required this.rightGutterWidth,
     this.onPreviewCheckboxChanged,
     this.hybridBodyKey,
     this.mentionController,
@@ -190,6 +190,7 @@ class EditorBodySection extends StatelessWidget {
   final TextEditingController bodyController;
   final EditorTypographyPreferences typography;
   final VoidCallback onBodyChanged;
+  final double rightGutterWidth;
   final ValueChanged<String>? onPreviewCheckboxChanged;
   final GlobalKey<EditorHybridBodyState>? hybridBodyKey;
   final PersonMentionController? mentionController;
@@ -197,21 +198,39 @@ class EditorBodySection extends StatelessWidget {
   onMentionKeyEvent;
 
   @override
+  State<EditorBodySection> createState() => _EditorBodySectionState();
+}
+
+class _EditorBodySectionState extends State<EditorBodySection> {
+  final _previewScroll = ScrollController();
+  final _editingScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _previewScroll.dispose();
+    _editingScroll.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ThemeData paneTheme = Theme.of(context);
+    final typography = widget.typography;
+    final bodyController = widget.bodyController;
     final TextStyle bodyStyle = typography.bodyTextStyle(paneTheme.textTheme);
-    final Widget body = previewMode
+    final Widget body = widget.previewMode
         ? ValueListenableBuilder<TextEditingValue>(
             valueListenable: bodyController,
             builder: (context, value, _) => SelectionArea(
               child: SingleChildScrollView(
+                controller: _previewScroll,
                 physics: appBouncingScrollPhysics,
                 child: value.text.isEmpty
                     ? Text(
                         context.l10n.editorBodyEmptyPreview,
                         style: bodyStyle.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: context.appColors.mutedForeground,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       )
                     : EditorMarkdownPreview(
@@ -223,23 +242,24 @@ class EditorBodySection extends StatelessWidget {
                         ),
                         onMarkdownChanged: (markdown) {
                           bodyController.text = markdown;
-                          onPreviewCheckboxChanged?.call(markdown);
+                          widget.onPreviewCheckboxChanged?.call(markdown);
                         },
                       ),
               ),
             ),
           )
         : EditorHybridBody(
-            key: hybridBodyKey,
+            key: widget.hybridBodyKey,
             bodyController: bodyController,
+            scrollController: _editingScroll,
             typography: typography,
-            onBodyChanged: onBodyChanged,
-            mentionController: mentionController,
-            onMentionKeyEvent: onMentionKeyEvent,
+            onBodyChanged: widget.onBodyChanged,
+            mentionController: widget.mentionController,
+            onMentionKeyEvent: widget.onMentionKeyEvent,
           );
 
     final AppColors colors = context.appColors;
-    return DecoratedBox(
+    final panel = DecoratedBox(
       key: const ValueKey<String>('editor-body-section-background'),
       decoration: BoxDecoration(
         color: colors.previewPanel,
@@ -258,6 +278,13 @@ class EditorBodySection extends StatelessWidget {
           child: body,
         ),
       ),
+    );
+    return AppScrollbar(
+      controller: widget.previewMode ? _previewScroll : _editingScroll,
+      track: AppScrollbarTrack.frame,
+      placement: AppScrollbarPlacement.gutter,
+      gutterWidth: widget.rightGutterWidth,
+      child: panel,
     );
   }
 }
@@ -294,19 +321,19 @@ class _TagsWrap extends StatelessWidget {
         runSpacing: 6,
         children: <Widget>[
           if (showUnsavedTag)
-            AccentChip.pair(
+            AccentChip(
               label: context.l10n.editorUnsavedDraftLabel,
-              pair: tagUnsavedPair(context.appColors),
+              colors: unsavedTagColors(context),
             ),
           if (showCharCount && bodyCharCount > 0)
-            AccentChip.pair(
-              label: DisplayFormat.formatCharCount(context.l10n, bodyCharCount),
-              pair: tagNeutralAccentPair(theme.colorScheme),
+            AccentChip(
+              label: context.l10n.commonCharacterCount(bodyCharCount),
+              colors: neutralTagColors(theme.colorScheme),
             ),
           ...tags.map(
-            (String tag) => AccentChip.pair(
+            (String tag) => AccentChip(
               label: tag,
-              pair: tagResolvedAccentPair(
+              colors: resolveTagColors(
                 tag,
                 theme.colorScheme,
                 tagAccentArgbMap,

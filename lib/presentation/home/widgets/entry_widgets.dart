@@ -21,7 +21,6 @@ import 'package:quill_diary/presentation/home/widgets/home_pin_glyph.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
-import 'package:quill_diary/shared/presentation/display_format.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
@@ -32,6 +31,7 @@ class HomeTimelineEntryShell extends StatelessWidget {
     required this.child,
     this.selected = false,
     this.nestedInSection = false,
+    this.backgroundColor,
     super.key,
   });
 
@@ -39,15 +39,17 @@ class HomeTimelineEntryShell extends StatelessWidget {
   final bool selected;
 
   final bool nestedInSection;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppColors colors = context.appColors;
-    final Color color = nestedInSection
-        ? colors.sectionInset
-        : colors.sectionCard;
+    final Color color = selected
+        ? colors.selectedRowFill
+        : backgroundColor ??
+              (nestedInSection ? colors.sectionInset : colors.sectionCard);
     final double radius = nestedInSection
         ? PageStyle.radiusPanel
         : PageStyle.radiusEntry;
@@ -58,7 +60,7 @@ class HomeTimelineEntryShell extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radius),
         side: selected
-            ? BorderSide(color: colors.entrySelectedBorder, width: 1.5)
+            ? BorderSide(color: colors.selectedRowBorder, width: 1.4)
             : BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
@@ -235,12 +237,7 @@ class HomeEntryCard extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selectionActive && selected
-            ? Color.alphaBlend(
-                cs.primaryContainer.withValues(alpha: 0.34),
-                cs.surface,
-              )
-            : Colors.transparent,
+        color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           onLongPress: onLongPress,
@@ -304,9 +301,14 @@ class HomeEntryCard extends StatelessWidget {
 }
 
 class HomeCompactEntrySliverList extends ConsumerWidget {
-  const HomeCompactEntrySliverList({required this.entries, super.key});
+  const HomeCompactEntrySliverList({
+    required this.entries,
+    this.entryBackgroundColor,
+    super.key,
+  });
 
   final List<DiaryEntrySummary> entries;
+  final Color? entryBackgroundColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -346,6 +348,7 @@ class HomeCompactEntrySliverList extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: 10),
           child: HomeTimelineEntryShell(
             nestedInSection: true,
+            backgroundColor: entryBackgroundColor,
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -442,21 +445,21 @@ class HomeEntryListTagsWrap extends StatelessWidget {
           runSpacing: 4,
           children: <Widget>[
             if (showUnsavedDraft)
-              AccentChip.pair(
+              AccentChip(
                 label: context.l10n.homeUnsavedDraftLabel,
-                pair: tagUnsavedPair(context.appColors),
+                colors: unsavedTagColors(context),
                 compact: compactTags,
               ),
             if (charCount > 0)
-              AccentChip.pair(
-                label: DisplayFormat.formatCharCount(context.l10n, charCount),
-                pair: tagNeutralAccentPair(theme.colorScheme),
+              AccentChip(
+                label: context.l10n.commonCharacterCount(charCount),
+                colors: neutralTagColors(theme.colorScheme),
                 compact: compactTags,
               ),
             ...trimmedTags.map(
-              (String tag) => AccentChip.pair(
+              (String tag) => AccentChip(
                 label: tag,
-                pair: tagResolvedAccentPair(
+                colors: resolveTagColors(
                   tag,
                   theme.colorScheme,
                   tagAccents,

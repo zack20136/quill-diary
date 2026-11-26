@@ -15,15 +15,8 @@ void main() {
     await tester.pumpWidget(
       widgetTestApp(child: TextField(controller: controller)),
     );
-    List<String?> highlightedText() => controller
-        .buildTextSpan(
-          context: tester.element(find.byType(TextField)),
-          withComposing: true,
-        )
-        .children!
-        .whereType<TextSpan>()
-        .where((span) => span.style?.backgroundColor != null)
-        .map((span) => span.text)
+    List<String> highlightedText() => controller.highlightRanges
+        .map((range) => controller.text.substring(range.start, range.end))
         .toList();
 
     expect(highlightedText(), ['手動', 'a+b@example.org']);
@@ -55,15 +48,8 @@ void main() {
     await tester.pumpWidget(
       widgetTestApp(child: TextField(controller: controller)),
     );
-    List<String?> highlightedText() => controller
-        .buildTextSpan(
-          context: tester.element(find.byType(TextField)),
-          withComposing: true,
-        )
-        .children!
-        .whereType<TextSpan>()
-        .where((span) => span.style?.backgroundColor != null)
-        .map((span) => span.text)
+    List<String> highlightedText() => controller.highlightRanges
+        .map((range) => controller.text.substring(range.start, range.end))
         .toList();
 
     expect(highlightedText(), [email]);
@@ -110,15 +96,8 @@ void main() {
     await tester.pumpWidget(
       widgetTestApp(child: TextField(controller: controller)),
     );
-    List<String?> highlightedText() => controller
-        .buildTextSpan(
-          context: tester.element(find.byType(TextField)),
-          withComposing: true,
-        )
-        .children!
-        .whereType<TextSpan>()
-        .where((span) => span.style?.backgroundColor != null)
-        .map((span) => span.text)
+    List<String> highlightedText() => controller.highlightRanges
+        .map((range) => controller.text.substring(range.start, range.end))
         .toList();
 
     expect(highlightedText(), ['王小明', '王小明']);

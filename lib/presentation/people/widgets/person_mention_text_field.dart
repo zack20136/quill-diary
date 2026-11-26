@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/people/person_mention_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text_field.dart';
 
 class PersonMentionTextField extends StatefulWidget {
   const PersonMentionTextField({
@@ -12,6 +13,7 @@ class PersonMentionTextField extends StatefulWidget {
     this.enabled = true,
     this.onMentionKeyEvent,
     this.focusNode,
+    this.scrollController,
     this.textInputAction,
     this.expands = false,
     this.maxLines = 1,
@@ -32,6 +34,7 @@ class PersonMentionTextField extends StatefulWidget {
   final KeyEventResult Function(FocusNode node, KeyEvent event)?
   onMentionKeyEvent;
   final FocusNode? focusNode;
+  final ScrollController? scrollController;
   final TextInputAction? textInputAction;
   final bool expands;
   final int? maxLines;
@@ -98,11 +101,12 @@ class _PersonMentionTextFieldState extends State<PersonMentionTextField> {
   Widget build(BuildContext context) {
     return Focus(
       onKeyEvent: widget.onMentionKeyEvent,
-      child: TextField(
-        key: widget.fieldKey,
+      child: PrivateTextField(
+        fieldKey: widget.fieldKey,
         enabled: widget.enabled,
         controller: widget.controller,
         focusNode: _focusNode,
+        scrollController: widget.scrollController,
         textInputAction: widget.textInputAction,
         expands: widget.expands,
         maxLines: widget.maxLines,

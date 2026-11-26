@@ -115,7 +115,7 @@ class SessionBlockedPresentation {
             ? sessionState.message!
             : l10n.sessionBlockedLockedSubtitle,
         actionKind: SessionBlockedActionKind.retryUnlock,
-        actionLabel: l10n.homeRetryVerification,
+        actionLabel: l10n.commonActionVerifyAgain,
         actionIcon: kSessionRetryVerificationIcon,
       );
     }
@@ -165,7 +165,7 @@ class SessionRetryVerificationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppActionButton(
-    label: context.l10n.homeRetryVerification,
+    label: context.l10n.commonActionVerifyAgain,
     icon: kSessionRetryVerificationIcon,
     onPressed: onPressed,
     appearance: AppActionButtonAppearance.primary,

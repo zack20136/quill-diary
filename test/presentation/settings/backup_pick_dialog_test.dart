@@ -67,7 +67,11 @@ void main() {
     );
     firstDelete.completeError(StateError('測試刪除失敗'));
     await tester.pumpAndSettle();
-    final error = find.text(testL10n.settingsBackupDeleteFailed('').trim());
+    final error = find.text(
+      testL10n
+          .settingsBackupDeleteFailed(testL10n.settingsBackupDeleteTooltip, '')
+          .trim(),
+    );
     expect(error.hitTestable(), findsOneWidget);
     expect(tester.widget<ListTile>(row).onTap, isNotNull);
 

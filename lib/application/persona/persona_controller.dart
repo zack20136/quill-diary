@@ -1243,7 +1243,7 @@ class PersonaController extends ChangeNotifier {
       if (epoch == _epoch) {
         failed = true;
         generationIssue = switch (error) {
-          PersonaGenerationIssue issue => issue,
+          final PersonaGenerationIssue issue => issue,
           PersonaEvidenceInvalid() => PersonaGenerationIssue.evidence,
           _ => null,
         };

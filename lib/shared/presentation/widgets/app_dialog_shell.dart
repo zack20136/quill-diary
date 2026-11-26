@@ -79,11 +79,9 @@ DialogRoute<T> appDialogRoute<T>({
   required WidgetBuilder builder,
   AppDialogSize size = AppDialogSize.standard,
   bool barrierDismissible = true,
-  Color? barrierColor,
   bool useSafeArea = true,
 }) {
   final Color resolvedBarrier =
-      barrierColor ??
       DialogTheme.of(context).barrierColor ??
       Theme.of(context).dialogTheme.barrierColor ??
       Colors.black54;
@@ -103,7 +101,6 @@ Future<T?> showAppDialog<T>({
   required WidgetBuilder builder,
   AppDialogSize size = AppDialogSize.standard,
   bool barrierDismissible = true,
-  Color? barrierColor,
   bool useSafeArea = true,
 }) => Navigator.of(context, rootNavigator: true).push(
   appDialogRoute<T>(
@@ -111,7 +108,6 @@ Future<T?> showAppDialog<T>({
     builder: builder,
     size: size,
     barrierDismissible: barrierDismissible,
-    barrierColor: barrierColor,
     useSafeArea: useSafeArea,
   ),
 );
@@ -157,9 +153,11 @@ class AppDialogShell extends StatelessWidget {
     required this.content,
     this.icon,
     this.titleTrailing,
+    this.sizingTitles = const [],
     this.leading,
     this.actions = const <Widget>[],
     this.fillHeight = false,
+    this.scrollbarInContentMargin = false,
     this.showClose = true,
     this.onClose,
     this.closeEnabled = true,
@@ -170,11 +168,17 @@ class AppDialogShell extends StatelessWidget {
   final Widget content;
   final Widget? icon;
   final Widget? titleTrailing;
+
+  /// 用其他頁的標題預留高度，讓翻頁時標題列維持穩定。
+  final List<String> sizingTitles;
   final Widget? leading;
   final List<Widget> actions;
 
   /// 卡片直接用到可用高度的 90%。內容在這層裡捲動，短內容不會把卡片縮短。
   final bool fillHeight;
+
+  /// 由呼叫端包裝捲動容器時，讓滑塊使用對話框原有的右側留白。
+  final bool scrollbarInContentMargin;
 
   /// 必選或強制流程（例如新手導覽、還原金鑰）設為 false，不提供右上角關閉。
   final bool showClose;
@@ -199,6 +203,18 @@ class AppDialogShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final compactTitle = media.size.width < media.textScaler.scale(310);
+    Text titleText(String value) => Text(
+      value,
+      maxLines: compactTitle ? 2 : null,
+      overflow: compactTitle ? TextOverflow.ellipsis : null,
+    );
+    final Widget titleLabel = compactTitle
+        ? Tooltip(
+            message: title,
+            excludeFromSemantics: true,
+            child: titleText(title),
+          )
+        : titleText(title);
     final Widget? closeButton = showClose
         ? IconButton(
             tooltip: context.l10n.commonCloseTooltip,
@@ -212,17 +228,23 @@ class AppDialogShell extends StatelessWidget {
       children: <Widget>[
         if (icon != null) ...<Widget>[icon!, const SizedBox(width: 12)],
         Expanded(
-          child: compactTitle
-              ? Tooltip(
-                  message: title,
-                  excludeFromSemantics: true,
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )
-              : Text(title),
+          child: sizingTitles.isEmpty
+              ? titleLabel
+              : Stack(
+                  alignment: AlignmentDirectional.centerStart,
+                  children: [
+                    for (final alternative in sizingTitles)
+                      if (alternative != title)
+                        Visibility(
+                          visible: false,
+                          maintainState: true,
+                          maintainAnimation: true,
+                          maintainSize: true,
+                          child: titleText(alternative),
+                        ),
+                    titleLabel,
+                  ],
+                ),
         ),
         if (titleTrailing != null) ...<Widget>[
           const SizedBox(width: 8),
@@ -234,16 +256,30 @@ class AppDialogShell extends StatelessWidget {
         ],
       ],
     );
+    final content = this.content;
+    final usesContentMargin =
+        scrollbarInContentMargin || content is AppScrollView;
     return AlertDialog(
       insetPadding: EdgeInsets.zero,
       constraints: appDialogConstraints(context, fillHeight: fillHeight),
       titlePadding: AppDialogInsets.title,
-      contentPadding: AppDialogInsets.content,
+      contentPadding: usesContentMargin
+          ? AppDialogInsets.content.copyWith(right: 0)
+          : AppDialogInsets.content,
       actionsPadding: AppDialogInsets.actions,
       actionsOverflowAlignment: OverflowBarAlignment.end,
       actionsOverflowButtonSpacing: 8,
       title: titleRow,
-      content: _contentSlot(content),
+      content: _contentSlot(
+        content is AppScrollView
+            ? AppScrollView(
+                key: content.key,
+                padding: content.padding,
+                gutterWidth: AppDialogInsets.horizontal,
+                child: content.child,
+              )
+            : content,
+      ),
       actions: switch (leading) {
         null => actions,
         final Widget leading => [

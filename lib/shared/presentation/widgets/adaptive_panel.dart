@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -10,7 +11,6 @@ Future<T?> showAdaptivePanel<T>({
   required BuildContext context,
   required WidgetBuilder builder,
 }) {
-  final colors = Theme.of(context).colorScheme;
   final wide = MediaQuery.sizeOf(context).width >= PageStyle.wideBreakpoint;
   if (wide) {
     return showAppDialog<T>(
@@ -34,7 +34,7 @@ Future<T?> showAdaptivePanel<T>({
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: false,
-    backgroundColor: colors.surfaceContainerHigh,
+    backgroundColor: context.appColors.dialogSurface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(
         top: Radius.circular(PageStyle.radiusCard),
@@ -76,7 +76,7 @@ class AdaptiveChoicePanel extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(
               AppDialogInsets.horizontal,
               wide ? 16 : 12,
-              AppDialogInsets.horizontal,
+              0,
               20,
             ),
             child: Column(
@@ -84,43 +84,60 @@ class AdaptiveChoicePanel extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!wide) ...[
-                  Center(
-                    child: Container(
-                      key: handleKey,
-                      width: 32,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colors.onSurfaceVariant,
-                        borderRadius: BorderRadius.circular(
-                          PageStyle.radiusPanel,
-                        ),
-                      ),
-                    ),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    right: AppDialogInsets.horizontal,
                   ),
-                  const SizedBox(height: 8),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: Semantics(
-                        header: true,
-                        child: Text(title, style: theme.textTheme.titleLarge),
+                  child: Column(
+                    children: [
+                      if (!wide) ...[
+                        Center(
+                          child: Container(
+                            key: handleKey,
+                            width: 32,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: colors.onSurfaceVariant,
+                              borderRadius: BorderRadius.circular(
+                                PageStyle.radiusPanel,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Semantics(
+                              header: true,
+                              child: Text(
+                                title,
+                                style: theme.textTheme.titleLarge,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: context.l10n.commonCloseTooltip,
+                            onPressed: onClose,
+                            style: IconButton.styleFrom(
+                              foregroundColor: colors.onSurface,
+                            ),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
                       ),
-                    ),
-                    IconButton(
-                      tooltip: context.l10n.commonCloseTooltip,
-                      onPressed: onClose,
-                      style: IconButton.styleFrom(
-                        foregroundColor: colors.onSurface,
-                      ),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Flexible(
-                  child: AppDialogScope(child: AppScrollView(child: child)),
+                  child: AppDialogScope(
+                    child: AppScrollView(
+                      gutterWidth: AppDialogInsets.horizontal,
+                      child: child,
+                    ),
+                  ),
                 ),
               ],
             ),

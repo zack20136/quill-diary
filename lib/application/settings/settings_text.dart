@@ -68,13 +68,6 @@ String unlockModeChangeMessage(
   };
 }
 
-String settingsSessionTimeoutAboutBackgroundTimeoutBody(
-  AppLocalizations l10n,
-  Duration timeout,
-) => l10n.settingsSessionTimeoutAboutBackgroundTimeoutBody(
-  sessionBackgroundTimeoutLabel(timeout, l10n),
-);
-
 String localBackupSectionDescription(
   AppLocalizations l10n,
   VaultTransferCapabilities transferCapabilities,

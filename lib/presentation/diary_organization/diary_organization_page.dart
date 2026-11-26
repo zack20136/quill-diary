@@ -36,6 +36,7 @@ import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text_field.dart';
 
 class DiaryOrganizationPage extends ConsumerStatefulWidget {
   const DiaryOrganizationPage({super.key, required this.entryId});
@@ -382,14 +383,13 @@ class _DiaryOrganizationPageState extends ConsumerState<DiaryOrganizationPage>
                 child: AppScrollbar(
                   controller: _privacyScroll,
                   track: AppScrollbarTrack.frame,
-                  reserveGutter: true,
-                  child: TextField(
-                    key: const ValueKey('organization-privacy-text'),
+                  placement: AppScrollbarPlacement.gutter,
+                  child: PrivateTextField(
+                    fieldKey: const ValueKey('organization-privacy-text'),
                     controller: _privacy,
                     scrollController: _privacyScroll,
                     readOnly: true,
                     expands: true,
-                    minLines: null,
                     maxLines: null,
                     textAlignVertical: TextAlignVertical.top,
                     keyboardType: TextInputType.multiline,

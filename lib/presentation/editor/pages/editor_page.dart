@@ -50,7 +50,6 @@ import 'package:quill_diary/presentation/people/widgets/person_suggestion_panel.
 import 'package:quill_diary/presentation/session/widgets/session_locked_pane.dart';
 import 'package:quill_diary/presentation/tag/widgets/tag_picker_dialog.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
@@ -83,6 +82,10 @@ class EditorPage extends ConsumerStatefulWidget {
 class _EditorPageState extends ConsumerState<EditorPage>
     with WidgetsBindingObserver {
   static const double _editorSectionGap = 8;
+  static const double _editorHorizontalInset = 12;
+  static const EdgeInsets _editorRightPadding = EdgeInsets.only(
+    right: _editorHorizontalInset,
+  );
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _dateController = TextEditingController(
     text: DateOnly.fromDateTime(DateTime.now()).value,
@@ -931,17 +934,20 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                       children: <Widget>[
                                         if (_previewMode &&
                                             showVisualEditorChrome)
-                                          EditorPreviewGallery(
-                                            images: images,
-                                            encryptedPathFuture:
-                                                _cachedEncryptedPathFuture,
-                                            onOpenGallery: (int index) =>
-                                                unawaited(
-                                                  _openImagePreviewGallery(
-                                                    images: images,
-                                                    initialIndex: index,
+                                          Padding(
+                                            padding: _editorRightPadding,
+                                            child: EditorPreviewGallery(
+                                              images: images,
+                                              encryptedPathFuture:
+                                                  _cachedEncryptedPathFuture,
+                                              onOpenGallery: (int index) =>
+                                                  unawaited(
+                                                    _openImagePreviewGallery(
+                                                      images: images,
+                                                      initialIndex: index,
+                                                    ),
                                                   ),
-                                                ),
+                                            ),
                                           ),
                                         Expanded(
                                           child: ListenableBuilder(
@@ -965,6 +971,8 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                                 ),
                                                 child: EditorBodySection(
                                                   previewMode: _previewMode,
+                                                  rightGutterWidth:
+                                                      _editorHorizontalInset,
                                                   bodyController:
                                                       _bodyController,
                                                   typography: typography,
@@ -989,34 +997,37 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
                                     return Padding(
                                       padding: const EdgeInsets.fromLTRB(
-                                        12,
+                                        _editorHorizontalInset,
                                         10,
-                                        12,
+                                        0,
                                         6,
                                       ),
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.stretch,
                                         children: <Widget>[
-                                          EditorTitleSection(
-                                            previewMode: _previewMode,
-                                            titleController: _titleController,
-                                            bodyController: _bodyController,
-                                            tagsController: _tagsController,
-                                            typography: typography,
-                                            showEntryRequiredHint:
-                                                _showEntryRequiredHint,
-                                            showUnsavedTag: showUnsavedTag,
-                                            showMetadataTags:
-                                                showVisualEditorChrome,
-                                            tagAccentArgbMap:
-                                                _watchedTagAccentArgbMap(),
-                                            mentionController: _isEditing
-                                                ? _personMentionController
-                                                : null,
-                                            onMentionKeyEvent: _isEditing
-                                                ? _onPersonMentionKeyEvent
-                                                : null,
+                                          Padding(
+                                            padding: _editorRightPadding,
+                                            child: EditorTitleSection(
+                                              previewMode: _previewMode,
+                                              titleController: _titleController,
+                                              bodyController: _bodyController,
+                                              tagsController: _tagsController,
+                                              typography: typography,
+                                              showEntryRequiredHint:
+                                                  _showEntryRequiredHint,
+                                              showUnsavedTag: showUnsavedTag,
+                                              showMetadataTags:
+                                                  showVisualEditorChrome,
+                                              tagAccentArgbMap:
+                                                  _watchedTagAccentArgbMap(),
+                                              mentionController: _isEditing
+                                                  ? _personMentionController
+                                                  : null,
+                                              onMentionKeyEvent: _isEditing
+                                                  ? _onPersonMentionKeyEvent
+                                                  : null,
+                                            ),
                                           ),
                                           const SizedBox(
                                             height: _editorSectionGap,
@@ -1026,7 +1037,10 @@ class _EditorPageState extends ConsumerState<EditorPage>
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.stretch,
                                               children: <Widget>[
-                                                animatedAttachmentArea,
+                                                Padding(
+                                                  padding: _editorRightPadding,
+                                                  child: animatedAttachmentArea,
+                                                ),
                                                 Expanded(child: editorPane),
                                               ],
                                             ),
@@ -1466,7 +1480,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
     }
     await showDialog<void>(
       context: context,
-      barrierColor: context.appColors.scrim,
       builder: (BuildContext dialogContext) => AppImageGalleryDialog(
         itemCount: gallery.items.length,
         initialIndex: gallery.initialIndex,
@@ -1506,7 +1519,6 @@ class _EditorPageState extends ConsumerState<EditorPage>
 
     await showAppDialog<void>(
       context: context,
-      barrierColor: context.appColors.scrim,
       builder: (BuildContext dialogContext) => TagPickerDialog(
         initialCsv: _tagsController.text,
         suggestions: sorted,

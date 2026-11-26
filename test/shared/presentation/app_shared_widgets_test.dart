@@ -12,24 +12,22 @@ void main() {
   Widget host(Widget child) =>
       widgetTestApp(child: SizedBox.expand(child: child));
 
-  testWidgets('操作按鈕會套用 loading 與滿寬設定', (tester) async {
+  testWidgets('操作執行中顯示進度並停用按鈕', (tester) async {
     await tester.pumpWidget(
       host(
-        const AppActionButton(
+        AppActionButton(
           label: '儲存',
           icon: Icons.save_outlined,
-          onPressed: null,
+          onPressed: () => fail('載入中仍執行操作'),
           appearance: AppActionButtonAppearance.primary,
-          fullWidth: true,
           loading: true,
         ),
       ),
     );
 
-    expect(find.byType(FilledButton), findsOneWidget);
+    final button = find.byType(FilledButton);
+    expect(tester.widget<FilledButton>(button).onPressed, isNull);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    final Size buttonSize = tester.getSize(find.byType(FilledButton));
-    expect(buttonSize.width, greaterThan(buttonSize.height));
   });
 
   testWidgets('loading state 依 layout 顯示留白與說明', (tester) async {

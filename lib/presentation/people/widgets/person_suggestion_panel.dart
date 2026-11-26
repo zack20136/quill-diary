@@ -129,7 +129,6 @@ class _PersonSuggestionPanelState extends State<PersonSuggestionPanel> {
                 suggestion: widget.suggestions[index],
                 selected: index == widget.highlightIndex,
                 onSelected: () => widget.onSelected(widget.suggestions[index]),
-                colorScheme: cs,
                 appColors: appColors,
                 labelStyle: theme.textTheme.labelMedium,
               ),
@@ -214,7 +213,6 @@ class _PersonSuggestionChip extends StatelessWidget {
     required this.suggestion,
     required this.selected,
     required this.onSelected,
-    required this.colorScheme,
     required this.appColors,
     required this.labelStyle,
   });
@@ -222,13 +220,12 @@ class _PersonSuggestionChip extends StatelessWidget {
   final PersonSuggestion suggestion;
   final bool selected;
   final VoidCallback onSelected;
-  final ColorScheme colorScheme;
   final AppColors appColors;
   final TextStyle? labelStyle;
 
   @override
   Widget build(BuildContext context) {
-    final (Color chipBg, Color chipFg) = personLabelColorPair(
+    final chipColors = personLabelColors(
       suggestion.person,
       appColors.sectionInset,
     );
@@ -236,19 +233,20 @@ class _PersonSuggestionChip extends StatelessWidget {
     return FilterChip(
       label: Text(
         suggestion.person.diaryMentionLabel,
-        style: labelStyle?.copyWith(color: chipFg, fontWeight: FontWeight.w700),
+        style: labelStyle?.copyWith(
+          color: chipColors.foreground,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       selected: selected,
       showCheckmark: false,
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      backgroundColor: chipBg,
-      selectedColor: chipBg,
+      backgroundColor: chipColors.background,
+      selectedColor: chipColors.background,
       side: accentChipBorderSide(
         appColors,
-        colorScheme,
-        chipBg,
-        chipFg,
+        chipColors,
         width: selected ? 1.2 : 0.92,
         accentBorderAlpha: selected ? 0.55 : kAccentBorderAlpha,
       ),

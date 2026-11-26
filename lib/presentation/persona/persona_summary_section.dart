@@ -5,10 +5,10 @@ import 'package:quill_diary/application/ai/ai_connection_providers.dart';
 import 'package:quill_diary/application/persona/persona_controller.dart';
 import 'package:quill_diary/application/persona/persona_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/people/widgets/person_detail_section_card.dart';
 import 'package:quill_diary/presentation/persona/persona_labels.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
 import 'package:quill_diary/shared/presentation/display_format.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 class PersonaSummarySection extends ConsumerWidget {
   const PersonaSummarySection({super.key, required this.personId});
@@ -29,7 +29,9 @@ class PersonaSummarySection extends ConsumerWidget {
                   .map((card) => card.updatedAt)
                   .reduce((a, b) => a.isAfter(b) ? a : b)
             : null;
-        return PersonDetailSectionCard(
+        return AppSectionCard(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+          headerGap: 12,
           title: l.personaTitle,
           trailing: TextButton.icon(
             onPressed: !ref.watch(aiEnabledProvider)

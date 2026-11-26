@@ -213,6 +213,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         );
     final VaultTransferCapabilities transferAccess =
         pageAccess.vaultTransferCapabilities;
+    final bool canEditAiSettings = !_busy && pageAccess.hasUnlockedSession;
     _scheduleEntryAction(
       layoutReady:
           !sessionAsync.isLoading &&
@@ -255,7 +256,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         inspectSummaryAsync: inspectSummaryAsync,
                       ),
                       const SizedBox(height: 16),
-                      SettingsSectionCard(
+                      AppSectionCard(
                         key: _unlockMethodSectionKey,
                         icon: Icons.phonelink_lock_outlined,
                         title: l10n.settingsUnlockMethodSectionTitle,
@@ -289,7 +290,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  SettingsSectionCard(
+                  AppSectionCard(
                     icon: Icons.chat_bubble_outline,
                     title: l10n.aiSettings,
                     description: l10n.aiSettingsSectionDescription,
@@ -307,10 +308,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                               value: ref.watch(aiEnabledProvider),
-                              onChanged: _busy || !pageAccess.hasUnlockedSession
-                                  ? null
-                                  : (enabled) =>
-                                        unawaited(_setAiEnabled(enabled)),
+                              onChanged: canEditAiSettings
+                                  ? (enabled) =>
+                                        unawaited(_setAiEnabled(enabled))
+                                  : null,
                             ),
                           ],
                         ),
@@ -320,17 +321,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           icon: Icons.tune_rounded,
                           appearance: AppActionButtonAppearance.primary,
                           fullWidth: true,
-                          onPressed: _busy
-                              ? null
-                              : () => unawaited(
+                          onPressed: canEditAiSettings
+                              ? () => unawaited(
                                   showAiConnectionSettingsDialog(context),
-                                ),
+                                )
+                              : null,
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SettingsSectionCard(
+                  AppSectionCard(
                     icon: Icons.swap_horiz_rounded,
                     title: l10n.settingsImportExportSectionTitle,
                     description: transferAccess.canPortableTransfer
@@ -434,10 +435,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Widget _buildLegalSection(BuildContext context, ColorScheme cs) {
     final AppLocalizations l10n = context.l10n;
-    return SettingsSectionCard(
+    return AppSectionCard(
       icon: Icons.gavel_outlined,
       title: l10n.settingsLegalSectionTitle,
-      description: l10n.settingsLegalSectionDescription,
       child: Column(
         children: <Widget>[
           _SettingsLegalRow(
@@ -495,7 +495,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final VaultRepairSummary? repairSummary = repairSummaryAsync.asData?.value;
     final VaultInspectSummary? inspectSummary =
         inspectSummaryAsync.asData?.value;
-    return SettingsSectionCard(
+    return AppSectionCard(
       icon: Icons.health_and_safety_outlined,
       title: l10n.settingsSecurityOverviewSectionTitle,
       description: l10n.settingsSecurityOverviewSectionDescription,
@@ -1466,10 +1466,7 @@ class _SettingsAppBarNavButton extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
 
     return Material(
-      color: Color.alphaBlend(
-        cs.surfaceContainerHigh.withValues(alpha: 0.9),
-        cs.surface,
-      ),
+      color: context.appColors.dialogSurface,
       borderRadius: BorderRadius.circular(999),
       clipBehavior: Clip.antiAlias,
       child: DecoratedBox(

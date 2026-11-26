@@ -1,5 +1,5 @@
-import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/domain/persona/persona.dart';
+import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 
 extension AiPromptLocalizations on AppLocalizations {

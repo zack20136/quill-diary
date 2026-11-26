@@ -112,6 +112,18 @@ abstract final class AppRouter {
         GoRoute(
           path: AppRoutes.aboutRoute,
           builder: (_, _) => const SettingsAboutPage(),
+          routes: [
+            GoRoute(
+              path: ':topic',
+              redirect: (_, state) =>
+                  AboutTopic.fromSegment(state.pathParameters['topic']) == null
+                  ? AppRoutes.aboutRoute
+                  : null,
+              builder: (_, state) => SettingsAboutTopicPage(
+                topic: AboutTopic.fromSegment(state.pathParameters['topic'])!,
+              ),
+            ),
+          ],
         ),
         GoRoute(
           path: AppRoutes.personalizationRoute,

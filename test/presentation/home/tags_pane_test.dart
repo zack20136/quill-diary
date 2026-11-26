@@ -66,6 +66,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
+  testWidgets('查無標籤時可從空狀態清除搜尋並回到原清單', (tester) async {
+    await open(tester);
+    await tester.enterText(find.byType(TextField).first, '查無此標籤');
+    await tester.pumpAndSettle();
+    expect(find.text(testL10n.commonNoTagSearchResults), findsOneWidget);
+    await tester.tap(find.text(testL10n.commonClearSearchTooltip));
+    await tester.pumpAndSettle();
+    expect(row('Alpha').hitTestable(), findsOneWidget);
+  });
+
   testWidgets('鉛筆只開啟編輯，取消刪除保留未存名稱、選色與原本預覽', (tester) async {
     await open(tester);
     expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
@@ -97,7 +107,7 @@ void main() {
       of: find.byType(TagAccentComposerDialog),
       matching: find.byType(AccentChip),
     );
-    final accent = tester.widget<AccentChip>(preview).foreground;
+    final accent = tester.widget<AccentChip>(preview).colors.accent;
     await tester.tap(find.text(testL10n.tagCustomColorLabel));
     await tester.pumpAndSettle();
     final colorSave = find.descendant(
@@ -122,7 +132,7 @@ void main() {
       tester.widget<TextField>(find.byType(TextField).last).controller!.text,
       'Changed',
     );
-    expect(tester.widget<AccentChip>(preview).foreground, accent);
+    expect(tester.widget<AccentChip>(preview).colors.accent, accent);
     await tester.tap(cancel);
     await tester.pumpAndSettle();
     expect(find.text(testL10n.homeDiarySectionTag('Alpha')), findsOneWidget);

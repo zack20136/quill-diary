@@ -72,10 +72,19 @@ void main() {
     await openDialog(tester);
 
     expect(find.byType(AppDialogShell), findsOneWidget);
-    expect(find.text(testL10n.onboardingIntroPage1Title), findsOneWidget);
-    expect(find.text(testL10n.onboardingIntroGetStarted), findsNothing);
-    expect(find.text(testL10n.onboardingIntroNext), findsOneWidget);
-    expect(find.text(testL10n.onboardingIntroBack), findsNothing);
+    expect(
+      find.text(testL10n.onboardingIntroPage1Title).hitTestable(),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.onboardingIntroGetStarted).hitTestable(),
+      findsNothing,
+    );
+    expect(
+      find.text(testL10n.onboardingIntroNext).hitTestable(),
+      findsOneWidget,
+    );
+    expect(find.text(testL10n.onboardingIntroBack).hitTestable(), findsNothing);
 
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
@@ -83,19 +92,34 @@ void main() {
 
     await tester.tap(find.text(testL10n.onboardingIntroNext));
     await tester.pumpAndSettle();
-    expect(find.text(testL10n.onboardingIntroPage2Title), findsOneWidget);
-    expect(find.text(testL10n.onboardingIntroBack), findsOneWidget);
+    expect(
+      find.text(testL10n.onboardingIntroPage2Title).hitTestable(),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.onboardingIntroBack).hitTestable(),
+      findsOneWidget,
+    );
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text(testL10n.onboardingIntroPage1Title), findsOneWidget);
+    expect(
+      find.text(testL10n.onboardingIntroPage1Title).hitTestable(),
+      findsOneWidget,
+    );
 
     for (int i = 0; i < 4; i++) {
       await tester.tap(find.text(testL10n.onboardingIntroNext));
       await tester.pumpAndSettle();
     }
-    expect(find.text(testL10n.onboardingIntroPage5Title), findsOneWidget);
-    expect(find.text(testL10n.onboardingIntroGetStarted), findsOneWidget);
+    expect(
+      find.text(testL10n.onboardingIntroPage5Title).hitTestable(),
+      findsOneWidget,
+    );
+    expect(
+      find.text(testL10n.onboardingIntroGetStarted).hitTestable(),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text(testL10n.onboardingIntroGetStarted));
     await tester.pumpAndSettle();
@@ -107,34 +131,109 @@ void main() {
 
     await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
     await tester.pumpAndSettle();
-    expect(find.text(testL10n.onboardingIntroPage2Title), findsOneWidget);
+    expect(
+      find.text(testL10n.onboardingIntroPage2Title).hitTestable(),
+      findsOneWidget,
+    );
 
     await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
     await tester.pumpAndSettle();
-    expect(find.text(testL10n.onboardingIntroPage1Title), findsOneWidget);
+    expect(
+      find.text(testL10n.onboardingIntroPage1Title).hitTestable(),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('小螢幕放大字級時可翻完中英文導覽', (tester) async {
+  final dialogSurface = find
+      .descendant(of: find.byType(Dialog), matching: find.byType(Material))
+      .first;
+
+  testWidgets('高度充足的窄版英文導覽五頁等高且每頁完整顯示', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(352, 1500);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await openDialog(tester, locale: appEnLocale);
+
+    final height = tester.getSize(dialogSurface).height;
+    final content = find.descendant(
+      of: find.byType(PageView),
+      matching: find.byType(SingleChildScrollView),
+    );
+    for (var page = 1; page <= 5; page++) {
+      final scroll = tester.state<ScrollableState>(
+        find.descendant(of: content, matching: find.byType(Scrollable)),
+      );
+      expect(tester.getSize(dialogSurface).height, closeTo(height, 0.1));
+      expect(
+        scroll.position.maxScrollExtent,
+        0,
+        reason: '第 $page 頁，對話框高度 $height，內容區 ${tester.getRect(content)}',
+      );
+      if (page < 5) {
+        await tester.tap(find.text(testEnL10n.onboardingIntroNext));
+        await tester.pumpAndSettle();
+      }
+    }
+  });
+
+  testWidgets('小螢幕放大字級時可滑到導覽內文底部並繼續下一頁', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(352, 600);
     tester.platformDispatcher.textScaleFactorTestValue = 1.65;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    for (final (locale, l10n) in [
-      (appZhLocale, testL10n),
-      (appEnLocale, testEnL10n),
-    ]) {
-      await openDialog(tester, locale: locale);
-      for (int page = 1; page < 5; page++) {
-        await tester.tap(find.text(l10n.onboardingIntroNext));
-        await tester.pumpAndSettle();
-      }
-      await tester.tap(find.text(l10n.onboardingIntroGetStarted));
+    await openDialog(tester, locale: appEnLocale);
+
+    final next = find.text(testEnL10n.onboardingIntroNext).hitTestable();
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+
+    final lastBullet = find.descendant(
+      of: find.byType(PageView),
+      matching: find.text(
+        testEnL10n.onboardingIntroPage2Item2(
+          testEnL10n.chatDiarySend,
+          testEnL10n.chatDiaryGenerateDiary,
+          testEnL10n.organizationGenerate,
+        ),
+      ),
+    );
+    final content = find.ancestor(
+      of: lastBullet,
+      matching: find.byType(SingleChildScrollView),
+    );
+    final scrollable = find.descendant(
+      of: content,
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    expect(position.extentAfter, greaterThan(0));
+    final viewport = tester.getRect(content);
+    for (var swipe = 0; swipe < 10 && position.extentAfter > 1; swipe++) {
+      await tester.timedDrag(
+        content,
+        Offset(0, -2 * viewport.height),
+        const Duration(milliseconds: 350),
+      );
       await tester.pumpAndSettle();
-      expect(find.byType(AppDialogShell), findsNothing);
-      expect(tester.takeException(), isNull);
     }
+    expect(position.extentAfter, closeTo(0, 1));
+    expect(
+      tester.getRect(lastBullet).bottom,
+      lessThanOrEqualTo(viewport.bottom),
+    );
+    expect(
+      find.byKey(const ValueKey<String>('app-scrollbar-thumb')),
+      findsNothing,
+    );
+
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    expect(
+      find.text(testEnL10n.onboardingIntroPage3Title).hitTestable(),
+      findsOneWidget,
+    );
   });
 
   testWidgets('切換英文後會寫入語系偏好', (WidgetTester tester) async {

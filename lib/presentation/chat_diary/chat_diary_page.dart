@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,6 +32,7 @@ import 'package:quill_diary/presentation/ai/ai_connection_settings_dialog.dart';
 import 'package:quill_diary/presentation/ai/ai_connection_setup_notice.dart';
 import 'package:quill_diary/presentation/ai/ai_feature_error_panel.dart';
 import 'package:quill_diary/presentation/ai/ai_generation_card.dart';
+import 'package:quill_diary/presentation/ai/ai_message_scroll.dart';
 import 'package:quill_diary/presentation/ai/ai_request_preview_dialog.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_actions.dart';
 import 'package:quill_diary/presentation/chat_diary/chat_diary_companion_bar.dart';
@@ -76,14 +76,10 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     ),
   );
   bool? _highlightPersonNames;
-  final _scrollController = ScrollController();
+  final _messageScrollKey = GlobalKey<AiMessageScrollState>();
   ChatDiaryController? _chatController;
   UnlockedVaultSession? _loadedVaultSession;
   bool _syncingComposer = false;
-  bool _followTail = true;
-  bool _userControllingScroll = false;
-  bool _jumpingToLatest = false;
-  bool _tailUpdateScheduled = false;
   final _composerFocusNode = FocusNode();
   bool _isBackgrounded = false;
   bool _canAutoOpenGeneration = false;
@@ -105,7 +101,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       peopleListProvider,
       (_, _) => _refreshComposerHighlights(),
     );
-    _scrollController.addListener(_scrollChanged);
     ref.listenManual(effectiveAppSessionProvider, (_, next) {
       if (next.value?.isUnlocked != true) {
         _dismissContentDialogs();
@@ -192,44 +187,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
       );
       _syncingComposer = false;
     }
-    _scheduleFollowTail();
-  }
-
-  void _scheduleFollowTail() {
-    if (!_followTail || _userControllingScroll || _tailUpdateScheduled) return;
-    _tailUpdateScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _tailUpdateScheduled = false;
-      if (mounted &&
-          _scrollController.hasClients &&
-          _followTail &&
-          !_userControllingScroll &&
-          _scrollController.position.extentAfter > 0) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
-    });
-  }
-
-  void _scrollChanged() {
-    if (_jumpingToLatest) return;
-    final follow =
-        _scrollController.hasClients &&
-        _scrollController.position.extentAfter < 80;
-    if (follow != _followTail && mounted) setState(() => _followTail = follow);
-  }
-
-  Future<void> _jumpToLatest() async {
-    setState(() => _followTail = true);
-    _jumpingToLatest = true;
-    if (_scrollController.hasClients) {
-      await _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-    }
-    _jumpingToLatest = false;
-    if (mounted) _scrollChanged();
   }
 
   @override
@@ -252,7 +209,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
   }
 
   Future<void> _send() async {
-    _followTail = true;
+    _messageScrollKey.currentState?.followLatest();
     await _chatController?.send();
   }
 
@@ -473,11 +430,7 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
 
     try {
       if (isGallery) {
-        await showDialog<void>(
-          context: context,
-          barrierColor: context.appColors.scrim,
-          builder: buildDialog,
-        );
+        await showDialog<void>(context: context, builder: buildDialog);
       } else {
         await showAppDialog<void>(context: context, builder: buildDialog);
       }
@@ -932,90 +885,40 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
                 children: [
                   ?notice,
                   Expanded(
-                    child: Stack(
-                      children: [
-                        NotificationListener<ScrollMetricsNotification>(
-                          onNotification: (_) {
-                            if (!_userControllingScroll) {
-                              _scheduleFollowTail();
-                            }
-                            return false;
-                          },
-                          child: NotificationListener<UserScrollNotification>(
-                            onNotification: (notification) {
-                              final holding =
-                                  notification.direction !=
-                                  ScrollDirection.idle;
-                              if (holding != _userControllingScroll) {
-                                _userControllingScroll = holding;
-                                if (!holding) _scrollChanged();
-                              }
-                              return false;
-                            },
-                            child: AppScrollbar(
-                              controller: _scrollController,
-                              child: ListView.builder(
-                                controller: _scrollController,
-                                physics: appBouncingScrollPhysics,
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  4,
-                                  20,
-                                  12,
-                                ),
-                                itemCount: headers.length + messages.length,
-                                findChildIndexCallback: (key) =>
-                                    messageIndices[key],
-                                itemBuilder: (context, index) {
-                                  if (index < headers.length) {
-                                    return headers[index];
-                                  }
-                                  final message =
-                                      messages[index - headers.length];
-                                  return ChatDiaryMessageBubble(
-                                    key: ValueKey(message.id),
-                                    chatSession: chatSession,
-                                    message: message,
-                                    versions:
-                                        versions[(
-                                          message.parentId,
-                                          message.isUser,
-                                        )]!,
-                                    isBusy: chatController.busy,
-                                    imageBuilder: (id) => _image(
-                                      chatSession,
-                                      id,
-                                      galleryImageIds: message.imageIds,
-                                      size: 128,
-                                    ),
-                                    onSelectVersion:
-                                        chatController.selectVersion,
-                                    onEditMessage: _editMessage,
-                                    onRegenerateReply: connectionReady
-                                        ? chatController.regenerateReply
-                                        : null,
-                                  );
-                                },
-                              ),
+                    child: AiMessageScroll(
+                      key: _messageScrollKey,
+                      builder: (controller) => ListView.builder(
+                        controller: controller,
+                        physics: appBouncingScrollPhysics,
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                        itemCount: headers.length + messages.length,
+                        findChildIndexCallback: (key) => messageIndices[key],
+                        itemBuilder: (context, index) {
+                          if (index < headers.length) {
+                            return headers[index];
+                          }
+                          final message = messages[index - headers.length];
+                          return ChatDiaryMessageBubble(
+                            key: ValueKey(message.id),
+                            chatSession: chatSession,
+                            message: message,
+                            versions:
+                                versions[(message.parentId, message.isUser)]!,
+                            isBusy: chatController.busy,
+                            imageBuilder: (id) => _image(
+                              chatSession,
+                              id,
+                              galleryImageIds: message.imageIds,
+                              size: 128,
                             ),
-                          ),
-                        ),
-                        if (!_followTail)
-                          Positioned(
-                            bottom: 8,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: IconButton.filledTonal(
-                                onPressed: chatController.busy
-                                    ? null
-                                    : _jumpToLatest,
-                                tooltip: l10n.chatDiaryJumpLatest,
-                                icon: const Icon(Icons.arrow_downward),
-                              ),
-                            ),
-                          ),
-                      ],
+                            onSelectVersion: chatController.selectVersion,
+                            onEditMessage: _editMessage,
+                            onRegenerateReply: connectionReady
+                                ? chatController.regenerateReply
+                                : null,
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -1054,7 +957,9 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
                               vertical: 6,
                             ),
                             child: Text(
-                              context.l10n.chatDiaryPrivateNotesHint,
+                              context.l10n.chatDiaryPrivateNotesHint(
+                                context.l10n.chatDiaryPrivateNotes,
+                              ),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
@@ -1228,7 +1133,6 @@ class _ChatDiaryPageState extends ConsumerState<ChatDiaryPage>
     _chatController?.removeListener(_changed);
     _composerController.dispose();
     _composerFocusNode.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 }

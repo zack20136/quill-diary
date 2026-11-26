@@ -421,11 +421,13 @@ class PortableImportIo {
         );
 
     final DateTime fallbackTime = stat.modified;
-    final String inferredTitle = _inferMarkdownTitle(file, body);
     final DiaryEntry entry = DiaryEntry(
       id: generateEntryId(),
       vaultId: 'vlt_LOCAL',
-      title: decoded.entry.normalizedTitle ?? inferredTitle,
+      title:
+          decoded.entry.normalizedTitle ??
+          _extractFirstMarkdownHeading(body) ??
+          _fallbackImportTitle(file),
       date: frontMatter.containsKey('date')
           ? decoded.entry.date
           : (parsePortableDateOnly('${file.path}\n$document') ??
@@ -632,15 +634,7 @@ class PortableImportIo {
         .toList(growable: false);
   }
 
-  String _inferMarkdownTitle(File file, String body) {
-    final String? heading = _extractFirstMarkdownHeading(body);
-    if (heading != null) {
-      return heading;
-    }
-    return _fallbackImportTitle(file);
-  }
-
-  String _fallbackImportTitle(File file) {
+  String? _fallbackImportTitle(File file) {
     final String stem = p.basenameWithoutExtension(file.path);
     if (stem.toLowerCase() == 'index') {
       final String parentName = p.basename(file.parent.path).trim();
@@ -648,7 +642,8 @@ class PortableImportIo {
         return parentName;
       }
     }
-    return stem.trim().isEmpty ? 'Imported Entry' : stem.trim();
+    final String title = stem.trim();
+    return title.isEmpty ? null : title;
   }
 
   String? _extractFirstMarkdownHeading(String body) {

@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @legalBrandDisclaimer.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 名稱、圖示與 Google Play 商店 listing 為作者品牌，不隨程式碼授權一併轉讓。'**
+  /// **'Quill Diary 的名稱、圖示和 Google Play 商店素材屬於作者品牌。品牌素材的使用另有規範。'**
   String get legalBrandDisclaimer;
 
   /// No description provided for @legalExternalLinkUnavailableMessage.
@@ -215,121 +215,125 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingIntroPage1Title.
   ///
   /// In zh, this message translates to:
-  /// **'只存在這台裝置的日記'**
+  /// **'日記存在這台裝置'**
   String get onboardingIntroPage1Title;
 
   /// No description provided for @onboardingIntroPage1Item0.
   ///
   /// In zh, this message translates to:
-  /// **'日記以加密形式保存在這台裝置上。'**
+  /// **'日記加密保存在這台裝置。'**
   String get onboardingIntroPage1Item0;
 
   /// No description provided for @onboardingIntroPage1Item1.
   ///
   /// In zh, this message translates to:
-  /// **'不需要帳戶，也沒有廣告或行為追蹤。'**
+  /// **'開始寫日記無須註冊。App 沒有廣告或行為追蹤。'**
   String get onboardingIntroPage1Item1;
 
   /// No description provided for @onboardingIntroPage1Item2.
   ///
   /// In zh, this message translates to:
-  /// **'可用密碼或生物辨識保護，離開一段時間後自動鎖定。'**
+  /// **'可以設定螢幕鎖或生物辨識，離開 App 一段時間後會自動鎖定。'**
   String get onboardingIntroPage1Item2;
 
   /// No description provided for @onboardingIntroPage2Title.
   ///
   /// In zh, this message translates to:
-  /// **'寫日記的方式由你決定'**
+  /// **'開始寫日記'**
   String get onboardingIntroPage2Title;
 
   /// No description provided for @onboardingIntroPage2Item0.
   ///
   /// In zh, this message translates to:
-  /// **'可直接寫文字，也能用 Markdown 排版、加入待辦、附上照片與檔案。'**
+  /// **'直接寫文字，也可以加待辦、照片或檔案，或用 Markdown 排版。'**
   String get onboardingIntroPage2Item0;
 
   /// No description provided for @onboardingIntroPage2Item1.
   ///
   /// In zh, this message translates to:
-  /// **'想先理清思緒時，可以和 AI 聊聊，再整理成一篇日記。'**
+  /// **'你也可以先和 AI 聊聊，再把對話整理成日記。'**
   String get onboardingIntroPage2Item1;
 
   /// No description provided for @onboardingIntroPage2Item2.
   ///
   /// In zh, this message translates to:
-  /// **'AI 只在你要求生成或整理時，才會把該次內容送到你設定的服務商；確認後才寫入。'**
-  String get onboardingIntroPage2Item2;
+  /// **'點「{send}」、「{generate}」或「{organize}」時，內容會傳到你設定的 AI 服務。儲存前可以先檢視結果。'**
+  String onboardingIntroPage2Item2(
+    String send,
+    String generate,
+    String organize,
+  );
 
   /// No description provided for @onboardingIntroPage3Title.
   ///
   /// In zh, this message translates to:
-  /// **'用標籤與人物整理回憶'**
+  /// **'找回以前的日記'**
   String get onboardingIntroPage3Title;
 
   /// No description provided for @onboardingIntroPage3Item0.
   ///
   /// In zh, this message translates to:
-  /// **'用顏色標籤分類，再從標籤頁找回同類日記。'**
-  String get onboardingIntroPage3Item0;
+  /// **'加上彩色標籤，就能在「{tags}」找到相關日記。'**
+  String onboardingIntroPage3Item0(String tags);
 
   /// No description provided for @onboardingIntroPage3Item1.
   ///
   /// In zh, this message translates to:
-  /// **'在人物名冊記下姓名與關係，寫日記時輸入 @ 提及；也能為這個人建立 AI 分身。'**
-  String get onboardingIntroPage3Item1;
+  /// **'在「{people}」新增人物，寫日記時輸入 @ 就能提到他們。'**
+  String onboardingIntroPage3Item1(String people);
 
   /// No description provided for @onboardingIntroPage3Item2.
   ///
   /// In zh, this message translates to:
-  /// **'可從時間軸、日曆、搜尋或總覽，從不同角度回看。'**
-  String get onboardingIntroPage3Item2;
+  /// **'可搜尋標題、內文或標籤，也能在「{calendar}」依日期回顧。'**
+  String onboardingIntroPage3Item2(String calendar);
 
   /// No description provided for @onboardingIntroPage4Title.
   ///
   /// In zh, this message translates to:
-  /// **'備份由你決定'**
+  /// **'備份與匯出日記'**
   String get onboardingIntroPage4Title;
 
   /// No description provided for @onboardingIntroPage4Item0.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份會保持日記加密，可存成檔案或存到 Google Drive。'**
+  /// **'完整備份有加密，可存成檔案或放到 Google Drive。'**
   String get onboardingIntroPage4Item0;
 
   /// No description provided for @onboardingIntroPage4Item1.
   ///
   /// In zh, this message translates to:
-  /// **'備份需要你手動建立，不會自動同步。'**
+  /// **'請手動建立備份。日記不會自動同步。'**
   String get onboardingIntroPage4Item1;
 
   /// No description provided for @onboardingIntroPage4Item2.
   ///
   /// In zh, this message translates to:
-  /// **'匯出的 Markdown 或 HTML 沒有加密，請自行妥善保存。'**
+  /// **'Markdown 或 HTML 匯出檔沒有加密，請妥善保管。'**
   String get onboardingIntroPage4Item2;
 
   /// No description provided for @onboardingIntroPage5Title.
   ///
   /// In zh, this message translates to:
-  /// **'復原金鑰是你的備用鑰匙'**
+  /// **'保管復原金鑰'**
   String get onboardingIntroPage5Title;
 
   /// No description provided for @onboardingIntroPage5Item0.
   ///
   /// In zh, this message translates to:
-  /// **'建立新日記庫時會產生一組復原金鑰，請另外保存。'**
+  /// **'建立日記庫時會產生復原金鑰。請把它另存到安全的地方。'**
   String get onboardingIntroPage5Item0;
 
   /// No description provided for @onboardingIntroPage5Item1.
   ///
   /// In zh, this message translates to:
-  /// **'換裝置、重新安裝或還原備份時，都要用這組金鑰。'**
+  /// **'換裝置或重新安裝後，要有備份和對應的復原金鑰才能還原。'**
   String get onboardingIntroPage5Item1;
 
   /// No description provided for @onboardingIntroPage5Item2.
   ///
   /// In zh, this message translates to:
-  /// **'App 與開發者都不保管金鑰，遺失後無法找回日記。'**
+  /// **'開發者無法替你找回遺失的金鑰。'**
   String get onboardingIntroPage5Item2;
 
   /// No description provided for @commonActionCancel.
@@ -392,35 +396,23 @@ abstract class AppLocalizations {
   /// **'清除搜尋'**
   String get commonClearSearchTooltip;
 
-  /// No description provided for @commonUnitEntries.
+  /// No description provided for @commonCharacterCount.
   ///
   /// In zh, this message translates to:
-  /// **'篇'**
-  String get commonUnitEntries;
+  /// **'{count} 字'**
+  String commonCharacterCount(int count);
 
-  /// No description provided for @commonUnitTags.
+  /// No description provided for @commonLabelValue.
   ///
   /// In zh, this message translates to:
-  /// **'筆'**
-  String get commonUnitTags;
+  /// **'{label}：{value}'**
+  String commonLabelValue(String label, String value);
 
-  /// No description provided for @commonUnitAttachments.
+  /// No description provided for @commonListSeparator.
   ///
   /// In zh, this message translates to:
-  /// **'個附件'**
-  String get commonUnitAttachments;
-
-  /// No description provided for @commonUnitDays.
-  ///
-  /// In zh, this message translates to:
-  /// **'天'**
-  String get commonUnitDays;
-
-  /// No description provided for @commonUnitCharacters.
-  ///
-  /// In zh, this message translates to:
-  /// **'字'**
-  String get commonUnitCharacters;
+  /// **'、'**
+  String get commonListSeparator;
 
   /// No description provided for @commonRelativeToday.
   ///
@@ -482,6 +474,12 @@ abstract class AppLocalizations {
   /// **'重試'**
   String get commonActionRetry;
 
+  /// No description provided for @commonActionVerifyAgain.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新驗證'**
+  String get commonActionVerifyAgain;
+
   /// No description provided for @datePickerChooseDate.
   ///
   /// In zh, this message translates to:
@@ -535,12 +533,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'下個月'**
   String get datePickerNextMonth;
-
-  /// No description provided for @datePickerMonthOption.
-  ///
-  /// In zh, this message translates to:
-  /// **'{month} 月'**
-  String datePickerMonthOption(int month);
 
   /// No description provided for @datePickerDayOption.
   ///
@@ -637,12 +629,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'正在解鎖'**
   String get homeUnlockingTitle;
-
-  /// No description provided for @homeRetryVerification.
-  ///
-  /// In zh, this message translates to:
-  /// **'重新驗證'**
-  String get homeRetryVerification;
 
   /// No description provided for @homeGoToSettings.
   ///
@@ -815,7 +801,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeEmptyDiaryMessage.
   ///
   /// In zh, this message translates to:
-  /// **'建立第一篇日記後，就會在這裡看到您的日記。'**
+  /// **'寫下第一篇日記吧。'**
   String get homeEmptyDiaryMessage;
 
   /// No description provided for @homeNoAnalysisTitle.
@@ -827,7 +813,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeNoAnalysisMessage.
   ///
   /// In zh, this message translates to:
-  /// **'寫下一篇後，就可以在這裡看到統計、標籤與範圍內的日記。'**
+  /// **'儲存日記後，就能查看寫作統計和標籤。'**
   String get homeNoAnalysisMessage;
 
   /// No description provided for @homeExportRecapLabel.
@@ -962,6 +948,12 @@ abstract class AppLocalizations {
   /// **'搜尋標籤…'**
   String get homeTagSearchHint;
 
+  /// No description provided for @homeTagSearchNoResultsMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'請試試其他標籤名稱。'**
+  String get homeTagSearchNoResultsMessage;
+
   /// No description provided for @homeNoTagsTitle.
   ///
   /// In zh, this message translates to:
@@ -971,7 +963,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeNoTagsMessage.
   ///
   /// In zh, this message translates to:
-  /// **'可點下方按鈕建立一組預設標籤，或使用右上角的「+」自行新增；即使尚未套用到日記也會保留在清單中。'**
+  /// **'可建立預設標籤，也可以點「＋」新增。未使用的標籤會留在清單裡。'**
   String get homeNoTagsMessage;
 
   /// No description provided for @homeCreateDefaultTagsButton.
@@ -989,13 +981,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeTagsSectionTitle.
   ///
   /// In zh, this message translates to:
-  /// **'標籤（{countSummary}）'**
-  String homeTagsSectionTitle(String countSummary);
+  /// **'標籤（{count} 個）'**
+  String homeTagsSectionTitle(int count);
 
   /// No description provided for @homeTagListGuide.
   ///
   /// In zh, this message translates to:
-  /// **'請從標籤清單中點選一列：此區會依索引篩選出套用該標籤的日記摘要（再點同一列可取消選取）。'**
+  /// **'點標籤可查看相關日記。再點一次可取消選取。'**
   String get homeTagListGuide;
 
   /// No description provided for @homeTagPreviewTitle.
@@ -1013,8 +1005,8 @@ abstract class AppLocalizations {
   /// No description provided for @homeTagRemovedFromEntries.
   ///
   /// In zh, this message translates to:
-  /// **'已從 {entrySummary}日記移除「{label}」'**
-  String homeTagRemovedFromEntries(String entrySummary, String label);
+  /// **'已從 {count} 篇日記移除「{label}」'**
+  String homeTagRemovedFromEntries(int count, String label);
 
   /// No description provided for @homeEntriesDeletedSuccess.
   ///
@@ -1031,13 +1023,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeTagRowEntryCount.
   ///
   /// In zh, this message translates to:
-  /// **'{entrySummary}日記'**
-  String homeTagRowEntryCount(String entrySummary);
+  /// **'{count} 篇日記'**
+  String homeTagRowEntryCount(int count);
 
   /// No description provided for @homeTagRowTapHint.
   ///
   /// In zh, this message translates to:
-  /// **'輕觸列預覽'**
+  /// **'查看相關日記'**
   String get homeTagRowTapHint;
 
   /// No description provided for @homeDiarySectionTitleForDate.
@@ -1079,8 +1071,14 @@ abstract class AppLocalizations {
   /// No description provided for @homeOverviewWritingDaysLabel.
   ///
   /// In zh, this message translates to:
-  /// **'撰寫天數'**
+  /// **'寫作天數'**
   String get homeOverviewWritingDaysLabel;
+
+  /// No description provided for @homeOverviewWritingDaysRatio.
+  ///
+  /// In zh, this message translates to:
+  /// **'{activeDays} / {totalDays} 天'**
+  String homeOverviewWritingDaysRatio(int activeDays, int totalDays);
 
   /// No description provided for @homeOverviewAvgLengthLabel.
   ///
@@ -1097,20 +1095,20 @@ abstract class AppLocalizations {
   /// No description provided for @homeOverviewAttachmentCount.
   ///
   /// In zh, this message translates to:
-  /// **'{attachmentSummary}'**
-  String homeOverviewAttachmentCount(String attachmentSummary);
+  /// **'{count} 個附件'**
+  String homeOverviewAttachmentCount(int count);
 
   /// No description provided for @homeOverviewLongestStreak.
   ///
   /// In zh, this message translates to:
-  /// **'連續最長 {daySummary}'**
-  String homeOverviewLongestStreak(String daySummary);
+  /// **'最長連續寫作 {days} 天'**
+  String homeOverviewLongestStreak(int days);
 
   /// No description provided for @homeOverviewEntryStats.
   ///
   /// In zh, this message translates to:
-  /// **'共 {entrySummary}\n累計 {characterSummary}'**
-  String homeOverviewEntryStats(String entrySummary, String characterSummary);
+  /// **'共 {entries} 篇日記\n累計 {characters} 字'**
+  String homeOverviewEntryStats(int entries, int characters);
 
   /// No description provided for @homeDiarySectionTag.
   ///
@@ -1217,8 +1215,8 @@ abstract class AppLocalizations {
   /// No description provided for @homeOverviewMostEntriesInSingleDay.
   ///
   /// In zh, this message translates to:
-  /// **'單天最多 {entrySummary}'**
-  String homeOverviewMostEntriesInSingleDay(String entrySummary);
+  /// **'單日最多 {count} 篇'**
+  String homeOverviewMostEntriesInSingleDay(int count);
 
   /// No description provided for @homeConfirmDeleteSelectedItems.
   ///
@@ -1265,7 +1263,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorBodyHint.
   ///
   /// In zh, this message translates to:
-  /// **'在這裡輸入內容…'**
+  /// **'寫下想記的內容…'**
   String get editorBodyHint;
 
   /// No description provided for @editorCheckboxDragTooltip.
@@ -1349,7 +1347,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTagPoolEmpty.
   ///
   /// In zh, this message translates to:
-  /// **'標籤庫中暫時沒有其他可用標籤，或已全部加入目前清單'**
+  /// **'沒有其他標籤可加入。'**
   String get editorTagPoolEmpty;
 
   /// No description provided for @editorTagAddTooltip.
@@ -1397,7 +1395,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTooltipUploadImages.
   ///
   /// In zh, this message translates to:
-  /// **'上傳圖片'**
+  /// **'加入照片'**
   String get editorTooltipUploadImages;
 
   /// No description provided for @editorTooltipAddAttachment.
@@ -1409,7 +1407,7 @@ abstract class AppLocalizations {
   /// No description provided for @editorTooltipInsertCheckbox.
   ///
   /// In zh, this message translates to:
-  /// **'插入任務項目'**
+  /// **'加入待辦事項'**
   String get editorTooltipInsertCheckbox;
 
   /// No description provided for @editorTooltipDelete.
@@ -1535,13 +1533,13 @@ abstract class AppLocalizations {
   /// No description provided for @editorGalleryDownloadTooltip.
   ///
   /// In zh, this message translates to:
-  /// **'下載'**
+  /// **'儲存圖片'**
   String get editorGalleryDownloadTooltip;
 
   /// No description provided for @editorGalleryDownloadFailed.
   ///
   /// In zh, this message translates to:
-  /// **'無法下載圖片'**
+  /// **'無法儲存圖片'**
   String get editorGalleryDownloadFailed;
 
   /// No description provided for @editorGalleryDownloadSuccess.
@@ -1751,7 +1749,7 @@ abstract class AppLocalizations {
   /// No description provided for @peopleEmptyBody.
   ///
   /// In zh, this message translates to:
-  /// **'建立人物後，可用姓名與別名分析日記提及，並在編輯器以 @ 快速插入該人物指定的名稱（預設為姓名，也可改選別名）。'**
+  /// **'新增人物後，就能用姓名或別名找到提及他們的日記。寫日記時輸入 @ 可插入名字。'**
   String get peopleEmptyBody;
 
   /// No description provided for @peopleNotFoundTitle.
@@ -1783,6 +1781,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'試試其他關鍵字，或調整關係篩選條件。'**
   String get peopleSearchNoResultsMessage;
+
+  /// No description provided for @peopleClearSearchAndFilters.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除搜尋與篩選'**
+  String get peopleClearSearchAndFilters;
 
   /// No description provided for @peopleCreateAction.
   ///
@@ -1961,7 +1965,7 @@ abstract class AppLocalizations {
   /// No description provided for @peopleFieldMentionName.
   ///
   /// In zh, this message translates to:
-  /// **'@ 使用名稱'**
+  /// **'用 @ 插入的名字'**
   String get peopleFieldMentionName;
 
   /// No description provided for @peopleMentionNameUsesNameFallback.
@@ -2147,7 +2151,7 @@ abstract class AppLocalizations {
   /// No description provided for @peopleDeleteConfirmBody.
   ///
   /// In zh, this message translates to:
-  /// **'會刪除人物名冊、衍生統計與其本機 AI 分身，不會修改任何日記內容；既有聊天保留訊息。'**
+  /// **'會刪除此人物的資料、提及統計和本機 AI 分身。日記與既有聊天訊息會保留。'**
   String get peopleDeleteConfirmBody;
 
   /// No description provided for @peopleNameRequired.
@@ -2201,7 +2205,7 @@ abstract class AppLocalizations {
   /// No description provided for @peopleDeleteSelectedConfirmBody.
   ///
   /// In zh, this message translates to:
-  /// **'會刪除所選的 {count} 位人物名冊、衍生統計與其本機 AI 分身，不會修改任何日記內容；既有聊天保留訊息。'**
+  /// **'會刪除所選 {count} 位人物的資料、提及統計和本機 AI 分身。日記與既有聊天訊息會保留。'**
   String peopleDeleteSelectedConfirmBody(int count);
 
   /// No description provided for @peopleDeletedSelected.
@@ -2391,7 +2395,7 @@ abstract class AppLocalizations {
   /// No description provided for @organizationPrivacyHint.
   ///
   /// In zh, this message translates to:
-  /// **'高亮的文字不會傳給 AI。已辨識的個資會自動隱藏；人物依 AI 設定預先標記，手動標記可逐處取消或重新標記。圖片與附件不會傳送。'**
+  /// **'高亮標記的文字不會原樣送出。App 會自動隱藏辨識到的個資，並依 AI 設定處理姓名，你也可以手動調整。圖片和附件留在裝置上。'**
   String get organizationPrivacyHint;
 
   /// No description provided for @organizationStart.
@@ -2547,7 +2551,7 @@ abstract class AppLocalizations {
   /// No description provided for @organizationInterrupted.
   ///
   /// In zh, this message translates to:
-  /// **'整理尚未完成，可以再次嘗試。'**
+  /// **'整理已中斷，請重試。'**
   String get organizationInterrupted;
 
   /// No description provided for @organizationMessageHint.
@@ -2565,7 +2569,7 @@ abstract class AppLocalizations {
   /// No description provided for @organizationChooseDirection.
   ///
   /// In zh, this message translates to:
-  /// **'選擇整理方向'**
+  /// **'你想怎麼整理？'**
   String get organizationChooseDirection;
 
   /// No description provided for @organizationChooseDirectionHint.
@@ -2631,7 +2635,7 @@ abstract class AppLocalizations {
   /// No description provided for @organizationElaborate.
   ///
   /// In zh, this message translates to:
-  /// **'引導補充'**
+  /// **'補充細節'**
   String get organizationElaborate;
 
   /// No description provided for @organizationElaborateDescription.
@@ -2805,8 +2809,8 @@ abstract class AppLocalizations {
   /// No description provided for @chatDiaryPrivateNotesHint.
   ///
   /// In zh, this message translates to:
-  /// **'未被 AI 引用的私密文字仍會在手機加入「私密補記」；要求 AI 排除不會移除這份補記，可在日記編輯器自行刪除。'**
-  String get chatDiaryPrivateNotesHint;
+  /// **'未被 AI 引用的私密文字會在這台裝置上加到「{privateNotes}」。請 AI 省略也不會移除補記，如要刪除可用日記編輯器。'**
+  String chatDiaryPrivateNotesHint(String privateNotes);
 
   /// No description provided for @chatDiaryDraftLabel.
   ///
@@ -3225,8 +3229,8 @@ abstract class AppLocalizations {
   /// No description provided for @personaUsageHint.
   ///
   /// In zh, this message translates to:
-  /// **'可在聊天日記的「聊天夥伴」中選用。回覆會使用已儲存的內容，不會重新讀取原始材料。'**
-  String get personaUsageHint;
+  /// **'在「{chatDiary}」點目前夥伴的名字，就能開啟「{choose}」並選用分身。回覆會使用已儲存的分身內容，不會重讀原始材料。'**
+  String personaUsageHint(String chatDiary, String choose);
 
   /// No description provided for @personaReviewHint.
   ///
@@ -3363,8 +3367,8 @@ abstract class AppLocalizations {
   /// No description provided for @personaSourceChangedHint.
   ///
   /// In zh, this message translates to:
-  /// **'有已選日記需要重新檢查，請切換「只看已選」處理。'**
-  String get personaSourceChangedHint;
+  /// **'部分已選日記需要重新檢查。切換到「{selectedOnly}」即可查看。'**
+  String personaSourceChangedHint(String selectedOnly);
 
   /// No description provided for @personaTitle.
   ///
@@ -3477,8 +3481,8 @@ abstract class AppLocalizations {
   /// No description provided for @personaPrivacyHint.
   ///
   /// In zh, this message translates to:
-  /// **'按「開始整理」才會外送，請確認材料可以分享。即使隱藏姓名，細節仍可能透露身分。'**
-  String get personaPrivacyHint;
+  /// **'點「{generate}」會送出選取的資料。請只分享有權使用的內容，即使隱藏姓名，細節仍可能透露身分。'**
+  String personaPrivacyHint(String generate);
 
   /// No description provided for @personaCleanupPending.
   ///
@@ -3519,7 +3523,7 @@ abstract class AppLocalizations {
   /// No description provided for @personaChecked.
   ///
   /// In zh, this message translates to:
-  /// **'完成檢查'**
+  /// **'完成'**
   String get personaChecked;
 
   /// No description provided for @personaNoChatMessages.
@@ -3615,7 +3619,7 @@ abstract class AppLocalizations {
   /// No description provided for @personaChatExportHelpIntro.
   ///
   /// In zh, this message translates to:
-  /// **'選擇聊天檔案可一次選多個 .txt 或 .json。已知格式的重複訊息會合併；無法辨識的檔案會整份保留。請只匯入你有權使用的對話。選單名稱會隨 App 版本改變，以畫面上看到的為準。'**
+  /// **'可選多個 .txt 或 .json 檔。支援格式會合併重複訊息，無法辨識的檔案會整份保留。請只匯入有權使用的聊天。選單名稱以畫面為準。'**
   String get personaChatExportHelpIntro;
 
   /// No description provided for @personaChatExportOnPhone.
@@ -3735,7 +3739,7 @@ abstract class AppLocalizations {
   /// No description provided for @personaChatExportMessengerSecureNotePath.
   ///
   /// In zh, this message translates to:
-  /// **'另一則官方說明寫的是聊天記錄、最近備份、下載聊天備份，以畫面上看到的為準。'**
+  /// **'若看到「聊天記錄」、「最近備份」或「下載聊天備份」，請依畫面上的選項操作。'**
   String get personaChatExportMessengerSecureNotePath;
 
   /// No description provided for @personaChatExportMessengerSecureNoteIncomplete.
@@ -4200,7 +4204,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiConnectionDeleteConfirmBody.
   ///
   /// In zh, this message translates to:
-  /// **'確定刪除「{name}」嗎？儲存後會移除這組連線，並刪除它在這台裝置上的 API Key，無法從設定還原。既有聊天紀錄會保留。'**
+  /// **'刪除「{name}」？儲存後會移除這組連線及裝置上的 API 金鑰。既有聊天紀錄會保留。'**
   String aiConnectionDeleteConfirmBody(String name);
 
   /// No description provided for @aiConnectionNotConfigured.
@@ -4224,25 +4228,25 @@ abstract class AppLocalizations {
   /// No description provided for @aiThinkingSettings.
   ///
   /// In zh, this message translates to:
-  /// **'Thinking 設定…'**
+  /// **'思考設定…'**
   String get aiThinkingSettings;
 
   /// No description provided for @aiThinkingSettingsTitle.
   ///
   /// In zh, this message translates to:
-  /// **'Thinking 設定'**
+  /// **'思考設定'**
   String get aiThinkingSettingsTitle;
 
   /// No description provided for @aiThinkingFormatHint.
   ///
   /// In zh, this message translates to:
-  /// **'使用目前協定為這個模型產生 Thinking 參數。'**
+  /// **'沿用目前協定的思考參數。'**
   String get aiThinkingFormatHint;
 
   /// No description provided for @aiThinkingOmitHint.
   ///
   /// In zh, this message translates to:
-  /// **'送出請求時省略 Thinking 參數。'**
+  /// **'送出時不加思考參數。'**
   String get aiThinkingOmitHint;
 
   /// No description provided for @aiThinkingCustomHint.
@@ -4308,7 +4312,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiThinkingPreview.
   ///
   /// In zh, this message translates to:
-  /// **'Thinking 參數預覽'**
+  /// **'思考參數預覽'**
   String get aiThinkingPreview;
 
   /// No description provided for @aiThinkingPreviewLevel.
@@ -4320,7 +4324,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiThinkingPreviewEmpty.
   ///
   /// In zh, this message translates to:
-  /// **'這個設定會省略額外的 Thinking 參數。'**
+  /// **'不會傳送額外的思考參數。'**
   String get aiThinkingPreviewEmpty;
 
   /// No description provided for @aiThinkingPreviewInvalid.
@@ -4410,7 +4414,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiApiKey.
   ///
   /// In zh, this message translates to:
-  /// **'API Key'**
+  /// **'API 金鑰'**
   String get aiApiKey;
 
   /// No description provided for @aiServerUrl.
@@ -4430,6 +4434,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'測試連線'**
   String get aiTestConnection;
+
+  /// No description provided for @aiTestConnectionAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'測試連線'**
+  String get aiTestConnectionAction;
 
   /// No description provided for @aiConnectionSuccess.
   ///
@@ -4572,13 +4582,13 @@ abstract class AppLocalizations {
   /// No description provided for @aiSettingsNeedConnection.
   ///
   /// In zh, this message translates to:
-  /// **'至少填一個服務的 API Key，或填自訂服務網址，並打開一個模型，才選得到。'**
+  /// **'先填服務的 API 金鑰或自訂服務網址，再啟用要使用的模型。'**
   String get aiSettingsNeedConnection;
 
   /// No description provided for @aiThinking.
   ///
   /// In zh, this message translates to:
-  /// **'Thinking'**
+  /// **'思考'**
   String get aiThinking;
 
   /// No description provided for @aiThinkingOff.
@@ -4650,19 +4660,19 @@ abstract class AppLocalizations {
   /// No description provided for @aiErrorConfiguration.
   ///
   /// In zh, this message translates to:
-  /// **'請先填寫服務網址、模型與必要的 API Key。'**
+  /// **'請先填寫服務網址、模型，以及服務需要的 API 金鑰。'**
   String get aiErrorConfiguration;
 
   /// No description provided for @aiErrorEndpoint.
   ///
   /// In zh, this message translates to:
-  /// **'網址無效。雲端服務需使用 HTTPS；自訂服務的 HTTP 僅接受區網或 loopback IP，不可包含帳密、查詢參數或片段。'**
+  /// **'雲端服務須使用 HTTPS。自訂 HTTP 網址限用區網或本機回送 IP，不可含帳密、查詢參數或片段。'**
   String get aiErrorEndpoint;
 
   /// No description provided for @aiErrorAuthentication.
   ///
   /// In zh, this message translates to:
-  /// **'API Key 無效、已失效，或沒有此模型的存取權。'**
+  /// **'API 金鑰無效、已失效，或沒有此模型的存取權。'**
   String get aiErrorAuthentication;
 
   /// No description provided for @aiErrorQuota.
@@ -4746,7 +4756,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiSelectPrivateText.
   ///
   /// In zh, this message translates to:
-  /// **'先選取想對 AI 隱藏的文字，再點這個按鈕。'**
+  /// **'先選取要對 AI 隱藏的文字。'**
   String get aiSelectPrivateText;
 
   /// No description provided for @aiErrorTimeout.
@@ -4800,7 +4810,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiSettingsResetConfirm.
   ///
   /// In zh, this message translates to:
-  /// **'將以預設設定取代目前無法讀取的 AI 設定，清除自訂連線、模型與 Thinking 選擇、提示詞及替換副本。日記、附件、裝置上的 API Key 與遠端清理紀錄會保留。自訂連線重建後需要重新輸入 Key。確定重建？'**
+  /// **'要將 AI 設定重設為預設值嗎？自訂連線、模型與思考設定、提示詞及設定副本都會清除。日記、附件、已儲存的 API 金鑰和待清理的遠端紀錄會保留。重新建立自訂連線時，需再輸入 API 金鑰。'**
   String get aiSettingsResetConfirm;
 
   /// No description provided for @vaultTransferNeedsUnlockForBackup.
@@ -4830,13 +4840,13 @@ abstract class AppLocalizations {
   /// No description provided for @vaultTransferLocalSectionDescriptionBackupLocked.
   ///
   /// In zh, this message translates to:
-  /// **'建立本機備份與匯出需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接匯入外部備份還原。'**
+  /// **'建立或匯出備份前，請解鎖日記庫並設定復原金鑰。匯入外部備份時，可直接用備份對應的金鑰還原。'**
   String get vaultTransferLocalSectionDescriptionBackupLocked;
 
   /// No description provided for @vaultTransferDriveSectionDescriptionBackupLocked.
   ///
   /// In zh, this message translates to:
-  /// **'備份到 Google Drive 需先解鎖日記庫並建立復原金鑰；尚未建立復原金鑰或忘記金鑰時，可直接從 Google Drive 還原。'**
+  /// **'備份到 Google Drive 前，請解鎖日記庫並設定復原金鑰。還原時請使用備份對應的金鑰。'**
   String get vaultTransferDriveSectionDescriptionBackupLocked;
 
   /// No description provided for @vaultTransferDriveBackupActionsLockedHint.
@@ -4884,7 +4894,7 @@ abstract class AppLocalizations {
   /// No description provided for @vaultTransferImportDocumentsDirectoryPrompt.
   ///
   /// In zh, this message translates to:
-  /// **'選擇包含要匯入之 App Markdown 或 HTML 的資料夾'**
+  /// **'選擇含有 Markdown 檔案或 Quill Diary HTML 匯出檔的資料夾'**
   String get vaultTransferImportDocumentsDirectoryPrompt;
 
   /// No description provided for @vaultTransferImportDocumentsFileTitle.
@@ -5316,7 +5326,7 @@ abstract class AppLocalizations {
   /// No description provided for @driveUploadBackgroundStarted.
   ///
   /// In zh, this message translates to:
-  /// **'已開始背景上傳。您可以切換 App 或鎖定螢幕，但請勿強制停止 Quill Diary。若上傳中斷，請開啟 App 重新備份。'**
+  /// **'已開始背景上傳。可以切換 App 或鎖螢幕，請勿強制停止 Quill Diary。若上傳中斷，請開啟 App 重新備份。'**
   String get driveUploadBackgroundStarted;
 
   /// No description provided for @driveUploadNotificationsDeniedHint.
@@ -5390,6 +5400,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'請先完成或取消上傳，再變更 Google 帳戶。'**
   String get driveUploadBusyBlocksAccountActions;
+
+  /// No description provided for @driveUploadBackgroundHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'上傳可在背景繼續，請勿強制停止 App。'**
+  String get driveUploadBackgroundHint;
 
   /// No description provided for @driveUploadCancelCleanupBlocksAccountActions.
   ///
@@ -5496,7 +5512,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionStartupNeedsRecoveryKeyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，這樣換機、還原或裝置失效時，才可以重新進入日記庫。'**
+  /// **'請建立並妥善保存復原金鑰。無法解鎖或換機還原時會用到。'**
   String get sessionStartupNeedsRecoveryKeyMessage;
 
   /// No description provided for @sessionStartupNeedsTrustedDeviceMessage.
@@ -5815,16 +5831,10 @@ abstract class AppLocalizations {
   /// **'使用復原金鑰解鎖'**
   String get settingsSecurityLockUnlockWithRecoveryButton;
 
-  /// No description provided for @settingsSecurityLockRetryVerificationButton.
-  ///
-  /// In zh, this message translates to:
-  /// **'重新驗證'**
-  String get settingsSecurityLockRetryVerificationButton;
-
   /// No description provided for @settingsRecoveryKeyNotSetupBanner.
   ///
   /// In zh, this message translates to:
-  /// **'尚未建立復原金鑰。復原金鑰是保護整個日記庫的重要依據，請先建立並妥善保存，以便換機、還原或裝置失效時使用。'**
+  /// **'請建立並妥善保存復原金鑰，供解鎖和備份還原使用。'**
   String get settingsRecoveryKeyNotSetupBanner;
 
   /// No description provided for @settingsRecoveryKeySetupBanner.
@@ -5974,7 +5984,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewUnlockModeDisabledMessage.
   ///
   /// In zh, this message translates to:
-  /// **'未啟用 App 解鎖'**
+  /// **'未啟用解鎖驗證'**
   String get settingsSecurityOverviewUnlockModeDisabledMessage;
 
   /// No description provided for @settingsUnlockMethodConfigureButton.
@@ -6010,7 +6020,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage.
   ///
   /// In zh, this message translates to:
-  /// **'請先建立復原金鑰。它是保護整個日記庫的重要依據，建立後才能設定解鎖方式，也能在換機、還原或裝置失效時重新進入日記庫。'**
+  /// **'設定解鎖方式前，請先建立復原金鑰。妥善保存，以便日後解鎖或還原。'**
   String get settingsSecurityOverviewUnlockModeNeedsRecoveryKeyMessage;
 
   /// No description provided for @settingsSecurityOverviewUnlockModeProtectedMessage.
@@ -6147,7 +6157,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsUnlockMethodSectionDescription.
   ///
   /// In zh, this message translates to:
-  /// **'App 放在背景超過 {timeoutLabel} 會自動鎖定；如果只是短時間切換 App，通常不會。鎖定後回到 App 時，請依下方設定的解鎖方式重新驗證。'**
+  /// **'App 切到背景滿 {timeoutLabel} 會自動鎖定。回來時請用下方設定的方式解鎖。'**
   String settingsUnlockMethodSectionDescription(String timeoutLabel);
 
   /// No description provided for @settingsUnlockMethodSegmentNone.
@@ -6201,8 +6211,12 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSessionTimeoutAboutBackgroundTimeoutBody.
   ///
   /// In zh, this message translates to:
-  /// **'App 在背景超過 {timeoutLabel} 後會自動鎖定；短暫切換通常不受影響。您可在「個人化」調整時間。備份、還原或匯入匯出期間會暫停自動鎖定。'**
-  String settingsSessionTimeoutAboutBackgroundTimeoutBody(String timeoutLabel);
+  /// **'App 切到背景滿 {timeoutLabel} 會自動鎖定。可到「{personalize}」的「{autoLock}」調整時間。備份、還原、匯入或匯出期間會暫停自動鎖定。'**
+  String settingsSessionTimeoutAboutBackgroundTimeoutBody(
+    String timeoutLabel,
+    String personalize,
+    String autoLock,
+  );
 
   /// No description provided for @settingsImportExportSectionTitle.
   ///
@@ -6213,7 +6227,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsImportExportSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'可從其他 App 或檔案匯入日記，也可把正式內容匯出成檔案。支援 Markdown、HTML 與 Easy Diary 備份。'**
+  /// **'可匯入 Markdown、Quill Diary 的 HTML 匯出檔或 Easy Diary 備份，也可將日記匯出成 Markdown 或 HTML。'**
   String get settingsImportExportSectionDescriptionEnabled;
 
   /// No description provided for @settingsImportExportImportNoEntriesMessage.
@@ -6343,7 +6357,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLocalBackupSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'建立完整本機備份，還原時會以備份內容取代目前日記庫。本機備份保留目標為 {retainCount} 份。'**
+  /// **'備份會加密。本機以保留 {retainCount} 份為目標。'**
   String settingsLocalBackupSectionDescriptionEnabled(int retainCount);
 
   /// No description provided for @settingsLocalBackupCreateButton.
@@ -6385,8 +6399,8 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupDeleteFailed.
   ///
   /// In zh, this message translates to:
-  /// **'無法刪除備份。請再點選刪除重試。\n{message}'**
-  String settingsBackupDeleteFailed(String message);
+  /// **'無法刪除備份。可再點「{deleteBackup}」重試。\n{message}'**
+  String settingsBackupDeleteFailed(String deleteBackup, String message);
 
   /// No description provided for @settingsLocalBackupNoBackups.
   ///
@@ -6451,7 +6465,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDriveBackupSectionDescriptionEnabled.
   ///
   /// In zh, this message translates to:
-  /// **'連結 Google 帳戶即可備份或還原。還原會取代目前日記庫。上傳可在背景繼續，請勿強制停止 App。Google Drive 備份保留目標為 {retainCount} 份。'**
+  /// **'在 Google Drive 建立加密備份，保留目標為 {retainCount} 份。'**
   String settingsDriveBackupSectionDescriptionEnabled(int retainCount);
 
   /// No description provided for @settingsDriveBackupSectionDescriptionOAuthNotConfigured.
@@ -7339,7 +7353,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportHeroBody.
   ///
   /// In zh, this message translates to:
-  /// **'如果 Quill Diary 對您有幫助，可透過 Google Play 提供一次性支持。這不會解鎖額外功能，也不影響日記內容的存取與使用。'**
+  /// **'可透過 Google Play 單次付款支持開發。App 功能和日記存取不受影響。'**
   String get settingsSupportHeroBody;
 
   /// No description provided for @settingsSupportHeroChipNoExtraFeatures.
@@ -7399,7 +7413,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportThanksMessage.
   ///
   /// In zh, this message translates to:
-  /// **'謝謝您的支持，這對開發很有幫助。'**
+  /// **'謝謝你支持 Quill Diary。'**
   String get settingsSupportThanksMessage;
 
   /// No description provided for @settingsSupportErrorMessage.
@@ -7465,7 +7479,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportProductsPartialMessage.
   ///
   /// In zh, this message translates to:
-  /// **'部分方案暫時無法顯示，您仍可選擇其他可用金額。'**
+  /// **'部分支持選項暫時無法使用，仍可選擇其他金額。'**
   String get settingsSupportProductsPartialMessage;
 
   /// No description provided for @settingsSupportRetryLoadProductsLabel.
@@ -7477,7 +7491,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSupportFooterNote.
   ///
   /// In zh, this message translates to:
-  /// **'支持完全自願，請依您的需求與意願決定。'**
+  /// **'支持開發完全自願。'**
   String get settingsSupportFooterNote;
 
   /// No description provided for @settingsLegalSectionTitle.
@@ -7485,12 +7499,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'法律與隱私'**
   String get settingsLegalSectionTitle;
-
-  /// No description provided for @settingsLegalSectionDescription.
-  ///
-  /// In zh, this message translates to:
-  /// **'可查看原始碼、隱私政策與第三方聲明；也歡迎透過 Issues 聯絡或前往 Google Play 評價。'**
-  String get settingsLegalSectionDescription;
 
   /// No description provided for @settingsLegalSourceCodeTitle.
   ///
@@ -7762,1541 +7770,401 @@ abstract class AppLocalizations {
   /// **'關於'**
   String get aboutPageTitle;
 
-  /// No description provided for @aboutTabIntroLabel.
+  /// No description provided for @aboutIntro.
   ///
   /// In zh, this message translates to:
-  /// **'簡介'**
-  String get aboutTabIntroLabel;
+  /// **'記下每天的故事，依標籤、日期或人物回顧。也可以先和 AI 聊聊，再把對話寫成日記。'**
+  String get aboutIntro;
 
-  /// No description provided for @aboutTabIntroHeroTitle.
+  /// No description provided for @aboutWritingTitle.
   ///
   /// In zh, this message translates to:
-  /// **'先了解資料如何保存、使用與帶走'**
-  String get aboutTabIntroHeroTitle;
+  /// **'寫日記與搜尋'**
+  String get aboutWritingTitle;
 
-  /// No description provided for @aboutTabIntroHeroBody.
+  /// No description provided for @aboutWritingSummary.
   ///
   /// In zh, this message translates to:
-  /// **'Quill Diary 是不需建立專屬帳戶的本機加密日記 App。日常寫作與搜尋可離線使用；由您決定何時建立外部副本，或使用 Google Drive 與 AI 服務。'**
-  String get aboutTabIntroHeroBody;
+  /// **'加照片、標籤和附件，隨時找回寫過的內容。'**
+  String get aboutWritingSummary;
 
-  /// No description provided for @aboutTabIntroChip0.
-  ///
-  /// In zh, this message translates to:
-  /// **'資料加密'**
-  String get aboutTabIntroChip0;
-
-  /// No description provided for @aboutTabIntroChip1.
-  ///
-  /// In zh, this message translates to:
-  /// **'免註冊'**
-  String get aboutTabIntroChip1;
-
-  /// No description provided for @aboutTabIntroChip2.
-  ///
-  /// In zh, this message translates to:
-  /// **'全文搜尋'**
-  String get aboutTabIntroChip2;
-
-  /// No description provided for @aboutTabIntroChip3.
-  ///
-  /// In zh, this message translates to:
-  /// **'備份與匯出'**
-  String get aboutTabIntroChip3;
-
-  /// No description provided for @aboutTabIntroSection0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'為什麼適合拿來寫日記'**
-  String get aboutTabIntroSection0Title;
-
-  /// No description provided for @aboutTabIntroSection0Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'從資料保存方式到日常操作，都以個人記錄與隱私為核心。'**
-  String get aboutTabIntroSection0Subtitle;
-
-  /// No description provided for @aboutTabIntroSection0Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'本機加密保存'**
-  String get aboutTabIntroSection0Item0Title;
-
-  /// No description provided for @aboutTabIntroSection0Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'日記、附件、人物名冊、草稿與搜尋索引預設留在裝置上並加密保存。復原設定與釘選項目 ID 等輔助資料不另行加密，但仍存放在 App 私有空間。'**
-  String get aboutTabIntroSection0Item0Body;
-
-  /// No description provided for @aboutTabIntroSection0Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'不用註冊就能開始'**
-  String get aboutTabIntroSection0Item1Title;
-
-  /// No description provided for @aboutTabIntroSection0Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'不需建立 Quill Diary 帳戶。第一次使用時設定復原金鑰，即可開始讀寫日記；使用 Google Drive 備份與還原時，才需在 App 內連結 Google 帳戶。'**
-  String get aboutTabIntroSection0Item1Body;
-
-  /// No description provided for @aboutTabIntroSection0Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'少收集、少干擾'**
-  String get aboutTabIntroSection0Item2Title;
-
-  /// No description provided for @aboutTabIntroSection0Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'App 不內嵌廣告或追蹤 SDK，也不會把日記明文上傳到開發者控制的伺服器。選用 AI 聊天時，對話、提示詞及附圖會直接送到您設定的服務商。日記整理只傳送本篇遮罩後的內文與本次對話，不傳圖片及附件；進入聊天室不會立即呼叫 AI，可先討論需求再生成全文。API Key 只留在本機安全儲存且不進備份；服務、網址與提示詞在加密日記庫內，隨完整備份走。服務商如何保存已接收資料，依其政策辦理。'**
-  String get aboutTabIntroSection0Item2Body;
-
-  /// No description provided for @aboutTabIntroSection1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可以怎麼使用它'**
-  String get aboutTabIntroSection1Title;
-
-  /// No description provided for @aboutTabIntroSection1Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'從當下記錄，到之後回顧整理，常用功能都圍繞個人日記情境設計。'**
-  String get aboutTabIntroSection1Subtitle;
-
-  /// No description provided for @aboutTabIntroSection1Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'寫下每天想記住的內容'**
-  String get aboutTabIntroSection1Item0Title;
-
-  /// No description provided for @aboutTabIntroSection1Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'支援標題、日期、標籤、圖片與一般附件。新建日記可直接開始寫，既有日記也能先看再編輯；需要時也能把內容匯出成 Markdown 或 HTML。'**
-  String get aboutTabIntroSection1Item0Body;
-
-  /// No description provided for @aboutTabIntroSection1Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'用不同角度看自己的紀錄'**
-  String get aboutTabIntroSection1Item1Title;
-
-  /// No description provided for @aboutTabIntroSection1Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'主畫面提供列表、日曆、標籤、人物與總覽五種入口。您可依時間瀏覽、按日期回看，或從標籤、人物和統計整理自己的生活軌跡。'**
-  String get aboutTabIntroSection1Item1Body;
-
-  /// No description provided for @aboutTabIntroSection1Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'找回以前寫過的內容'**
-  String get aboutTabIntroSection1Item2Title;
-
-  /// No description provided for @aboutTabIntroSection1Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖後可用關鍵字搜尋標題、標籤與內文，找回某段經歷或提過的事情。'**
-  String get aboutTabIntroSection1Item2Body;
-
-  /// No description provided for @aboutTabIntroSection1Item3Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'備份與匯出，各有用途'**
-  String get aboutTabIntroSection1Item3Title;
-
-  /// No description provided for @aboutTabIntroSection1Item3Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'完整備份用來恢復整個正式日記庫；Markdown 或 HTML 則適合在 App 外閱讀與整理。'**
-  String get aboutTabIntroSection1Item3Body;
-
-  /// No description provided for @aboutTabIntroSection1Item4Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'依習慣調整 App'**
-  String get aboutTabIntroSection1Item4Title;
-
-  /// No description provided for @aboutTabIntroSection1Item4Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可在「個人化」調整介面語言、亮暗主題、自動鎖定時間、圖片品質與日記排版。圖片品質只影響之後從一般編輯器新加入的圖片，不套用到聊天附圖。'**
-  String get aboutTabIntroSection1Item4Body;
-
-  /// No description provided for @aboutTabIntroSection2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'資料掌控權在您手上'**
-  String get aboutTabIntroSection2Title;
-
-  /// No description provided for @aboutTabIntroSection2Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'備份、匯出與解鎖方式各自扮演不同角色，讓您能保留資料，也能理解風險邊界。'**
-  String get aboutTabIntroSection2Subtitle;
-
-  /// No description provided for @aboutTabIntroSection2Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'可信裝置與復原金鑰'**
-  String get aboutTabIntroSection2Item0Title;
-
-  /// No description provided for @aboutTabIntroSection2Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'裝置螢幕鎖與生物辨識方便日常使用；復原金鑰可解鎖原日記庫或其完整備份，但金鑰本身不包含日記資料。'**
-  String get aboutTabIntroSection2Item0Body;
-
-  /// No description provided for @aboutTabIntroSection2Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'完整備份用來還原日記庫'**
-  String get aboutTabIntroSection2Item1Title;
-
-  /// No description provided for @aboutTabIntroSection2Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'完整備份保留正式日記、附件、人物與其他日記庫資料，供日後完整還原；它不是可直接閱讀的匯出文件。'**
-  String get aboutTabIntroSection2Item1Body;
-
-  /// No description provided for @aboutTabIntroSection2Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯出內容後要自行保護'**
-  String get aboutTabIntroSection2Item2Title;
-
-  /// No description provided for @aboutTabIntroSection2Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'Markdown 與 HTML 匯出適合閱讀、整理與轉移內容，但它們屬於可讀文件，不再等同於 App 內的加密保存狀態。'**
-  String get aboutTabIntroSection2Item2Body;
-
-  /// No description provided for @aboutTabIntroSection3Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'開源與品牌'**
-  String get aboutTabIntroSection3Title;
-
-  /// No description provided for @aboutTabIntroSection3Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可查看原始碼與授權條件，也能清楚了解品牌使用界線。'**
-  String get aboutTabIntroSection3Subtitle;
-
-  /// No description provided for @aboutTabIntroSection3Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'AGPL-3.0-or-later 開源'**
-  String get aboutTabIntroSection3Item0Title;
-
-  /// No description provided for @aboutTabIntroSection3Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'原始碼以 AGPL-3.0-or-later 發布，可公開檢視產品行為與實作方式。目前僅支援 Android。'**
-  String get aboutTabIntroSection3Item0Body;
-
-  /// No description provided for @aboutTabIntroSection3Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'Quill Diary 品牌'**
-  String get aboutTabIntroSection3Item1Title;
-
-  /// No description provided for @aboutTabUnlockSessionLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖與安全'**
-  String get aboutTabUnlockSessionLabel;
-
-  /// No description provided for @aboutTabUnlockSessionHeroTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'日常解鎖與緊急復原，各有用途'**
-  String get aboutTabUnlockSessionHeroTitle;
-
-  /// No description provided for @aboutTabUnlockSessionHeroBody.
-  ///
-  /// In zh, this message translates to:
-  /// **'螢幕鎖與生物辨識用於日常重新驗證；復原金鑰用於還原備份或在裝置信任失效後重新取得存取權。換機仍需完整備份，裝置 PIN 與生物辨識不能取代復原金鑰。'**
-  String get aboutTabUnlockSessionHeroBody;
-
-  /// No description provided for @aboutTabUnlockSessionChip0.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰'**
-  String get aboutTabUnlockSessionChip0;
-
-  /// No description provided for @aboutTabUnlockSessionChip1.
-  ///
-  /// In zh, this message translates to:
-  /// **'生物辨識'**
-  String get aboutTabUnlockSessionChip1;
-
-  /// No description provided for @aboutTabUnlockSessionChip2.
-  ///
-  /// In zh, this message translates to:
-  /// **'螢幕鎖'**
-  String get aboutTabUnlockSessionChip2;
-
-  /// No description provided for @aboutTabUnlockSessionChip3.
-  ///
-  /// In zh, this message translates to:
-  /// **'自動鎖定'**
-  String get aboutTabUnlockSessionChip3;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖方式怎麼選'**
-  String get aboutTabUnlockSessionSection0Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可依裝置習慣與想要的保護程度，在設定頁切換不同解鎖方式。'**
-  String get aboutTabUnlockSessionSection0Subtitle;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'無'**
-  String get aboutTabUnlockSessionSection0Item0Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'因背景逾時鎖定後，回到 App 不需系統驗證即可恢復存取；手動鎖定後仍須按「重新驗證」。此模式方便，但保護力最低。'**
-  String get aboutTabUnlockSessionSection0Item0Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'裝置螢幕鎖'**
-  String get aboutTabUnlockSessionSection0Item1Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'回到 App 時用 PIN、圖案或密碼重新驗證。適合想保留系統層保護，又不一定使用生物辨識的人。'**
-  String get aboutTabUnlockSessionSection0Item1Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'生物辨識'**
-  String get aboutTabUnlockSessionSection0Item2Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'優先使用指紋或臉部驗證；依裝置與系統畫面，可能提供螢幕鎖作為後備方式。這通常是日常使用最方便的選擇。'**
-  String get aboutTabUnlockSessionSection0Item2Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item3Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'共同前提'**
-  String get aboutTabUnlockSessionSection0Item3Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection0Item3Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'螢幕鎖與生物驗證模式都要求裝置先設定好螢幕鎖；要使用生物辨識，也必須先在系統中完成登錄。'**
-  String get aboutTabUnlockSessionSection0Item3Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'什麼時候會重新驗證'**
-  String get aboutTabUnlockSessionSection1Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'只有在有效解鎖期間，才能讀寫日記、草稿、附件與搜尋資料。'**
-  String get aboutTabUnlockSessionSection1Subtitle;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'有效解鎖期間'**
-  String get aboutTabUnlockSessionSection1Item0Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖後即可讀寫日記、編輯草稿、加入附件及使用搜尋。尚未建立復原金鑰時，即使已進入主畫面，日記內容仍無法使用。'**
-  String get aboutTabUnlockSessionSection1Item0Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'背景逾時'**
-  String get aboutTabUnlockSessionSection1Item1Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'回到 App 時'**
-  String get aboutTabUnlockSessionSection1Item2Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'短暫切換後再回來，通常不會立刻要求重驗；背景超過設定時間後，會依您選擇的模式決定是否重新驗證。鎖定只會暫停存取，不會刪除日記。'**
-  String get aboutTabUnlockSessionSection1Item2Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item3Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'驗證取消或失敗後'**
-  String get aboutTabUnlockSessionSection1Item3Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item3Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'取消或未通過驗證時，App 會維持鎖定並停止自動重試；需要時可再按「重新驗證」。'**
-  String get aboutTabUnlockSessionSection1Item3Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item4Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'手動鎖定時'**
-  String get aboutTabUnlockSessionSection1Item4Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection1Item4Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'從設定手動鎖定後，切回 App 需自行按「重新驗證」，不會自動解鎖。'**
-  String get aboutTabUnlockSessionSection1Item4Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'為什麼還需要復原金鑰'**
-  String get aboutTabUnlockSessionSection2Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection2Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'裝置驗證方便日常解鎖；換機或重裝時，則需要完整備份及其對應的復原金鑰。'**
-  String get aboutTabUnlockSessionSection2Subtitle;
-
-  /// No description provided for @aboutTabUnlockSessionSection2Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'日常解鎖不能取代備份與復原金鑰'**
-  String get aboutTabUnlockSessionSection2Item0Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection2Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'換手機或清除 App 資料後，必須先取得完整備份，再用建立該備份時保存的復原金鑰還原。原本的 PIN、圖案、密碼或生物辨識不能取代備份或復原金鑰。'**
-  String get aboutTabUnlockSessionSection2Item0Body;
-
-  /// No description provided for @aboutTabUnlockSessionSection2Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'請妥善保存'**
-  String get aboutTabUnlockSessionSection2Item1Title;
-
-  /// No description provided for @aboutTabUnlockSessionSection2Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰可重新取得對應日記庫或完整備份的存取權，但不包含日記資料。遺失後可能無法還原，請另外保存在安全位置。'**
-  String get aboutTabUnlockSessionSection2Item1Body;
-
-  /// No description provided for @aboutTabEncryptionLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'資料加密'**
-  String get aboutTabEncryptionLabel;
-
-  /// No description provided for @aboutTabEncryptionHeroTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'寫入裝置前，先保護日記內容'**
-  String get aboutTabEncryptionHeroTitle;
-
-  /// No description provided for @aboutTabEncryptionHeroBody.
-  ///
-  /// In zh, this message translates to:
-  /// **'正式日記、附件、人物名冊、草稿與搜尋資料會加密保存，只有在有效解鎖期間才能讀寫。明文匯出與已解鎖的裝置仍需由您保護。'**
-  String get aboutTabEncryptionHeroBody;
-
-  /// No description provided for @aboutTabEncryptionChip0.
-  ///
-  /// In zh, this message translates to:
-  /// **'檔案加密'**
-  String get aboutTabEncryptionChip0;
-
-  /// No description provided for @aboutTabEncryptionChip1.
-  ///
-  /// In zh, this message translates to:
-  /// **'安全驗證'**
-  String get aboutTabEncryptionChip1;
-
-  /// No description provided for @aboutTabEncryptionChip2.
-  ///
-  /// In zh, this message translates to:
-  /// **'金鑰防護'**
-  String get aboutTabEncryptionChip2;
-
-  /// No description provided for @aboutTabEncryptionChip3.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰'**
-  String get aboutTabEncryptionChip3;
-
-  /// No description provided for @aboutTabEncryptionSection0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'這套保護機制在幫您做什麼'**
-  String get aboutTabEncryptionSection0Title;
-
-  /// No description provided for @aboutTabEncryptionSection0Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'內容寫入裝置前先加密，讀取時再透過目前有效的解鎖狀態開啟。'**
-  String get aboutTabEncryptionSection0Subtitle;
-
-  /// No description provided for @aboutTabEncryptionSection0Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'加密保存敏感內容'**
-  String get aboutTabEncryptionSection0Item0Title;
-
-  /// No description provided for @aboutTabEncryptionSection0Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'正式日記、附件、人物名冊與草稿使用 LDJ2 格式封裝，檔案內容以 AES-256-GCM 加密；即使取得檔案，也無法直接閱讀內容。'**
-  String get aboutTabEncryptionSection0Item0Body;
-
-  /// No description provided for @aboutTabEncryptionSection0Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'偵測異常就停止開啟'**
-  String get aboutTabEncryptionSection0Item1Title;
-
-  /// No description provided for @aboutTabEncryptionSection0Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'加密檔案也帶有完整性驗證。若內容或檔頭遭到修改，解密會失敗，不會把無法驗證的資料當成正常內容。'**
-  String get aboutTabEncryptionSection0Item1Body;
-
-  /// No description provided for @aboutTabEncryptionSection0Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'不同檔案使用不同金鑰'**
-  String get aboutTabEncryptionSection0Item2Title;
-
-  /// No description provided for @aboutTabEncryptionSection0Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'日記與附件等 LDJ2 檔案各自使用獨立產生的內容金鑰，不會全部共用同一把檔案金鑰。'**
-  String get aboutTabEncryptionSection0Item2Body;
-
-  /// No description provided for @aboutTabEncryptionSection1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可以怎麼打開自己的資料'**
-  String get aboutTabEncryptionSection1Title;
-
-  /// No description provided for @aboutTabEncryptionSection1Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'日常與緊急情況走的是不同入口，但最後都會回到同一套解密流程。'**
-  String get aboutTabEncryptionSection1Subtitle;
-
-  /// No description provided for @aboutTabEncryptionSection1Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'可信裝置'**
-  String get aboutTabEncryptionSection1Item0Title;
-
-  /// No description provided for @aboutTabEncryptionSection1Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'可信裝置依您選擇的模式，以螢幕鎖、生物辨識或免驗證方式進入；用來解密日記庫的材料由裝置內建安全機制保護。'**
-  String get aboutTabEncryptionSection1Item0Body;
-
-  /// No description provided for @aboutTabEncryptionSection1Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰'**
-  String get aboutTabEncryptionSection1Item1Title;
-
-  /// No description provided for @aboutTabEncryptionSection1Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'還原完整備份或裝置信任失效時，可用復原金鑰重新取得存取權；金鑰會先透過 Argon2id 衍生保護日記庫所需的包裝金鑰。復原金鑰本身不包含日記資料。'**
-  String get aboutTabEncryptionSection1Item1Body;
-
-  /// No description provided for @aboutTabEncryptionSection1Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'先確認日記庫，再解開各檔'**
-  String get aboutTabEncryptionSection1Item2Title;
-
-  /// No description provided for @aboutTabEncryptionSection1Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'App 會先確認您能正確進入日記庫，再開啟其中的檔案，避免把金鑰錯誤誤判為資料損壞。'**
-  String get aboutTabEncryptionSection1Item2Body;
-
-  /// No description provided for @aboutTabEncryptionSection2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'使用前要知道的邊界'**
-  String get aboutTabEncryptionSection2Title;
-
-  /// No description provided for @aboutTabEncryptionSection2Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'內容會加密，但檔頭、復原設定與部分輔助資料仍可讀，例如釘選項目 ID。明文匯出與解鎖後的使用也需留意。'**
-  String get aboutTabEncryptionSection2Subtitle;
-
-  /// No description provided for @aboutTabEncryptionSection2Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯出後不再是同一層保護'**
-  String get aboutTabEncryptionSection2Item0Title;
-
-  /// No description provided for @aboutTabEncryptionSection2Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'只要您把內容匯出成 Markdown 或 HTML，之後的存放與分享風險便不再由 App 內的加密機制保護。'**
-  String get aboutTabEncryptionSection2Item0Body;
-
-  /// No description provided for @aboutTabEncryptionSection2Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰要自己保管'**
-  String get aboutTabEncryptionSection2Item1Title;
-
-  /// No description provided for @aboutTabEncryptionSection2Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'復原金鑰是重新進入日記庫的重要依據。若它外洩、遺失，或您沒有妥善保存，可能影響資料安全或可恢復性。'**
-  String get aboutTabEncryptionSection2Item1Body;
-
-  /// No description provided for @aboutTabEncryptionSection2Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖後仍要保護裝置'**
-  String get aboutTabEncryptionSection2Item2Title;
-
-  /// No description provided for @aboutTabEncryptionSection2Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'加密主要保護存放中的資料。檢視或編輯附件時可能產生可讀的暫存檔；若他人取得已解鎖的 App 或已入侵的裝置，仍可能讀取當下可用的內容。'**
-  String get aboutTabEncryptionSection2Item2Body;
-
-  /// No description provided for @aboutTabSearchIndexLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋'**
-  String get aboutTabSearchIndexLabel;
-
-  /// No description provided for @aboutTabSearchIndexHeroTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'從標題、標籤與內文找回記憶'**
-  String get aboutTabSearchIndexHeroTitle;
-
-  /// No description provided for @aboutTabSearchIndexHeroBody.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖後可用關鍵字搜尋正式儲存的日記。找不到剛編輯的內容時，請先確認是否已正式儲存。'**
-  String get aboutTabSearchIndexHeroBody;
-
-  /// No description provided for @aboutTabSearchIndexChip0.
-  ///
-  /// In zh, this message translates to:
-  /// **'標題／標籤／內文'**
-  String get aboutTabSearchIndexChip0;
-
-  /// No description provided for @aboutTabSearchIndexChip1.
-  ///
-  /// In zh, this message translates to:
-  /// **'加密索引'**
-  String get aboutTabSearchIndexChip1;
-
-  /// No description provided for @aboutTabSearchIndexChip2.
-  ///
-  /// In zh, this message translates to:
-  /// **'解鎖期間可用'**
-  String get aboutTabSearchIndexChip2;
-
-  /// No description provided for @aboutTabSearchIndexChip3.
-  ///
-  /// In zh, this message translates to:
-  /// **'可重建'**
-  String get aboutTabSearchIndexChip3;
-
-  /// No description provided for @aboutTabSearchIndexSection0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋能幫您找什麼'**
-  String get aboutTabSearchIndexSection0Title;
-
-  /// No description provided for @aboutTabSearchIndexSection0Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'適合在回顧、整理或想找某段經歷時，快速縮小範圍。'**
-  String get aboutTabSearchIndexSection0Subtitle;
-
-  /// No description provided for @aboutTabSearchIndexSection0Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋標題、標籤與內文'**
-  String get aboutTabSearchIndexSection0Item0Title;
-
-  /// No description provided for @aboutTabSearchIndexSection0Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可直接查找標題、內文與標籤中的關鍵字，不必一篇篇翻找過去寫過什麼。'**
-  String get aboutTabSearchIndexSection0Item0Body;
-
-  /// No description provided for @aboutTabSearchIndexSection0Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'索引本身也受保護'**
-  String get aboutTabSearchIndexSection0Item1Title;
-
-  /// No description provided for @aboutTabSearchIndexSection0Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋索引檔會加密保存，只有在日記庫解鎖後，App 才會開啟並查詢其中的搜尋資料。'**
-  String get aboutTabSearchIndexSection0Item1Body;
-
-  /// No description provided for @aboutTabSearchIndexSection1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'索引如何加快搜尋'**
-  String get aboutTabSearchIndexSection1Title;
-
-  /// No description provided for @aboutTabSearchIndexSection1Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'它把查找工作交給索引層，而不是每次都逐篇掃描正式日記。'**
-  String get aboutTabSearchIndexSection1Subtitle;
-
-  /// No description provided for @aboutTabSearchIndexSection1Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'以索引換速度'**
-  String get aboutTabSearchIndexSection1Item0Title;
-
-  /// No description provided for @aboutTabSearchIndexSection1Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'輸入關鍵字時，App 會查詢搜尋索引，不需逐篇解密整個日記庫。'**
-  String get aboutTabSearchIndexSection1Item0Body;
-
-  /// No description provided for @aboutTabSearchIndexSection1Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'正式儲存後才更新'**
-  String get aboutTabSearchIndexSection1Item1Title;
-
-  /// No description provided for @aboutTabSearchIndexSection1Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'正式儲存或匯入完成後才更新索引，避免結果混入草稿。'**
-  String get aboutTabSearchIndexSection1Item1Body;
-
-  /// No description provided for @aboutTabSearchIndexSection1Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'必要時可重建'**
-  String get aboutTabSearchIndexSection1Item2Title;
-
-  /// No description provided for @aboutTabSearchIndexSection1Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋索引是可重建的衍生資料。格式更新、還原備份或索引無法沿用時，App 會重新建立。'**
-  String get aboutTabSearchIndexSection1Item2Body;
-
-  /// No description provided for @aboutTabSearchIndexSection2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'它和安全性的關係'**
-  String get aboutTabSearchIndexSection2Title;
-
-  /// No description provided for @aboutTabSearchIndexSection2Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋好用，不代表要放棄保護邊界。'**
-  String get aboutTabSearchIndexSection2Subtitle;
-
-  /// No description provided for @aboutTabSearchIndexSection2Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'只在解鎖期間可用'**
-  String get aboutTabSearchIndexSection2Item0Title;
-
-  /// No description provided for @aboutTabSearchIndexSection2Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'索引只在解鎖期間建立、更新與使用；鎖定後會關閉。'**
-  String get aboutTabSearchIndexSection2Item0Body;
-
-  /// No description provided for @aboutTabSearchIndexSection2Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'找不到剛編輯的內容時'**
-  String get aboutTabSearchIndexSection2Item1Title;
-
-  /// No description provided for @aboutTabSearchIndexSection2Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋只會顯示正式儲存的日記。如果找不到剛寫下或修改的內容，請先確認該篇日記已完成正式儲存。'**
-  String get aboutTabSearchIndexSection2Item1Body;
-
-  /// No description provided for @aboutTabSearchIndexSection2Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'正式資料仍以日記庫為準'**
-  String get aboutTabSearchIndexSection2Item2Title;
-
-  /// No description provided for @aboutTabSearchIndexSection2Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋索引只用來快速找到內容；正式日記仍以加密日記庫中的資料為準。'**
-  String get aboutTabSearchIndexSection2Item2Body;
-
-  /// No description provided for @aboutTabEditorLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'寫日記'**
-  String get aboutTabEditorLabel;
-
-  /// No description provided for @aboutTabEditorHeroTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'放心記下當下，再決定何時正式保存'**
-  String get aboutTabEditorHeroTitle;
-
-  /// No description provided for @aboutTabEditorHeroBody.
-  ///
-  /// In zh, this message translates to:
-  /// **'編輯內容會先保存為加密草稿，畫面也會提示尚未正式保存；確認後才寫入日記庫。您也能使用標籤、任務清單、圖片與附件整理內容，或用 AI 聊天寫日記、整理既有內文。'**
-  String get aboutTabEditorHeroBody;
-
-  /// No description provided for @aboutTabEditorChip0.
-  ///
-  /// In zh, this message translates to:
-  /// **'自動草稿'**
-  String get aboutTabEditorChip0;
-
-  /// No description provided for @aboutTabEditorChip1.
-  ///
-  /// In zh, this message translates to:
-  /// **'任務清單'**
-  String get aboutTabEditorChip1;
-
-  /// No description provided for @aboutTabEditorChip2.
-  ///
-  /// In zh, this message translates to:
-  /// **'圖片與附件'**
-  String get aboutTabEditorChip2;
-
-  /// No description provided for @aboutTabEditorChip3.
-  ///
-  /// In zh, this message translates to:
-  /// **'Markdown 編輯'**
-  String get aboutTabEditorChip3;
-
-  /// No description provided for @aboutTabEditorChip4.
-  ///
-  /// In zh, this message translates to:
-  /// **'AI'**
-  String get aboutTabEditorChip4;
-
-  /// No description provided for @aboutTabEditorAiSectionTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'AI 功能'**
-  String get aboutTabEditorAiSectionTitle;
-
-  /// No description provided for @aboutTabEditorAiSectionSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'可和 AI 聊聊再寫成日記，或整理既有內文；兩種都要確認後才寫入日記庫。'**
-  String get aboutTabEditorAiSectionSubtitle;
-
-  /// No description provided for @aboutTabEditorAiItem0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'聊天日記'**
-  String get aboutTabEditorAiItem0Title;
-
-  /// No description provided for @aboutTabEditorAiItem0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'新增日記時可選擇直接書寫，或和 AI 聊聊再整理成日記。生成後才產生草稿，內容依目前對話整理；確認並正式儲存後才寫入日記庫。未完成的聊天會列在首頁，完成後可從該篇日記再看保留的對話。對話、提示詞與附圖會直接送到您設定的服務商。'**
-  String get aboutTabEditorAiItem0Body;
-
-  /// No description provided for @aboutTabEditorAiItem1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'日記整理'**
-  String get aboutTabEditorAiItem1Title;
-
-  /// No description provided for @aboutTabEditorAiItem1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'既有日記可從 AI 按鈕開啟整理。先標記不想送給 AI 的文字，再討論想怎麼改；進入聊天室不會立刻呼叫 AI。按下整理後產生一份整理稿，查看差異並確認才更新內文，標題、日期、標籤與附件維持不變。只傳送本篇遮罩後的內文與本次對話，不傳圖片及附件。'**
-  String get aboutTabEditorAiItem1Body;
-
-  /// No description provided for @aboutTabEditorSection0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'日常寫作功能'**
-  String get aboutTabEditorSection0Title;
-
-  /// No description provided for @aboutTabEditorSection0Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'以個人記錄為核心，把常用的整理方式分開放進同一個編輯流程。'**
-  String get aboutTabEditorSection0Subtitle;
-
-  /// No description provided for @aboutTabEditorSection0Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'新建或修改既有日記'**
-  String get aboutTabEditorSection0Item0Title;
-
-  /// No description provided for @aboutTabEditorSection0Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'新建日記會直接進入編輯模式；既有日記則可先閱讀，確定要改時再切換到編輯狀態。'**
-  String get aboutTabEditorSection0Item0Body;
-
-  /// No description provided for @aboutTabEditorSection0Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'內容、標題與日期'**
-  String get aboutTabEditorSection0Item1Title;
-
-  /// No description provided for @aboutTabEditorSection0Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'您可編輯標題、日期、時間與內文。正式儲存時至少要有標題或內文，避免留下空白日記。'**
-  String get aboutTabEditorSection0Item1Body;
-
-  /// No description provided for @aboutTabEditorSection0Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'標籤'**
-  String get aboutTabEditorSection0Item2Title;
-
-  /// No description provided for @aboutTabEditorSection0Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'可建立、選擇與整理標籤，並用顏色區分；之後能從標籤頁瀏覽，或直接搜尋標籤文字。'**
-  String get aboutTabEditorSection0Item2Body;
-
-  /// No description provided for @aboutTabEditorSection0Item3Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'任務清單'**
-  String get aboutTabEditorSection0Item3Title;
-
-  /// No description provided for @aboutTabEditorSection0Item3Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'可在文字中加入任務清單，直接勾選項目並繼續編輯；預覽時也能操作核取方塊。'**
-  String get aboutTabEditorSection0Item3Body;
-
-  /// No description provided for @aboutTabEditorSection0Item4Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'圖片與一般附件'**
-  String get aboutTabEditorSection0Item4Title;
-
-  /// No description provided for @aboutTabEditorSection0Item4Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'可加入多張圖片或一般檔案，並調整圖片順序。「個人化」的圖片品質只影響一般編輯器之後新加入的圖片；GIF 會保留原檔，聊天附圖不套用這項設定，既有附件也不會重新處理。'**
-  String get aboutTabEditorSection0Item4Body;
-
-  /// No description provided for @aboutTabEditorSection1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'草稿機制'**
-  String get aboutTabEditorSection1Title;
-
-  /// No description provided for @aboutTabEditorSection1Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'自動草稿可降低意外中斷時遺失內容的風險。'**
-  String get aboutTabEditorSection1Subtitle;
-
-  /// No description provided for @aboutTabEditorSection1Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'變更會自動保存'**
-  String get aboutTabEditorSection1Item0Title;
-
-  /// No description provided for @aboutTabEditorSection1Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'進入編輯後，變更會自動寫成加密草稿，降低中斷時遺失內容的風險。'**
-  String get aboutTabEditorSection1Item0Body;
-
-  /// No description provided for @aboutTabEditorSection1Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'再次開啟時可還原'**
-  String get aboutTabEditorSection1Item1Title;
-
-  /// No description provided for @aboutTabEditorSection1Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'重新開啟一般日記或未完成的新建內容時，如果本機仍保留草稿，App 會先詢問您是否要接著上次進度寫。聊天生成的日記則會直接帶入草稿。'**
-  String get aboutTabEditorSection1Item1Body;
-
-  /// No description provided for @aboutTabEditorSection1Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'正式儲存後自動清理'**
-  String get aboutTabEditorSection1Item2Title;
-
-  /// No description provided for @aboutTabEditorSection1Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'內容成功寫入日記庫後，草稿就會清掉；關閉編輯時若選擇放棄變更，也會刪除那份草稿。'**
-  String get aboutTabEditorSection1Item2Body;
-
-  /// No description provided for @aboutTabEditorSection2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'和其他資料的關係'**
-  String get aboutTabEditorSection2Title;
-
-  /// No description provided for @aboutTabEditorSection2Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'未完成的編輯會和正式保存內容分開，畫面也會提醒您目前仍有草稿。'**
-  String get aboutTabEditorSection2Subtitle;
-
-  /// No description provided for @aboutTabEditorSection2Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'未儲存提示'**
-  String get aboutTabEditorSection2Item0Title;
-
-  /// No description provided for @aboutTabEditorSection2Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'如果某篇日記仍留有本機草稿，列表與檢視模式會顯示「未儲存」標記，提醒您還有內容尚未正式保存。'**
-  String get aboutTabEditorSection2Item0Body;
-
-  /// No description provided for @aboutTabPeopleLabel.
+  /// No description provided for @aboutPeopleTitle.
   ///
   /// In zh, this message translates to:
   /// **'人物名冊'**
-  String get aboutTabPeopleLabel;
+  String get aboutPeopleTitle;
 
-  /// No description provided for @aboutTabPeopleHeroTitle.
+  /// No description provided for @aboutPeopleSummary.
   ///
   /// In zh, this message translates to:
-  /// **'用姓名與別名串起人物相關回憶'**
-  String get aboutTabPeopleHeroTitle;
+  /// **'記下姓名和常用稱呼，集中查看提到這個人的日記。'**
+  String get aboutPeopleSummary;
 
-  /// No description provided for @aboutTabPeopleHeroBody.
+  /// No description provided for @aboutAiTitle.
   ///
   /// In zh, this message translates to:
-  /// **'保存人物的姓名、別名、關係與備註，並快速插入日記。App 會從正式儲存的內容整理提及與相關日記，不會改寫原始文字。'**
-  String get aboutTabPeopleHeroBody;
+  /// **'AI 功能'**
+  String get aboutAiTitle;
 
-  /// No description provided for @aboutTabPeopleChip0.
+  /// No description provided for @aboutAiSummary.
   ///
   /// In zh, this message translates to:
-  /// **'@ 快速插入'**
-  String get aboutTabPeopleChip0;
+  /// **'聊聊生活、整理日記，或選一個分身當聊天夥伴。'**
+  String get aboutAiSummary;
 
-  /// No description provided for @aboutTabPeopleChip1.
+  /// No description provided for @aboutPrivacyTitle.
   ///
   /// In zh, this message translates to:
-  /// **'姓名與別名'**
-  String get aboutTabPeopleChip1;
+  /// **'隱私與解鎖'**
+  String get aboutPrivacyTitle;
 
-  /// No description provided for @aboutTabPeopleChip2.
+  /// No description provided for @aboutPrivacySummary.
   ///
   /// In zh, this message translates to:
-  /// **'提及篇數'**
-  String get aboutTabPeopleChip2;
+  /// **'了解資料怎麼保存，以及如何用復原金鑰取回日記。'**
+  String get aboutPrivacySummary;
 
-  /// No description provided for @aboutTabPeopleChip3.
+  /// No description provided for @aboutBackupTitle.
   ///
   /// In zh, this message translates to:
-  /// **'關係與備註'**
-  String get aboutTabPeopleChip3;
+  /// **'備份、還原與匯出'**
+  String get aboutBackupTitle;
 
-  /// No description provided for @aboutTabPeopleSection0Title.
+  /// No description provided for @aboutBackupSummary.
   ///
   /// In zh, this message translates to:
-  /// **'建立與整理人物資料'**
-  String get aboutTabPeopleSection0Title;
+  /// **'換機時帶走日記，或匯出成 Markdown、HTML 文件。'**
+  String get aboutBackupSummary;
 
-  /// No description provided for @aboutTabPeopleSection0Subtitle.
+  /// No description provided for @aboutProjectTitle.
   ///
   /// In zh, this message translates to:
-  /// **'記下辨識人物與理解彼此關係時真正有幫助的資訊。'**
-  String get aboutTabPeopleSection0Subtitle;
+  /// **'授權與法律資訊'**
+  String get aboutProjectTitle;
 
-  /// No description provided for @aboutTabPeopleSection0Item0Title.
+  /// No description provided for @aboutProjectLicense.
   ///
   /// In zh, this message translates to:
-  /// **'姓名與別名'**
-  String get aboutTabPeopleSection0Item0Title;
+  /// **'程式碼依 AGPL-3.0-or-later 開源授權發布。'**
+  String get aboutProjectLicense;
 
-  /// No description provided for @aboutTabPeopleSection0Item0Body.
+  /// No description provided for @aboutProjectLegal.
   ///
   /// In zh, this message translates to:
-  /// **'用正式姓名建立人物，也能加入暱稱或其他稱呼。重新命名時可保留舊名字為別名，讓過去日記仍能被辨識。'**
-  String get aboutTabPeopleSection0Item0Body;
+  /// **'原始碼、隱私權政策和第三方聲明都可以在「{settings}」的「{legal}」查看。'**
+  String aboutProjectLegal(String settings, String legal);
 
-  /// No description provided for @aboutTabPeopleSection0Item1Title.
+  /// No description provided for @aboutWritingEditTitle.
   ///
   /// In zh, this message translates to:
-  /// **'關係與熟悉程度'**
-  String get aboutTabPeopleSection0Item1Title;
+  /// **'新增日記和附件'**
+  String get aboutWritingEditTitle;
 
-  /// No description provided for @aboutTabPeopleSection0Item1Body.
+  /// No description provided for @aboutWritingEditBody.
   ///
   /// In zh, this message translates to:
-  /// **'可記錄一種或多種關係、補充關係說明與熟悉程度，再用顏色和備註留下更容易辨認的線索。'**
-  String get aboutTabPeopleSection0Item1Body;
+  /// **'在首頁點「＋」，選「{writeDirectly}」。可調整日期、加上標籤，再用「{photos}」加入照片，或用「{attachment}」加入檔案。'**
+  String aboutWritingEditBody(
+    String writeDirectly,
+    String photos,
+    String attachment,
+  );
 
-  /// No description provided for @aboutTabPeopleSection0Item2Title.
+  /// No description provided for @aboutWritingSaveTitle.
   ///
   /// In zh, this message translates to:
-  /// **'生日與認識年份'**
-  String get aboutTabPeopleSection0Item2Title;
+  /// **'草稿與已儲存的日記'**
+  String get aboutWritingSaveTitle;
 
-  /// No description provided for @aboutTabPeopleSection0Item2Body.
+  /// No description provided for @aboutWritingSaveBody.
   ///
   /// In zh, this message translates to:
-  /// **'可選擇記下生日的月日與認識年份，方便保存彼此關係中的重要時間。'**
-  String get aboutTabPeopleSection0Item2Body;
+  /// **'App 會自動用加密草稿保留編輯中的內容。點「{save}」後，日記和搜尋結果才會更新。'**
+  String aboutWritingSaveBody(String save);
 
-  /// No description provided for @aboutTabPeopleSection1Title.
+  /// No description provided for @aboutWritingFindTitle.
   ///
   /// In zh, this message translates to:
-  /// **'從日記回顧彼此的故事'**
-  String get aboutTabPeopleSection1Title;
+  /// **'搜尋與瀏覽'**
+  String get aboutWritingFindTitle;
 
-  /// No description provided for @aboutTabPeopleSection1Subtitle.
+  /// No description provided for @aboutWritingFindBody.
   ///
   /// In zh, this message translates to:
-  /// **'您使用人物功能時，App 會依姓名與別名更新可重建的提及分析，方便查看相關紀錄。'**
-  String get aboutTabPeopleSection1Subtitle;
+  /// **'回首頁輸入關鍵字，可搜尋標題、標籤和內文。也可以在「{tags}」依主題找，或在「{calendar}」依日期找。'**
+  String aboutWritingFindBody(String tags, String calendar);
 
-  /// No description provided for @aboutTabPeopleSection1Item0Title.
+  /// No description provided for @aboutWritingFindRecent.
   ///
   /// In zh, this message translates to:
-  /// **'辨識正式姓名與別名'**
-  String get aboutTabPeopleSection1Item0Title;
+  /// **'如果搜尋不到剛寫的內容，先確認日記是否已儲存。'**
+  String get aboutWritingFindRecent;
 
-  /// No description provided for @aboutTabPeopleSection1Item0Body.
+  /// No description provided for @aboutPeopleAddTitle.
   ///
   /// In zh, this message translates to:
-  /// **'App 會透過加密搜尋資料中的標題與內容，比對人物的正式姓名與別名，不需每次逐篇解密整個日記庫。'**
-  String get aboutTabPeopleSection1Item0Body;
+  /// **'新增人物與別名'**
+  String get aboutPeopleAddTitle;
 
-  /// No description provided for @aboutTabPeopleSection1Item1Title.
+  /// No description provided for @aboutPeopleAddBody.
   ///
   /// In zh, this message translates to:
-  /// **'查看提及與相關日記'**
-  String get aboutTabPeopleSection1Item1Title;
+  /// **'在「{people}」點「{add}」。除了姓名，也可以填入暱稱等平常會用的稱呼。'**
+  String aboutPeopleAddBody(String people, String add);
 
-  /// No description provided for @aboutTabPeopleSection1Item1Body.
+  /// No description provided for @aboutPeopleMentionBody.
   ///
   /// In zh, this message translates to:
-  /// **'人物頁會顯示提及日記篇數、近 30 天提及篇數、最近提及日期與相關日記；人物清單也能依這些資訊排序。同一人物在同一篇日記中出現多次，仍只計為一篇。'**
-  String get aboutTabPeopleSection1Item1Body;
+  /// **'寫日記時輸入 @，就能從建議清單選一個名字帶入內文。'**
+  String get aboutPeopleMentionBody;
 
-  /// No description provided for @aboutTabPeopleSection1Item2Title.
+  /// No description provided for @aboutPeopleFindTitle.
   ///
   /// In zh, this message translates to:
-  /// **'用 @ 快速帶入姓名'**
-  String get aboutTabPeopleSection1Item2Title;
+  /// **'找出提到這個人的日記'**
+  String get aboutPeopleFindTitle;
 
-  /// No description provided for @aboutTabPeopleSection1Item2Body.
+  /// No description provided for @aboutPeopleFindBody.
   ///
   /// In zh, this message translates to:
-  /// **'在日記編輯器輸入 @，可選擇人物並插入該人物指定的名稱（預設為姓名，也可改選別名）。插入後仍是一般文字，不會把日記變成特殊格式。'**
-  String get aboutTabPeopleSection1Item2Body;
+  /// **'打開人物詳情，就能瀏覽提到這個人的姓名或別名的日記。'**
+  String get aboutPeopleFindBody;
 
-  /// No description provided for @aboutTabPeopleSection2Title.
+  /// No description provided for @aboutPeopleDeleteTitle.
   ///
   /// In zh, this message translates to:
-  /// **'使用前要知道的事'**
-  String get aboutTabPeopleSection2Title;
+  /// **'刪除人物後會怎樣'**
+  String get aboutPeopleDeleteTitle;
 
-  /// No description provided for @aboutTabPeopleSection2Subtitle.
+  /// No description provided for @aboutPeopleDeleteBody.
   ///
   /// In zh, this message translates to:
-  /// **'人物管理協助整理日記，但不會取代或改寫您保存的內容。'**
-  String get aboutTabPeopleSection2Subtitle;
+  /// **'刪除人物時，這個人的 AI 分身也會一併移除。原有日記和聊天訊息都會保留。'**
+  String get aboutPeopleDeleteBody;
 
-  /// No description provided for @aboutTabPeopleSection2Item0Title.
+  /// No description provided for @aboutPeopleDeleteChats.
   ///
   /// In zh, this message translates to:
-  /// **'統計來自已儲存日記'**
-  String get aboutTabPeopleSection2Item0Title;
+  /// **'如果繼續使用原本選了這個分身的對話，接下來會由預設夥伴回覆。'**
+  String get aboutPeopleDeleteChats;
 
-  /// No description provided for @aboutTabPeopleSection2Item0Body.
+  /// No description provided for @aboutAiSetupTitle.
   ///
   /// In zh, this message translates to:
-  /// **'人物提及只根據正式儲存的日記整理；草稿要等正式儲存後才會反映。提及分析不包含在完整備份中，還原後可重新建立。'**
-  String get aboutTabPeopleSection2Item0Body;
+  /// **'開始使用 AI'**
+  String get aboutAiSetupTitle;
 
-  /// No description provided for @aboutTabPeopleSection2Item1Title.
+  /// No description provided for @aboutAiSetupBody.
   ///
   /// In zh, this message translates to:
-  /// **'刪除人物不會刪除日記'**
-  String get aboutTabPeopleSection2Item1Title;
+  /// **'解鎖日記庫後，到「{settingsPage}」點「{openAi}」，選擇 AI 服務。送出的 AI 請求會傳給你選的服務。'**
+  String aboutAiSetupBody(String settingsPage, String openAi);
 
-  /// No description provided for @aboutTabPeopleSection2Item1Body.
+  /// No description provided for @aboutAiChatStart.
   ///
   /// In zh, this message translates to:
-  /// **'刪除人物會移除人物名冊、相關統計與其本機 AI 分身，不會刪除或改寫任何日記；日記中原本輸入的姓名與文字都會保留。既有聊天保留訊息，之後改用預設夥伴。'**
-  String get aboutTabPeopleSection2Item1Body;
+  /// **'在首頁點「＋」，選「{chatDiary}」。聊聊想記下的事，就能把對話變成可編輯的日記草稿。'**
+  String aboutAiChatStart(String chatDiary);
 
-  /// No description provided for @aboutTabPeopleSection2Item2Title.
+  /// No description provided for @aboutAiChatBody.
   ///
   /// In zh, this message translates to:
-  /// **'名稱越明確越容易辨識'**
-  String get aboutTabPeopleSection2Item2Title;
+  /// **'點「{send}」或「{generate}」時，AI 會收到這次用到的對話與附圖。分身回覆時，還會用到它已儲存的記憶和說話方式。'**
+  String aboutAiChatBody(String send, String generate);
 
-  /// No description provided for @aboutTabPeopleSection2Item2Body.
+  /// No description provided for @aboutAiChatPrivacy.
   ///
   /// In zh, this message translates to:
-  /// **'過短、相同或彼此重疊的姓名與別名可能造成誤判。使用能清楚區分人物的名稱，能讓提及統計與相關日記更準確。'**
-  String get aboutTabPeopleSection2Item2Body;
+  /// **'要遮住私密文字，選取後點「{hide}」。送出前可用「{preview}」確認 AI 會收到哪些內容。'**
+  String aboutAiChatPrivacy(String hide, String preview);
 
-  /// No description provided for @aboutTabBackupRestoreLabel.
+  /// No description provided for @aboutAiOrganizePrepare.
   ///
   /// In zh, this message translates to:
-  /// **'備份與還原'**
-  String get aboutTabBackupRestoreLabel;
+  /// **'開啟已儲存的日記，點「{actions}」並選「{organize}」。點「{start}」會先在裝置上準備資料。'**
+  String aboutAiOrganizePrepare(String actions, String organize, String start);
 
-  /// No description provided for @aboutTabBackupRestoreHeroTitle.
+  /// No description provided for @aboutAiOrganizeBody.
   ///
   /// In zh, this message translates to:
-  /// **'換機還原，也能匯入與匯出日記'**
-  String get aboutTabBackupRestoreHeroTitle;
+  /// **'選建議、送出需求或點「{generate}」時，AI 會收到這篇日記的內文和本次對話。照片與附件留在裝置上。'**
+  String aboutAiOrganizeBody(String generate);
 
-  /// No description provided for @aboutTabBackupRestoreHeroBody.
+  /// No description provided for @aboutAiOrganizePrivacy.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份用來保留整個正式日記庫；Markdown／HTML 匯出可選擇內容，供閱讀或外部整理。匯入日記會新增內容，完整還原則會取代目前的正式日記庫。'**
-  String get aboutTabBackupRestoreHeroBody;
+  /// **'送出前可選取文字，再點「{hide}」。整理後先查看結果，滿意再點「{apply}」。'**
+  String aboutAiOrganizePrivacy(String hide, String apply);
 
-  /// No description provided for @aboutTabBackupRestoreChip0.
+  /// No description provided for @aboutAiPersonaPrepareTitle.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份'**
-  String get aboutTabBackupRestoreChip0;
+  /// **'選資料並確認送出內容'**
+  String get aboutAiPersonaPrepareTitle;
 
-  /// No description provided for @aboutTabBackupRestoreChip1.
+  /// No description provided for @aboutAiPersonaBody.
   ///
   /// In zh, this message translates to:
-  /// **'Google Drive'**
-  String get aboutTabBackupRestoreChip1;
+  /// **'在人物詳情的「{persona}」點「{manage}」。選日記或加入有權使用的聊天紀錄，將私密片段隱藏。確認要送出哪些內容後，點「{generate}」。'**
+  String aboutAiPersonaBody(String persona, String manage, String generate);
 
-  /// No description provided for @aboutTabBackupRestoreChip2.
+  /// No description provided for @aboutAiPersonaTrial.
   ///
   /// In zh, this message translates to:
-  /// **'匯入與匯出'**
-  String get aboutTabBackupRestoreChip2;
+  /// **'看過整理結果後，可以先試聊。送出試聊訊息時，AI 會收到訊息與分身內容。試聊紀錄不會存入日記庫。'**
+  String get aboutAiPersonaTrial;
 
-  /// No description provided for @aboutTabBackupRestoreChip3.
+  /// No description provided for @aboutAiPersonaSaveTitle.
   ///
   /// In zh, this message translates to:
-  /// **'Markdown／HTML'**
-  String get aboutTabBackupRestoreChip3;
+  /// **'儲存並選為聊天夥伴'**
+  String get aboutAiPersonaSaveTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Title.
+  /// No description provided for @aboutAiPersonaSave.
   ///
   /// In zh, this message translates to:
-  /// **'換手機或重裝 App'**
-  String get aboutTabBackupRestoreSection0Title;
+  /// **'點「{save}」。到「{chatDiary}」點目前夥伴的名字，開啟「{choose}」後選這個分身。'**
+  String aboutAiPersonaSave(String save, String chatDiary, String choose);
 
-  /// No description provided for @aboutTabBackupRestoreSection0Subtitle.
+  /// No description provided for @aboutPrivacyStorageTitle.
   ///
   /// In zh, this message translates to:
-  /// **'先在舊手機備妥金鑰與最新備份，確認新手機還原完成後，再清除舊裝置。'**
-  String get aboutTabBackupRestoreSection0Subtitle;
+  /// **'日記庫與加密'**
+  String get aboutPrivacyStorageTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item0Title.
+  /// No description provided for @aboutPrivacyStorageBody.
   ///
   /// In zh, this message translates to:
-  /// **'舊手機先完成準備'**
-  String get aboutTabBackupRestoreSection0Item0Title;
+  /// **'日記庫是這台裝置上存放日記和相關資料的地方。日記、附件、草稿、人物名冊、聊天紀錄、AI 分身及搜尋資料都會加密保存。'**
+  String get aboutPrivacyStorageBody;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item0Body.
+  /// No description provided for @aboutPrivacyStorageLimits.
   ///
   /// In zh, this message translates to:
-  /// **'先把需要保留的草稿正式儲存，確認原復原金鑰仍可取得，再建立一份最新完整備份並等待成功訊息。還原完成前請保留舊手機與備份。'**
-  String get aboutTabBackupRestoreSection0Item0Body;
+  /// **'復原設定和釘選清單等輔助資料，會以明文保存在 App 的私有空間。'**
+  String get aboutPrivacyStorageLimits;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item1Title.
+  /// No description provided for @aboutPrivacyUnlockTitle.
   ///
   /// In zh, this message translates to:
-  /// **'使用外部 ZIP 轉移'**
-  String get aboutTabBackupRestoreSection0Item1Title;
+  /// **'何時鎖定、如何解鎖'**
+  String get aboutPrivacyUnlockTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item1Body.
+  /// No description provided for @aboutPrivacyUnlockBody.
   ///
   /// In zh, this message translates to:
-  /// **'在舊手機選擇「匯出備份到資料夾」，把 backup_*.zip 安全帶到新手機；再從新手機的設定選擇「匯入外部備份」。請勿改用「匯入日記」。'**
-  String get aboutTabBackupRestoreSection0Item1Body;
+  /// **'在設定的「{method}」可以選擇「{deviceLock}」或「{biometrics}」。回到 App 後，若沒有完成驗證，可點「{retry}」。'**
+  String aboutPrivacyUnlockBody(
+    String method,
+    String deviceLock,
+    String biometrics,
+    String retry,
+  );
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item2Title.
+  /// No description provided for @aboutPrivacyKeyTitle.
   ///
   /// In zh, this message translates to:
-  /// **'使用 Google Drive 轉移'**
-  String get aboutTabBackupRestoreSection0Item2Title;
+  /// **'何時需要復原金鑰'**
+  String get aboutPrivacyKeyTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item2Body.
+  /// No description provided for @aboutPrivacyKeyBody.
   ///
   /// In zh, this message translates to:
-  /// **'在舊手機連結 Google 帳戶並完成「備份到 Google Drive」。新手機完成初始設定後，連結同一帳戶，再選擇「從 Google Drive 還原」。Drive 是手動備份，不會即時同步兩台手機。'**
-  String get aboutTabBackupRestoreSection0Item2Body;
+  /// **'請妥善保存復原金鑰。無法解鎖時，可用它重新開啟日記庫。換機還原時，請備妥備份檔和對應的金鑰。'**
+  String get aboutPrivacyKeyBody;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item3Title.
+  /// No description provided for @aboutBackupMoveTitle.
   ///
   /// In zh, this message translates to:
-  /// **'確認完成後再清除舊手機'**
-  String get aboutTabBackupRestoreSection0Item3Title;
+  /// **'換機怎麼做'**
+  String get aboutBackupMoveTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection0Item3Body.
+  /// No description provided for @aboutBackupMovePrepareTitle.
   ///
   /// In zh, this message translates to:
-  /// **'若流程要求金鑰，請輸入建立舊備份時保存的復原金鑰，不是新手機剛產生的金鑰。確認日記、附件、人物、標籤與釘選內容無誤後，才重設或清除舊手機。'**
-  String get aboutTabBackupRestoreSection0Item3Body;
+  /// **'在舊機建立備份'**
+  String get aboutBackupMovePrepareTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection1Title.
+  /// No description provided for @aboutBackupMoveRestoreTitle.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份適合什麼情境'**
-  String get aboutTabBackupRestoreSection1Title;
+  /// **'到新機選擇備份並還原'**
+  String get aboutBackupMoveRestoreTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection1Subtitle.
+  /// No description provided for @aboutBackupMoveCheckTitle.
   ///
   /// In zh, this message translates to:
-  /// **'如果您想保留整個正式日記庫，之後能原樣還原，請使用完整備份。'**
-  String get aboutTabBackupRestoreSection1Subtitle;
+  /// **'核對資料再清除舊機'**
+  String get aboutBackupMoveCheckTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection1Item0Title.
+  /// No description provided for @aboutBackupMovePrepare.
   ///
   /// In zh, this message translates to:
-  /// **'保存完整日記庫'**
-  String get aboutTabBackupRestoreSection1Item0Title;
+  /// **'先將要保留的草稿儲存為日記。到「{settingsPage}」點「{localBackup}」，把備份檔移到新機可讀取的位置。也可以選「{driveBackup}」。'**
+  String aboutBackupMovePrepare(
+    String settingsPage,
+    String localBackup,
+    String driveBackup,
+  );
 
-  /// No description provided for @aboutTabBackupRestoreSection1Item0Body.
+  /// No description provided for @aboutBackupMoveRestore.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份包含正式日記、附件、人物名冊、已完成聊天的保留對話、復原設定，以及加密的 AI 服務、網址與提示詞。新備份的標籤目錄也會加密；ZIP 外層、復原設定與釘選項目 ID 為明文。歷史 ZIP 可能仍含明文標籤目錄。'**
-  String get aboutTabBackupRestoreSection1Item0Body;
+  /// **'若新機還在首次啟動畫面，先選「{transfer}」。如有備份檔，點「{localRestore}」。備份在 Drive 時，先用「{driveLink}」連結同一個帳戶，再點「{driveRestore}」。請備妥對應的復原金鑰。'**
+  String aboutBackupMoveRestore(
+    String transfer,
+    String localRestore,
+    String driveLink,
+    String driveRestore,
+  );
 
-  /// No description provided for @aboutTabBackupRestoreSection1Item1Title.
+  /// No description provided for @aboutBackupMoveCheck.
   ///
   /// In zh, this message translates to:
-  /// **'建立後會先檢查'**
-  String get aboutTabBackupRestoreSection1Item1Title;
+  /// **'在新機打開日記和附件，並檢查其他資料是否齊全。若要清除舊機，請等確認後再做。'**
+  String get aboutBackupMoveCheck;
 
-  /// No description provided for @aboutTabBackupRestoreSection1Item1Body.
+  /// No description provided for @aboutBackupContentsTitle.
   ///
   /// In zh, this message translates to:
-  /// **'完整備份會先經過結構檢查，確認基本結構符合完整備份格式後，才交付到本機、外部資料夾或 Google Drive。'**
-  String get aboutTabBackupRestoreSection1Item1Body;
+  /// **'完整備份會保留什麼'**
+  String get aboutBackupContentsTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection1Item2Title.
+  /// No description provided for @aboutBackupContentsBody.
   ///
   /// In zh, this message translates to:
-  /// **'保留份數'**
-  String get aboutTabBackupRestoreSection1Item2Title;
+  /// **'備份會保留已儲存的日記、附件、標籤、人物名冊、已完成的聊天、已儲存的分身和 AI 設定。'**
+  String get aboutBackupContentsBody;
 
-  /// No description provided for @aboutTabBackupRestoreSection1Item2Body.
+  /// No description provided for @aboutBackupExclusions.
   ///
   /// In zh, this message translates to:
-  /// **'本機備份與 Google Drive 都保留最新 {retainCount} 份；若您匯出到外部資料夾，則不會自動輪替或刪除舊檔。'**
-  String aboutTabBackupRestoreSection1Item2Body(int retainCount);
+  /// **'草稿、未完成的聊天、日記整理進度和裝置偏好會留在舊機。AI 服務的 API 金鑰需要在新機重新輸入。'**
+  String get aboutBackupExclusions;
 
-  /// No description provided for @aboutTabBackupRestoreSection2Title.
+  /// No description provided for @aboutBackupDriveBody.
   ///
   /// In zh, this message translates to:
-  /// **'還原時會發生什麼'**
-  String get aboutTabBackupRestoreSection2Title;
+  /// **'Google Drive 要手動備份。上次備份後新增或修改的內容，會在下次備份時更新。'**
+  String get aboutBackupDriveBody;
 
-  /// No description provided for @aboutTabBackupRestoreSection2Subtitle.
+  /// No description provided for @aboutBackupDocumentsTitle.
   ///
   /// In zh, this message translates to:
-  /// **'還原不是補回少掉的幾篇內容，而是把目前正式日記庫換成備份中的那一份。'**
-  String get aboutTabBackupRestoreSection2Subtitle;
+  /// **'用檔案匯入或分享日記'**
+  String get aboutBackupDocumentsTitle;
 
-  /// No description provided for @aboutTabBackupRestoreSection2Item0Title.
+  /// No description provided for @aboutBackupImportBody.
   ///
   /// In zh, this message translates to:
-  /// **'正式日記庫會被覆寫'**
-  String get aboutTabBackupRestoreSection2Item0Title;
+  /// **'點「{importEntries}」會新增日記。重複匯入同一份檔案，可能會產生兩份相同的日記。'**
+  String aboutBackupImportBody(String importEntries);
 
-  /// No description provided for @aboutTabBackupRestoreSection2Item0Body.
+  /// No description provided for @aboutBackupExportBody.
   ///
   /// In zh, this message translates to:
-  /// **'不論備份來自 App 內清單、外部 ZIP 或 Google Drive，還原都會用備份內容取代目前的正式日記庫。'**
-  String get aboutTabBackupRestoreSection2Item0Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection2Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'搜尋索引會重建'**
-  String get aboutTabBackupRestoreSection2Item1Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection2Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'還原後會重新建立搜尋資料，並可能要求您重新驗證；同一裝置且仍處於有效解鎖時，有時可直接繼續使用。'**
-  String get aboutTabBackupRestoreSection2Item1Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection2Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'可能會要求復原金鑰'**
-  String get aboutTabBackupRestoreSection2Item2Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection2Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'如果目前裝置上的可信狀態不能直接對應到那份備份，流程就會要求輸入建立該備份時保存的復原金鑰。'**
-  String get aboutTabBackupRestoreSection2Item2Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection3Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯入與匯出'**
-  String get aboutTabBackupRestoreSection3Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection3Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'可攜式文件適合帶出、閱讀或加入指定日記，不會完整還原整個日記庫。'**
-  String get aboutTabBackupRestoreSection3Subtitle;
-
-  /// No description provided for @aboutTabBackupRestoreSection3Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯入日記'**
-  String get aboutTabBackupRestoreSection3Item0Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection3Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'「匯入日記」可處理 Markdown、HTML、資料夾，以及支援的可攜 ZIP 或 Easy Diary 備份；Quill Diary 的完整備份 ZIP 必須改走「匯入外部備份」還原，兩者不能混用。'**
-  String get aboutTabBackupRestoreSection3Item0Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection3Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯出可閱讀文件'**
-  String get aboutTabBackupRestoreSection3Item1Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection3Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'Markdown 與 HTML 都能選擇指定日記。Markdown ZIP 保留方便再次匯入的散檔與附件結構；HTML 則將內容整理成適合直接閱讀的單一檔案。'**
-  String get aboutTabBackupRestoreSection3Item1Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯出前先確認'**
-  String get aboutTabBackupRestoreSection4Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'選好需要的日記，再確認匯出內容、隱藏選項與保存位置。'**
-  String get aboutTabBackupRestoreSection4Subtitle;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'選擇要匯出的日記'**
-  String get aboutTabBackupRestoreSection4Item0Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'匯出 Markdown 或 HTML 時可選擇指定日記。透過「匯入日記」加入檔案時，會先預覽並選擇內容，再建立新日記；可能與原有內容重複，不會與來源檔案同步。'**
-  String get aboutTabBackupRestoreSection4Item0Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'先降低可辨識資訊'**
-  String get aboutTabBackupRestoreSection4Item1Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'Markdown 與 HTML 都能開啟「隱藏人物名稱」，將人物名冊中的姓名與別名換成代號；HTML 另可關閉圖片與附件。這些選項只能降低部分辨識風險。'**
-  String get aboutTabBackupRestoreSection4Item1Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Item2Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'交給外部工具前先檢查'**
-  String get aboutTabBackupRestoreSection4Item2Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection4Item2Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'「隱藏人物名稱」只會把人物名冊中已登錄的姓名與別名換成代號；未登錄姓名，以及標題、標籤、日期、地點與事件內容中的其他線索仍可能辨識個人。匯出檔是明文，請先人工檢查；交付後的使用、保存與刪除方式受您所選工具的政策約束。'**
-  String get aboutTabBackupRestoreSection4Item2Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection5Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'使用前要知道的事'**
-  String get aboutTabBackupRestoreSection5Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection5Subtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'備份與匯出都會產生副本，但保護範圍與還原用途並不相同。'**
-  String get aboutTabBackupRestoreSection5Subtitle;
-
-  /// No description provided for @aboutTabBackupRestoreSection5Item0Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'草稿與裝置偏好不在備份內'**
-  String get aboutTabBackupRestoreSection5Item0Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection5Item0Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'完整備份不含一般編輯草稿、未完成聊天、日記整理暫存及 API Key，也不含語言、主題、自動鎖定、圖片品質與日記排版等裝置偏好。日記整理的對話、隱藏設定與檢視中的候選稿只在本機加密保存，返回聊天時清除未採用的稿件；套用成功或確認刪除整理時清除本次整理資料。還原時會清除目前裝置上的草稿與待處理附件。'**
-  String get aboutTabBackupRestoreSection5Item0Body;
-
-  /// No description provided for @aboutTabBackupRestoreSection5Item1Title.
-  ///
-  /// In zh, this message translates to:
-  /// **'備份與匯入匯出都不是同步'**
-  String get aboutTabBackupRestoreSection5Item1Title;
-
-  /// No description provided for @aboutTabBackupRestoreSection5Item1Body.
-  ///
-  /// In zh, this message translates to:
-  /// **'Google Drive 是手動建立與還原完整備份的位置，不會即時同步日記。匯入後的日記與原始檔案各自獨立，後續修改不會自動更新另一份內容。'**
-  String get aboutTabBackupRestoreSection5Item1Body;
+  /// **'點「{exportEntries}」可將選取的日記存成 Markdown 或 HTML，在 App 外也能閱讀。匯出檔未加密，分享前先檢查內容。'**
+  String aboutBackupExportBody(String exportEntries);
 }
 
 class _AppLocalizationsDelegate

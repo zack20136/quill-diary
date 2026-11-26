@@ -41,7 +41,7 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
   ).textTheme;
   final TextTheme textTheme = AppTypography.textTheme(
     base,
-    defaultColor: appColors.foreground,
+    defaultColor: scheme.onSurface,
   );
 
   final ThemeData flexTheme = brightness == Brightness.dark
@@ -68,8 +68,8 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     colorScheme: scheme,
     extensions: <ThemeExtension<dynamic>>[appColors],
     scaffoldBackgroundColor: appColors.scaffoldBackground,
-    iconTheme: IconThemeData(color: appColors.foreground),
-    primaryIconTheme: IconThemeData(color: appColors.foreground),
+    iconTheme: IconThemeData(color: scheme.onSurface),
+    primaryIconTheme: IconThemeData(color: scheme.onSurface),
     textButtonTheme: TextButtonThemeData(
       style: (flexTheme.textButtonTheme.style ?? const ButtonStyle()).copyWith(
         iconColor: followForeground,
@@ -114,9 +114,9 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: appColors.scaffoldBackground,
-      foregroundColor: appColors.foreground,
-      iconTheme: IconThemeData(color: appColors.foreground),
-      actionsIconTheme: IconThemeData(color: appColors.foreground),
+      foregroundColor: scheme.onSurface,
+      iconTheme: IconThemeData(color: scheme.onSurface),
+      actionsIconTheme: IconThemeData(color: scheme.onSurface),
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -128,12 +128,19 @@ ThemeData buildAppTheme({Brightness brightness = Brightness.light}) {
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-    dialogTheme: DialogThemeData(surfaceTintColor: Colors.transparent),
+    dialogTheme: DialogThemeData(
+      backgroundColor: appColors.dialogSurface,
+      surfaceTintColor: Colors.transparent,
+      barrierColor: appColors.scrim,
+    ),
+    bottomSheetTheme: flexTheme.bottomSheetTheme.copyWith(
+      modalBarrierColor: appColors.scrim,
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: scheme.surfaceContainerLowest,
       hintStyle: textTheme.bodyLarge?.copyWith(
-        color: appColors.mutedForeground,
+        color: scheme.onSurfaceVariant,
         fontStyle: FontStyle.italic,
       ),
       border: OutlineInputBorder(

@@ -10,7 +10,6 @@ import 'package:quill_diary/infrastructure/drive/drive_backup_service.dart';
 import 'package:quill_diary/infrastructure/drive/drive_upload_job.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/widgets/drive_account_status.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_action_button.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
@@ -50,15 +49,15 @@ class DriveBackupSection extends ConsumerWidget {
     final DriveUploadJobSnapshot? uploadJob = ref
         .watch(driveUploadCoordinatorProvider)
         .job;
-    final String description = isGoogleDriveConfigured
+    final String? description = isGoogleDriveConfigured
         ? (access.canBackup
               ? l10n.settingsDriveBackupSectionDescriptionEnabled(
                   VaultBackupPolicy.retainCount,
                 )
               : l10n.vaultTransferDriveSectionDescriptionBackupLocked)
-        : l10n.settingsDriveBackupSectionDescriptionOAuthNotConfigured;
+        : null;
 
-    return SettingsSectionCard(
+    return AppSectionCard(
       icon: Icons.cloud_outlined,
       title: l10n.settingsDriveBackupSectionTitle,
       description: description,
@@ -408,6 +407,13 @@ class _DriveUploadStatusCard extends StatelessWidget {
           LinearProgressIndicator(value: job.progressFraction.clamp(0.0, 1.0)),
         ],
         if (showCancel) ...<Widget>[
+          const SizedBox(height: 10),
+          Text(
+            l10n.driveUploadBackgroundHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 10),
           AppActionButton(
             label: l10n.driveUploadCancelButton,

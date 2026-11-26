@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 
 class DriveAccountStatus extends StatelessWidget {
@@ -21,27 +23,23 @@ class DriveAccountStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final ThemeData theme = Theme.of(context);
-    final ColorScheme colorScheme = theme.colorScheme;
 
     if (!isConnected) {
       final bool isErrorState = disconnectedLabel != null;
+      final colors = resolveAppFeedbackColors(
+        context,
+        isErrorState ? AppFeedbackTone.error : AppFeedbackTone.warning,
+      );
       return _DriveAccountStatusCard(
         icon: disconnectedIcon,
-        iconColor: isErrorState
-            ? colorScheme.error
-            : colorScheme.onSurfaceVariant,
-        iconBackground: isErrorState
-            ? Color.alphaBlend(
-                colorScheme.error.withValues(alpha: 0.08),
-                colorScheme.surfaceContainerLow,
-              )
-            : colorScheme.surfaceContainerHighest,
+        iconColor: colors.foreground,
+        iconBackground: colors.background,
         child: Text(
           disconnectedLabel ?? l10n.settingsDriveBackupDisconnectedLabel,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: isErrorState
-                ? colorScheme.error
-                : colorScheme.onSurfaceVariant,
+                ? colors.foreground
+                : theme.colorScheme.onSurfaceVariant,
             height: 1.4,
             fontWeight: isErrorState ? FontWeight.w600 : null,
           ),
@@ -53,13 +51,11 @@ class DriveAccountStatus extends StatelessWidget {
         ? accountLabel!.trim()
         : l10n.settingsDriveBackupFallbackAccountLabel;
 
+    final colors = resolveAppFeedbackColors(context, AppFeedbackTone.success);
     return _DriveAccountStatusCard(
       icon: Icons.cloud_done_outlined,
-      iconColor: colorScheme.onSurface,
-      iconBackground: Color.alphaBlend(
-        colorScheme.primary.withValues(alpha: 0.08),
-        colorScheme.surfaceContainerLow,
-      ),
+      iconColor: colors.foreground,
+      iconBackground: colors.background,
       child: Text(
         label,
         style: theme.textTheme.bodyLarge?.copyWith(
@@ -86,11 +82,9 @@ class _DriveAccountStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
+        color: context.appColors.sectionCard,
         borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
       ),
       child: Padding(

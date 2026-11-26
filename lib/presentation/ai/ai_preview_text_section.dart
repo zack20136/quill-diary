@@ -73,7 +73,7 @@ class _AiPreviewTextSectionState extends State<AiPreviewTextSection> {
               child: AppScrollbar(
                 controller: _scrollController,
                 track: AppScrollbarTrack.frame,
-                trailingGutter: true,
+                placement: AppScrollbarPlacement.trailingColumn,
                 child: SingleChildScrollView(
                   controller: _scrollController,
                   primary: false,

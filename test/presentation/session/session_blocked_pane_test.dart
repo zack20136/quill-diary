@@ -14,7 +14,7 @@ void main() {
 
     expect(presentation.title, testL10n.sessionBlockedLockedTitle);
     expect(presentation.actionKind, SessionBlockedActionKind.retryUnlock);
-    expect(presentation.actionLabel, testL10n.homeRetryVerification);
+    expect(presentation.actionLabel, testL10n.commonActionVerifyAgain);
   });
 
   test('recovery 狀態會提供前往設定操作', () {

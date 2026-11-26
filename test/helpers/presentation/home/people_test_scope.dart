@@ -53,14 +53,17 @@ class _PeopleTestPersonaStore implements PersonaStore {
   Future<void> delete(String personId, UnlockedVaultSession session) async {}
 }
 
-ProviderContainer peopleTestContainer(PeopleTestRepository repository) {
+ProviderContainer peopleTestContainer(
+  PeopleTestRepository repository, {
+  List<RelationshipType> relationshipTypes = const [],
+}) {
   final container = ProviderContainer(
     overrides: [
       vaultRepositoryProvider.overrideWithValue(repository),
       personaStoreProvider.overrideWithValue(_PeopleTestPersonaStore()),
       peopleCatalogProvider.overrideWith(
         (ref) async => PeopleCatalog(
-          relationshipTypes: const <RelationshipType>[],
+          relationshipTypes: relationshipTypes,
           people: List<Person>.of(repository.people),
         ),
       ),

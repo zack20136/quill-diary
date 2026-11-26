@@ -2,9 +2,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/shared/privacy_tokens.dart';
 
-Color privateTextHighlight(ColorScheme colors) =>
-    colors.tertiary.withValues(alpha: 0.32);
-
 TextStyle? _spanStyle({required Color? highlight, required bool underline}) {
   if (highlight == null && !underline) return null;
   return TextStyle(

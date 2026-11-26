@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/privacy_text_processor.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/people/person_name_matcher.dart';
-import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 
 typedef PrivacyRangeDetector = List<PrivateTextRange> Function(
   String text,
@@ -31,6 +30,7 @@ class PrivateTextController extends TextEditingController {
   List<PrivateTextRange> _highlights = [];
   List<PrivateTextRange> get privateRanges => List.unmodifiable(_ranges);
   List<PrivateTextRange> get revealedRanges => List.unmodifiable(_revealed);
+  List<PrivateTextRange> get highlightRanges => List.unmodifiable(_highlights);
 
   void setDocument(
     String text,
@@ -122,25 +122,5 @@ class PrivateTextController extends TextEditingController {
   void refreshHighlights() {
     _highlights = _detectRanges(text, _ranges, _revealed);
     notifyListeners();
-  }
-
-  @override
-  TextSpan buildTextSpan({
-    required BuildContext context,
-    TextStyle? style,
-    required bool withComposing,
-  }) {
-    final composing = value.composing;
-    final showComposing =
-        withComposing && value.isComposingRangeValid && !composing.isCollapsed;
-    return privateTextSpan(
-      text: text,
-      ranges: _highlights,
-      style: style,
-      highlight: privateTextHighlight(Theme.of(context).colorScheme),
-      underlineRanges: showComposing
-          ? [PrivateTextRange(composing.start, composing.end)]
-          : const [],
-    );
   }
 }

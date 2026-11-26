@@ -7,18 +7,23 @@ class HomeCircleActionButton extends StatelessWidget {
     required this.tooltip,
     required this.icon,
     required this.onPressed,
+    this.emphasized = false,
     super.key,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
+  final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final bool usePrimary = emphasized && onPressed != null;
     final Color iconColor = onPressed == null
         ? cs.onSecondaryContainer.withValues(alpha: 0.38)
+        : usePrimary
+        ? cs.onPrimary
         : cs.onSecondaryContainer;
 
     return Semantics(
@@ -27,7 +32,8 @@ class HomeCircleActionButton extends StatelessWidget {
       child: Tooltip(
         message: tooltip,
         child: Material(
-          color: cs.secondaryContainer,
+          color: usePrimary ? cs.primary : cs.secondaryContainer,
+          surfaceTintColor: usePrimary ? Colors.transparent : null,
           elevation: 3,
           shadowColor: cs.shadow.withValues(alpha: 0.18),
           shape: const CircleBorder(),

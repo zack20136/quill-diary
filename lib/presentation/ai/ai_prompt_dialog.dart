@@ -116,6 +116,7 @@ class _AiPromptDialogState extends State<AiPromptDialog>
     final l10n = context.l10n;
     return AppDialogShell(
       fillHeight: true,
+      scrollbarInContentMargin: !_obscured,
       title: widget.title(l10n),
       content: _obscured
           ? Center(
@@ -184,6 +185,9 @@ class _AiPromptDialogState extends State<AiPromptDialog>
                     .copyWith(scrollbars: false),
                 child: SingleChildScrollView(
                   controller: _headerScroll,
+                  padding: const EdgeInsets.only(
+                    right: AppDialogInsets.horizontal,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     spacing: gap,
@@ -212,7 +216,8 @@ class _AiPromptDialogState extends State<AiPromptDialog>
             child: AppScrollbar(
               controller: _scroll,
               track: AppScrollbarTrack.frame,
-              reserveGutter: true,
+              placement: AppScrollbarPlacement.gutter,
+              gutterWidth: AppDialogInsets.horizontal,
               child: TextField(
                 key: widget.fieldKey,
                 controller: _controller,

@@ -24,26 +24,10 @@ class AppActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final bool isDark = colorScheme.brightness == Brightness.dark;
-    final ({Color background, Color foreground}) primaryColors = isDark
-        ? (
-            background: colorScheme.primaryContainer,
-            foreground: colorScheme.onPrimaryContainer,
-          )
-        : (background: colorScheme.primary, foreground: colorScheme.onPrimary);
-    final ({Color background, Color foreground}) tonalColors = isDark
-        ? (
-            background: colorScheme.surfaceContainerHighest,
-            foreground: colorScheme.onSurface,
-          )
-        : (
-            background: colorScheme.secondaryContainer,
-            foreground: colorScheme.onSecondaryContainer,
-          );
     final VoidCallback? callback = loading ? null : onPressed;
     final Color loadingColor = switch (appearance) {
-      AppActionButtonAppearance.primary => primaryColors.foreground,
-      AppActionButtonAppearance.tonal => tonalColors.foreground,
+      AppActionButtonAppearance.primary => colorScheme.onPrimary,
+      AppActionButtonAppearance.tonal => colorScheme.onSecondaryContainer,
       AppActionButtonAppearance.outlined => colorScheme.onSurface,
       AppActionButtonAppearance.destructive => colorScheme.error,
     };
@@ -60,28 +44,23 @@ class AppActionButton extends StatelessWidget {
     final Widget button = switch (appearance) {
       AppActionButtonAppearance.primary => FilledButton.icon(
         onPressed: callback,
-        style: FilledButton.styleFrom(
-          backgroundColor: primaryColors.background,
-          foregroundColor: primaryColors.foreground,
-          disabledBackgroundColor: loading ? primaryColors.background : null,
-          disabledForegroundColor: loading ? primaryColors.foreground : null,
-        ),
+        style: loading
+            ? FilledButton.styleFrom(
+                disabledBackgroundColor: colorScheme.primary,
+                disabledForegroundColor: loadingColor,
+              )
+            : null,
         icon: iconWidget,
         label: Text(label),
       ),
-      AppActionButtonAppearance.tonal => FilledButton.icon(
+      AppActionButtonAppearance.tonal => FilledButton.tonalIcon(
         onPressed: callback,
-        style: FilledButton.styleFrom(
-          backgroundColor: tonalColors.background,
-          foregroundColor: tonalColors.foreground,
-          disabledBackgroundColor: loading ? tonalColors.background : null,
-          disabledForegroundColor: loading ? tonalColors.foreground : null,
-          side: isDark
-              ? BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.72),
-                )
-              : null,
-        ),
+        style: loading
+            ? FilledButton.styleFrom(
+                disabledBackgroundColor: colorScheme.secondaryContainer,
+                disabledForegroundColor: loadingColor,
+              )
+            : null,
         icon: iconWidget,
         label: Text(label),
       ),

@@ -107,10 +107,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (!mounted) {
         return;
       }
-      if (!shouldShowOnboardingIntro(
-        sessionState: latest,
-        hasSeen: hasSeen,
-      )) {
+      if (!shouldShowOnboardingIntro(sessionState: latest, hasSeen: hasSeen)) {
         setState(() => _introFlowDone = true);
         return;
       }
@@ -203,6 +200,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             child: HomeCircleActionButton(
                               tooltip: context.l10n.homeTooltipNewEntry,
                               icon: Icons.add_rounded,
+                              emphasized: true,
                               onPressed: canCreate
                                   ? () => unawaited(_chooseWritingMode())
                                   : null,
@@ -292,8 +290,7 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
       ),
     };
 
-    final bool showTabLabels =
-        MediaQuery.sizeOf(context).width >= HomeLayout.tabWideBreakpoint;
+    const double settingsGap = 12;
 
     return AppBar(
       automaticallyImplyLeading: false,
@@ -304,63 +301,65 @@ class _HomeHeaderState extends ConsumerState<HomeHeader> {
       title: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          padding: const EdgeInsets.fromLTRB(
+            HomeLayout.bodyHorizontal,
+            10,
+            HomeLayout.bodyHorizontal,
+            6,
+          ),
           child: Row(
             children: <Widget>[
               if (showTabs)
                 Expanded(
                   child: SizedBox(
                     height: HomeLayout.searchRowControlHeight,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: <Widget>[
-                          for (
-                            int index = 0;
-                            index < HomeTab.values.length;
-                            index++
-                          ) ...<Widget>[
-                            if (index > 0) const SizedBox(width: 5),
-                            KeyedSubtree(
-                              key: _tabKeys[HomeTab.values[index]],
-                              child: showTabLabels
-                                  ? HomeHeaderTabButton(
-                                      label: tabVisual(HomeTab.values[index])
-                                          .$1,
-                                      icon: tabVisual(HomeTab.values[index]).$2,
-                                      active:
-                                          activeTab == HomeTab.values[index],
-                                      showLabel: true,
-                                      onTap: () => _selectTab(
-                                        ref,
-                                        HomeTab.values[index],
-                                      ),
-                                    )
-                                  : SizedBox(
-                                      width: 52,
-                                      child: HomeHeaderTabButton(
-                                        label: tabVisual(HomeTab.values[index])
-                                            .$1,
-                                        icon: tabVisual(HomeTab.values[index])
-                                            .$2,
-                                        active:
-                                            activeTab == HomeTab.values[index],
-                                        onTap: () => _selectTab(
-                                          ref,
-                                          HomeTab.values[index],
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ],
-                      ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final tabs = HomeTab.values;
+                        final showTabLabels =
+                            constraints.maxWidth >=
+                            HomeLayout.tabWideBreakpoint -
+                                2 * HomeLayout.bodyHorizontal -
+                                settingsGap -
+                                HomeLayout.searchRowControlHeight;
+                        final gap = showTabLabels
+                            ? 5.0
+                            : ((constraints.maxWidth -
+                                          tabs.length *
+                                              HomeLayout.circleActionSize) /
+                                      (tabs.length - 1))
+                                  .clamp(0.0, 5.0);
+                        final width =
+                            ((constraints.maxWidth - (tabs.length - 1) * gap) /
+                                    tabs.length)
+                                .clamp(HomeLayout.circleActionSize, 52.0);
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            spacing: gap,
+                            children: tabs.map((tab) {
+                              final (label, icon) = tabVisual(tab);
+                              return SizedBox(
+                                key: _tabKeys[tab],
+                                width: showTabLabels ? null : width,
+                                child: HomeHeaderTabButton(
+                                  label: label,
+                                  icon: icon,
+                                  active: activeTab == tab,
+                                  showLabel: showTabLabels,
+                                  onTap: () => _selectTab(ref, tab),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 )
               else
                 const Spacer(),
-              const SizedBox(width: 12),
+              const SizedBox(width: settingsGap),
               HomeHeaderIconButton(
                 tooltip: context.l10n.homeTooltipSettings,
                 icon: Icons.tune_rounded,

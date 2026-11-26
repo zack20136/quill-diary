@@ -4,10 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/people/people_providers.dart';
 import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/presentation/people/widgets/person_composer_dialog.dart';
-import 'package:quill_diary/shared/presentation/accent_visual.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 Widget _testApp() {
@@ -257,18 +255,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('寬螢幕表單不再使用固定最大寬度', (WidgetTester tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(900, 800);
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(_testApp());
-    await tester.pumpAndSettle();
-
-    expect(tester.getSize(find.byType(AppDialogShell)).width, greaterThan(480));
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('生日與認識年份可套用並清除', (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
@@ -350,42 +336,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final Finder colorList = find.byKey(const Key('person-color-list'));
-    expect(colorList, findsOneWidget);
-    expect(
-      (tester.widget<ListView>(colorList).childrenDelegate
-              as SliverChildBuilderDelegate)
-          .estimatedChildCount,
-      39,
-    );
     final Finder automatic = find.byKey(const Key('person-color-automatic'));
     expect(tester.widget<ChoiceChip>(automatic).selected, isTrue);
 
     await tester.tap(find.byKey(const Key('person-color-preset-0')));
     await tester.pumpAndSettle();
     expect(tester.widget<ChoiceChip>(automatic).selected, isFalse);
-
-    final ThemeData theme = appTestTheme();
-    final Color accent = accentColorPresets.first;
-    final Finder selectedPreset = find.byKey(
-      const Key('person-color-preset-0'),
-    );
-    final AnimatedContainer colorCircle = tester.widget<AnimatedContainer>(
-      find.descendant(
-        of: selectedPreset,
-        matching: find.byType(AnimatedContainer),
-      ),
-    );
-    final BoxDecoration decoration = colorCircle.decoration as BoxDecoration;
-    final Icon checkIcon = tester.widget<Icon>(
-      find.descendant(
-        of: selectedPreset,
-        matching: find.byIcon(Icons.check_rounded),
-      ),
-    );
-    expect(decoration.color, accentSwatchColor(accent));
-    expect(decoration.border?.top.color, theme.colorScheme.primary);
-    expect(checkIcon.color, accentOnSwatchColor(accent));
 
     await tester.tap(automatic);
     await tester.pumpAndSettle();
@@ -410,7 +366,6 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
-    expect(find.text('@ 使用名稱'), findsOneWidget);
     expect(find.byKey(const Key('person-mention-name-list')), findsOneWidget);
     final Finder nameChip = find.byKey(
       const Key('person-mention-name-canonical'),

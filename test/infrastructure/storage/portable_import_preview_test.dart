@@ -131,24 +131,26 @@ void main() {
     }
   });
 
-  test('分析後不 persist 時庫內不會新增', () async {
-    final Directory root = await writeMarkdownEntries(
-      <({String fileName, String title, String date, String body})>[
-        (fileName: 'only.md', title: '取消不寫入', date: '2026-08-18', body: '內容'),
-      ],
+  test('未指定標題時依序從 Markdown 標題、目錄名與檔名推斷', () async {
+    final root = await Directory.systemTemp.createTemp('qld_import_titles_');
+    addTearDown(() => root.delete(recursive: true));
+
+    final namedDirectory = await Directory(p.join(root.path, '旅行手記')).create();
+    await File(p.join(root.path, '有標題的檔案.md')).writeAsString('# 車站\n第一段內容');
+    await File(p.join(namedDirectory.path, 'index.md')).writeAsString('第二段內容');
+    await File(p.join(root.path, '一般檔案.md')).writeAsString('第三段內容');
+    await File(p.join(root.path, ' .md')).writeAsString('第四段內容');
+
+    final result = await importIo.importDocuments(
+      session: setup.session,
+      rootDirectory: root,
     );
 
-    try {
-      final AnalyzedPortableImport analyzed = await importIo.analyzeDocuments(
-        session: setup.session,
-        rootDirectory: root,
-      );
-      expect(analyzed.hasImportableEntries, isTrue);
-
-      final entries = await harness.repository.listEntries();
-      expect(entries, isEmpty);
-    } finally {
-      await root.delete(recursive: true);
-    }
+    expect(result.importedEntries, 4);
+    final entries = await harness.repository.listEntries();
+    expect(
+      entries.map((entry) => entry.title),
+      unorderedEquals(['車站', '旅行手記', '一般檔案', null]),
+    );
   });
 }

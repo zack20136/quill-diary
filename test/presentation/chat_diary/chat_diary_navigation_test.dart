@@ -436,7 +436,7 @@ void main() {
             final bodyField = find.byWidgetPredicate(
               (widget) =>
                   widget is TextField &&
-                  widget.decoration?.hintText == '在這裡輸入內容…',
+                  widget.decoration?.hintText == testL10n.editorBodyHint,
             );
             await waitUntil(() => bodyField.evaluate().isNotEmpty);
             expect(find.byType(EditorPage), findsOneWidget);

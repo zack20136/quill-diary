@@ -12,7 +12,6 @@ import 'package:quill_diary/domain/people/relationship_type.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/accent_visual.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/date_picker/app_date_picker_dialog.dart';
@@ -33,7 +32,6 @@ Future<Person?> showPersonComposerDialog(
   final route = appDialogRoute<Person>(
     context: context,
     barrierDismissible: false,
-    barrierColor: context.appColors.scrim,
     builder: (BuildContext ctx) =>
         PersonComposerDialog(personId: personId, initialName: initialName),
   );

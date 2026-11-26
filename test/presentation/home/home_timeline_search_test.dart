@@ -12,6 +12,7 @@ import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/home/widgets/home_timeline_pane.dart';
 
 import '../../helpers/shared/entry_index_fixtures.dart';
+import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
 void main() {
@@ -73,9 +74,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
     expect(container.read(homeSearchQueryProvider), '回憶');
 
-    await tester.enterText(find.byType(TextField).first, '');
+    await tester.tap(find.byTooltip(testL10n.commonClearSearchTooltip));
     await tester.pump();
     expect(container.read(homeSearchQueryProvider), isEmpty);
+  });
+
+  testWidgets('日記讀取失敗後可重試同一個搜尋', (tester) async {
+    final queries = <String>[];
+    final container = ProviderContainer(
+      retry: (_, _) => null,
+      overrides: [
+        homeEntryIndexListProvider.overrideWith((ref) async {
+          final query = ref.watch(homeSearchQueryProvider);
+          queries.add(query);
+          if (queries.length == 1) throw StateError('讀取失敗');
+          return HomeEntryQueryResult(query: query, entries: const []);
+        }),
+        homePinnedEntryIdsProvider.overrideWith((ref) async => const {}),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(homeSearchQueryProvider.notifier).update('回憶');
+    await pumpPane(tester, container);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(testL10n.commonActionRetry));
+    await tester.pumpAndSettle();
+    expect(queries, ['回憶', '回憶']);
+    expect(find.text(testL10n.homeSearchNoResultsTitle), findsOneWidget);
   });
 
   testWidgets('外部搜尋狀態會取消尚未送出的舊輸入', (WidgetTester tester) async {

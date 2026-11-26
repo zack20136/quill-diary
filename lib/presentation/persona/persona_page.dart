@@ -535,7 +535,7 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
         children: [
           AppInsetPanel(
             child: Text(
-              l.personaUsageHint,
+              l.personaUsageHint(l.chatDiaryTitle, l.personaChooseCompanion),
               style: _hintStyle?.copyWith(height: 1.45),
             ),
           ),
@@ -734,7 +734,10 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: AppInsetPanel(
-                      child: Text(l.personaPrivacyHint, style: _hintStyle),
+                      child: Text(
+                        l.personaPrivacyHint(l.personaGenerate),
+                        style: _hintStyle,
+                      ),
                     ),
                   ),
                 ),
@@ -751,7 +754,9 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(l.personaSourceChangedHint),
+                          Text(
+                            l.personaSourceChangedHint(l.personaSelectedOnly),
+                          ),
                           TextButton(
                             onPressed: () => setState(() {
                               _selectedOnly = true;
@@ -948,8 +953,11 @@ class _PersonaPageState extends ConsumerState<PersonaPage>
                                 if (!selected.contains(id)) id,
                             ];
                       if (targets.isEmpty) return;
-                      _run(
-                        () => _controller.selectDiaries(targets, !allSelected),
+                      unawaited(
+                        _run(
+                          () =>
+                              _controller.selectDiaries(targets, !allSelected),
+                        ),
                       );
                     },
               child: Text(
@@ -2110,23 +2118,28 @@ class _SavedCompareDialogState extends State<_SavedCompareDialog> {
     final ColorScheme colors = theme.colorScheme;
     return AppDialogShell(
       fillHeight: true,
+      scrollbarInContentMargin: true,
       icon: Icon(Icons.difference_outlined, color: colors.primary),
       title: widget.title,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            widget.cardLabel,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: colors.onSurfaceVariant,
+          Padding(
+            padding: const EdgeInsets.only(right: AppDialogInsets.horizontal),
+            child: Text(
+              widget.cardLabel,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Expanded(
             child: AppScrollbar(
               controller: _scroll,
-              reserveGutter: true,
               track: AppScrollbarTrack.frame,
+              placement: AppScrollbarPlacement.gutter,
+              gutterWidth: AppDialogInsets.horizontal,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: colors.surface,

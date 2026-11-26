@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
 
   drift: ^2.35.4
-  sqlite3: ^3.9.1
+  sqlite3: ^3.9.2
   path_provider: ^2.1.5
   path: ^1.9.1
 
@@ -23,7 +23,7 @@ dependencies:
   cryptography_flutter: ^2.3.4
   cipherlib: ^0.7.2
   yaml: ^3.1.4
-  ulid: ^2.2.0
+  ulid: ^2.2.1
 
   flex_color_scheme: ^9.0.0
   flex_color_picker: ^4.0.0
@@ -35,8 +35,8 @@ dependencies:
 
   image_picker: ^1.2.3
   flutter_image_compress: ^2.5.1
-  file_picker: ^13.4.0
-  android_file_picker: ^2.2.0
+  file_picker: ^13.4.1
+  android_file_picker: ^2.2.1
 
   table_calendar: ^3.2.1
   flutter_secure_storage: ^11.2.0

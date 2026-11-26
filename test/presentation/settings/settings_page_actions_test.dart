@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/application/session/session_state.dart';
 import 'package:quill_diary/domain/recovery/kdf_descriptor.dart';
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
@@ -90,6 +91,53 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  for (final (label, sessionState, metadata, canEdit) in [
+    (
+      '尚未建立日記庫時停用 AI 設定和開關',
+      const AppSessionState(status: AppLockStatus.unlocked),
+      null,
+      false,
+    ),
+    (
+      '日記庫鎖定時停用 AI 設定和開關',
+      const AppSessionState(status: AppLockStatus.locked),
+      recoveryMetadata,
+      false,
+    ),
+    (
+      '日記庫已解鎖時可開啟 AI 設定和操作開關',
+      AppSessionState(status: AppLockStatus.unlocked, session: unlockedSession),
+      recoveryMetadata,
+      true,
+    ),
+  ]) {
+    testWidgets(label, (tester) async {
+      await tester.pumpWidget(
+        settingsTestScope(
+          sessionState: sessionState,
+          recoveryMetadata: metadata,
+          driveConnectionState: connectedState,
+          child: const SettingsPage(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await scrollSettingsPageUntilVisible(
+        tester,
+        appActionButton(testL10n.aiOpenSettings),
+      );
+
+      final aiSwitch = tester.widget<SwitchListTile>(
+        find.byKey(const ValueKey('ai-enabled-switch')),
+      );
+      final enabled = canEdit ? isNotNull : isNull;
+      expect(
+        readAppActionButton(tester, testL10n.aiOpenSettings).onPressed,
+        enabled,
+      );
+      expect(aiSwitch.onChanged, enabled);
+    });
   }
 
   testWidgets('法務連結失敗時顯示備援訊息', (WidgetTester tester) async {

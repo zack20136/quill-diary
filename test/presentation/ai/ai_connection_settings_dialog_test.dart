@@ -105,6 +105,23 @@ void main() {
 
   final promptEntry = find.byKey(const ValueKey('ai-prompt-settings'));
 
+  testWidgets('窄螢幕可拖曳滑塊捲動 AI 設定', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 700);
+    addTearDown(tester.view.reset);
+    await open(tester);
+
+    final thumb = find.byKey(const ValueKey<String>('app-scrollbar-thumb'));
+    final scroll = tester
+        .widget<SingleChildScrollView>(
+          find.byKey(const ValueKey('ai-settings-scroll')),
+        )
+        .controller!;
+    await tester.drag(thumb, const Offset(0, 90));
+    await tester.pumpAndSettle();
+    expect(scroll.offset, greaterThan(0));
+  });
+
   Future<void> openPrompts(WidgetTester tester) async {
     await tester.ensureVisible(promptEntry);
     await tester.tap(promptEntry);
@@ -1196,7 +1213,9 @@ void main() {
       await tester.ensureVisible(thinking);
       await tester.tap(thinking);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(MenuItemButton, 'Thinking 設定…'));
+      await tester.tap(
+        find.widgetWithText(MenuItemButton, testL10n.aiThinkingSettings),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('thinking-format')));
       await tester.pumpAndSettle();
@@ -1207,7 +1226,10 @@ void main() {
       expect(settingsScroll.offset, before);
       expect(store.settings.connectionFor('openai').thinkingOverrides, isEmpty);
       expect(
-        find.descendant(of: thinking, matching: find.text('不傳送')),
+        find.descendant(
+          of: thinking,
+          matching: find.text(testL10n.aiThinkingOmitShort),
+        ),
         findsOneWidget,
       );
       await tester.tap(find.widgetWithText(TextButton, '關閉'));

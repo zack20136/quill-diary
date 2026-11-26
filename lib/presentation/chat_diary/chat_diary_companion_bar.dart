@@ -124,11 +124,11 @@ class _ChatDiaryCompanionBarState extends ConsumerState<ChatDiaryCompanionBar>
         ? l.personaDefaultName
         : widget.name ?? person?.name ?? l.personaRoleSubject;
     final surface = context.appColors.sectionInset;
-    final (background, accent) = person != null
-        ? personLabelColorPair(person, surface)
+    final (:background, foreground: accent, accent: _) = person != null
+        ? personLabelColors(person, surface)
         : widget.current == null
-        ? accentColorPair(Theme.of(context).colorScheme.primary, surface)
-        : personAccentPairFor(
+        ? accentColorsFor(Theme.of(context).colorScheme.primary, surface)
+        : personAccentColorsFor(
             personId: widget.current!.personId,
             surface: surface,
             accentArgb: widget.accentArgb,
@@ -176,6 +176,10 @@ class _CompanionChoices extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    final defaultColors = accentColorsFor(
+      Theme.of(context).colorScheme.primary,
+      context.appColors.sectionInset,
+    );
     final personas = ref.watch(savedPersonasProvider);
     final people = ref.watch(peopleListProvider).value ?? [];
     return ConstrainedBox(
@@ -209,16 +213,13 @@ class _CompanionChoices extends ConsumerWidget {
                     ListTile(
                       leading: CircleAvatar(
                         radius: 17,
-                        backgroundColor: accentColorPair(
-                          Theme.of(context).colorScheme.primary,
-                          context.appColors.sectionInset,
-                        ).$1,
-                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        backgroundColor: defaultColors.background,
+                        foregroundColor: defaultColors.foreground,
                         child: Text(
                           personInitials(l.personaDefaultName),
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
+                                color: defaultColors.foreground,
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
@@ -236,12 +237,16 @@ class _CompanionChoices extends ConsumerWidget {
                               .where((p) => p.id == record.personId)
                               .firstOrNull;
                           final surface = context.appColors.sectionInset;
-                          final (background, accent) = person == null
-                              ? personAccentPairFor(
+                          final (
+                            :background,
+                            foreground: accent,
+                            accent: _,
+                          ) = person == null
+                              ? personAccentColorsFor(
                                   personId: record.personId,
                                   surface: surface,
                                 )
-                              : personLabelColorPair(person, surface);
+                              : personLabelColors(person, surface);
                           final label = person?.name ?? l.personaRoleSubject;
                           return ListTile(
                             leading: CircleAvatar(

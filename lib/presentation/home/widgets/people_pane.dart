@@ -68,6 +68,13 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
     _selectedPeople.clear();
   }
 
+  void _clearSearch() {
+    setState(() {
+      _searchCtrl.clear();
+      _relationships.clear();
+    });
+  }
+
   void _togglePersonSelection(PersonId id) {
     if (_deletingPeople) return;
     FocusScope.of(context).unfocus();
@@ -271,6 +278,10 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                         controller: _searchCtrl,
                         hintText: context.l10n.peopleSearchHint,
                         onChanged: (_) => setState(() {}),
+                        onClear: _clearSearch,
+                        clearFiltersTooltip: _relationships.isEmpty
+                            ? null
+                            : context.l10n.peopleClearSearchAndFilters,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -433,70 +444,66 @@ class _PeoplePaneState extends ConsumerState<PeoplePane> {
                             onAction: () =>
                                 unawaited(showPersonComposerDialog(context)),
                           )
-                        : HomeSectionCard(
+                        : AppStateCard(
+                            icon: Icons.search_off_rounded,
                             title: context.l10n.peopleSearchNoResultsTitle,
-                            stripeColor: cs.primary,
-                            child: HomePaneEmptyHint(
-                              text: context.l10n.peopleSearchNoResultsMessage,
-                            ),
+                            message: context.l10n.peopleSearchNoResultsMessage,
+                            actionLabel: _relationships.isEmpty
+                                ? context.l10n.commonClearSearchTooltip
+                                : context.l10n.peopleClearSearchAndFilters,
+                            actionIcon: Icons.close_rounded,
+                            onAction: _clearSearch,
                           ),
                   );
                 }
-                return NotificationListener<OverscrollIndicatorNotification>(
-                  onNotification:
-                      (OverscrollIndicatorNotification notification) {
-                        notification.disallowIndicator();
-                        return false;
-                      },
-                  child: AppScrollbar(
-                    controller: _listScrollController,
-                    child: HomeScrollbarGutter(
-                      child: ListView.builder(
-                        controller: _listScrollController,
-                        physics: appBouncingScrollPhysics,
-                        padding: const EdgeInsets.only(bottom: 24),
-                        itemCount: visibleItems.length + 1,
-                        itemBuilder: (BuildContext context, int index) {
-                          if (index == 0) {
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
-                              child: Row(
-                                children: <Widget>[
-                                  Text(
-                                    context.l10n.homeNavPeople,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    '${visibleItems.length}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(color: cs.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          final PersonListItem item = visibleItems[index - 1];
-                          final PersonId personId = item.person.id;
+                return HomeScrollAffordance(
+                  controller: _listScrollController,
+                  child: NotificationListener<OverscrollIndicatorNotification>(
+                    onNotification:
+                        (OverscrollIndicatorNotification notification) {
+                          notification.disallowIndicator();
+                          return false;
+                        },
+                    child: ListView.builder(
+                      controller: _listScrollController,
+                      physics: appBouncingScrollPhysics,
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: visibleItems.length + 1,
+                      itemBuilder: (BuildContext context, int index) {
+                        if (index == 0) {
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 7),
-                            child: _PersonListTile(
-                              item: item,
-                              relationshipTypes: catalog.relationshipTypes,
-                              selectionMode: _selectionMode,
-                              selected: _selectedPeople.contains(personId),
-                              onTap: () => _onPersonTap(personId),
-                              onLongPress: () =>
-                                  _togglePersonSelection(personId),
+                            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+                            child: Row(
+                              children: <Widget>[
+                                Text(
+                                  context.l10n.homeNavPeople,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${visibleItems.length}',
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(color: cs.onSurfaceVariant),
+                                ),
+                              ],
                             ),
                           );
-                        },
-                      ),
+                        }
+                        final PersonListItem item = visibleItems[index - 1];
+                        final PersonId personId = item.person.id;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: _PersonListTile(
+                            item: item,
+                            relationshipTypes: catalog.relationshipTypes,
+                            selectionMode: _selectionMode,
+                            selected: _selectedPeople.contains(personId),
+                            onTap: () => _onPersonTap(personId),
+                            onLongPress: () => _togglePersonSelection(personId),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -568,7 +575,10 @@ class _PersonListTile extends StatelessWidget {
     final PersonMentionStats? stats = item.stats;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final Color accent = personAccentColor(person);
+    final avatarColors = personLabelColors(
+      person,
+      context.appColors.sectionInset,
+    );
     final TextStyle? metaStyle = theme.textTheme.bodySmall?.copyWith(
       color: cs.onSurfaceVariant,
     );
@@ -593,7 +603,7 @@ class _PersonListTile extends StatelessWidget {
                       stats.lastMentionDate!,
                     ),
                   ),
-          ].join('、');
+          ].join(context.l10n.commonListSeparator);
 
     return Material(
       color: context.appColors.sectionInset,
@@ -609,13 +619,14 @@ class _PersonListTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(PageStyle.radiusPanel),
           side: selected
               ? BorderSide(
-                  color: cs.primary.withValues(alpha: 0.55),
+                  color: context.appColors.selectedRowBorder,
                   width: 1.4,
                 )
               : BorderSide.none,
         ),
         selected: selected,
-        selectedTileColor: cs.primaryContainer.withValues(alpha: 0.42),
+        selectedColor: cs.onSurface,
+        selectedTileColor: context.appColors.selectedRowFill,
         leading: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -628,16 +639,13 @@ class _PersonListTile extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: personAvatarBackgroundColor(
-                  person,
-                  context.appColors.sectionInset,
-                ),
+                color: avatarColors.background,
               ),
               alignment: Alignment.center,
               child: Text(
                 personInitials(person.name),
                 style: theme.textTheme.titleSmall?.copyWith(
-                  color: accent,
+                  color: avatarColors.foreground,
                   fontWeight: FontWeight.w700,
                 ),
               ),

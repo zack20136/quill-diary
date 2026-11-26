@@ -4,7 +4,7 @@
     <string name="drive_upload_notification_channel_description">Shows Google Drive backup status</string>
     <string name="drive_upload_notification_title">Google Drive backup</string>
     <string name="drive_upload_notification_progress">Uploading: %1$s (%2$d%%)</string>
-    <string name="drive_upload_notification_waiting_network">Waiting for network</string>
+    <string name="drive_upload_notification_waiting_network">Waiting for a connection</string>
     <string name="drive_upload_notification_cancel_cleanup">Clearing unfinished backup…</string>
     <string name="drive_upload_notification_completed">Google Drive backup complete: %1$s</string>
     <string name="drive_upload_notification_failed">Backup failed. Open the app for details.</string>
@@ -23,17 +23,17 @@
     <string name="drive_upload_error_conflict">A Google Drive file conflict occurred. Back up again.</string>
     <string name="drive_upload_error_authorization">Google Drive authorization expired. Re-link your account and back up again.</string>
     <string name="drive_upload_error_start_failed">Could not start the Google Drive upload.</string>
-    <string name="drive_upload_error_fgs_start_not_allowed">Could not start uploading in the background. Keep the app on screen and try again.</string>
+    <string name="drive_upload_error_fgs_start_not_allowed">Upload couldn’t start in the background. Return to the app and try again.</string>
     <string name="drive_upload_error_invalid_args">Required upload information is missing.</string>
     <string name="drive_upload_error_staging_path_invalid">The temporary backup path is invalid.</string>
     <string name="drive_upload_error_needs_authorization">Link a Google account first.</string>
     <string name="drive_upload_error_job_in_progress">A Google Drive upload is already in progress.</string>
-    <string name="drive_upload_error_cancel_not_allowed">The remote backup is complete and cannot be cancelled.</string>
+    <string name="drive_upload_error_cancel_not_allowed">The backup is already on Google Drive and can’t be canceled.</string>
     <string name="drive_upload_error_abandon_not_allowed">The remote backup is complete and cleanup cannot be abandoned.</string>
-    <string name="drive_upload_error_upload_finishing">The upload is still finishing. Try again shortly.</string>
+    <string name="drive_upload_error_upload_finishing">Finishing the upload. Try again shortly.</string>
     <string name="drive_upload_error_permission_in_progress">A notification permission request is already in progress.</string>
     <string name="drive_upload_failure_default">The previous backup did not finish. Back up again.</string>
-    <string name="drive_auth_in_progress">A Google Drive connection is already in progress.</string>
+    <string name="drive_auth_in_progress">Connecting to Google Drive. Please wait.</string>
     <string name="drive_auth_account_missing">Google sign-in completed, but no account information was returned.</string>
     <string name="drive_auth_scope_missing">Google Drive access was not granted. Please reconnect.</string>
     <string name="drive_auth_configuration_error">Google sign-in is not configured for this app build. Check the app signing and OAuth settings.</string>
@@ -43,6 +43,6 @@
     <string name="drive_auth_cancelled">Google sign-in was canceled. The account is not connected.</string>
     <string name="drive_auth_failed">Google sign-in failed. Please try again later.</string>
     <string name="device_key_wrap_prompt">Verify your identity to protect the recovery key</string>
-    <string name="device_key_unwrap_prompt">Verify your identity to unlock the recovery key</string>
+    <string name="device_key_unwrap_prompt">Verify your identity to unlock the diary vault</string>
     <string name="device_key_rewrap_prompt">Updating unlock settings. Complete verification</string>
 </resources>

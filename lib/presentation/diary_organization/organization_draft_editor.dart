@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
 import 'package:quill_diary/domain/diary_organization/diary_organization.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
@@ -81,7 +82,7 @@ class OrganizationDraftTextController extends TextEditingController {
   }) => privateTextSpan(
     text: text,
     ranges: _ranges,
-    highlight: privateTextHighlight(Theme.of(context).colorScheme),
+    highlight: context.appColors.privateTextHighlight,
     style: style,
   );
 }
@@ -118,11 +119,13 @@ class _OrganizationDraftEditorState extends State<OrganizationDraftEditor> {
   @override
   Widget build(BuildContext context) => AppDialogShell(
     fillHeight: true,
+    scrollbarInContentMargin: true,
     title: context.l10n.organizationEditDraft,
     content: AppScrollbar(
       controller: _scroll,
       track: AppScrollbarTrack.frame,
-      reserveGutter: true,
+      placement: AppScrollbarPlacement.gutter,
+      gutterWidth: AppDialogInsets.horizontal,
       child: TextField(
         key: const ValueKey('organization-draft-editor'),
         controller: _controller,

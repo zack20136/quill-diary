@@ -21,7 +21,6 @@ Future<Color?> showAccentColorWheelDialog(
 }) {
   return showAppDialog<Color>(
     context: context,
-    barrierColor: context.appColors.scrim,
     builder: (BuildContext dialogContext) => AccentColorWheelDialog(
       initialColor: initialColor,
       title: title,
@@ -82,11 +81,11 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
   Widget _previewPanel(
     ThemeData theme,
     ColorScheme cs,
-    (Color, Color) previewPair,
+    AccentColors previewColors,
   ) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Color.alphaBlend(cs.primary.withValues(alpha: 0.04), cs.surface),
+        color: context.appColors.accentPreviewSurface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.26)),
       ),
@@ -98,11 +97,11 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
               widget.previewLabel,
               style: theme.textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: cs.outline,
+                color: cs.onSurfaceVariant,
               ),
             ),
             const Spacer(),
-            AccentChip.pair(label: widget.previewText, pair: previewPair),
+            AccentChip(label: widget.previewText, colors: previewColors),
           ],
         ),
       ),
@@ -114,10 +113,7 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AppColors appColors = context.appColors;
-    final (Color previewBg, Color previewFg) = accentColorPair(
-      _picked,
-      appColors.sectionInset,
-    );
+    final previewColors = accentColorsFor(_picked, appColors.sectionInset);
 
     return AppDialogShell(
       icon: const Icon(Icons.palette_outlined),
@@ -192,7 +188,7 @@ class _AccentColorWheelDialogState extends State<AccentColorWheelDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            _previewPanel(theme, cs, (previewBg, previewFg)),
+            _previewPanel(theme, cs, previewColors),
           ],
         ),
       ),

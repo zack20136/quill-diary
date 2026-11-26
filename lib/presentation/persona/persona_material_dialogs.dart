@@ -15,6 +15,7 @@ import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text_field.dart';
 
 class PersonaMaskDialog extends ConsumerStatefulWidget {
   const PersonaMaskDialog({
@@ -68,6 +69,7 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
     final l10n = context.l10n;
     return AppDialogShell(
       fillHeight: true,
+      scrollbarInContentMargin: true,
       title: widget.title,
       leading: ListenableBuilder(
         listenable: controller,
@@ -118,15 +120,15 @@ class _PersonaMaskDialogState extends ConsumerState<PersonaMaskDialog> {
       content: AppScrollbar(
         controller: _scroll,
         track: AppScrollbarTrack.frame,
-        reserveGutter: true,
-        child: TextField(
+        placement: AppScrollbarPlacement.gutter,
+        gutterWidth: AppDialogInsets.horizontal,
+        child: PrivateTextField(
           controller: controller,
           scrollController: _scroll,
           style: watchPersonalizationPreferences(ref).typography
               .bodyTextStyle(Theme.of(context).textTheme),
           readOnly: true,
           expands: true,
-          minLines: null,
           maxLines: null,
           textAlignVertical: TextAlignVertical.top,
           decoration: const InputDecoration(
@@ -348,7 +350,7 @@ class _PersonaChatDateMessageEditor extends StatelessWidget {
   });
 
   final PersonaChatDateEditorMessage message;
-  final TextEditingController controller;
+  final PrivateTextController controller;
   final VoidCallback onDelete;
 
   @override
@@ -388,7 +390,7 @@ class _PersonaChatDateMessageEditor extends StatelessWidget {
               ),
             ],
           ),
-          TextField(
+          PrivateTextField(
             controller: controller,
             style: textTheme.bodyLarge?.copyWith(height: 1.4),
             minLines: 1,
@@ -435,25 +437,29 @@ class _PersonaPasteDialogState extends State<PersonaPasteDialog> {
     final l10n = context.l10n;
     return AppDialogShell(
       fillHeight: true,
+      scrollbarInContentMargin: true,
       title: l10n.personaPaste,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppFeedbackBanner(
-            icon: Icons.visibility_off_outlined,
-            message: l10n.personaPrivacyHint,
+          Padding(
+            padding: const EdgeInsets.only(right: AppDialogInsets.horizontal),
+            child: AppFeedbackBanner(
+              icon: Icons.visibility_off_outlined,
+              message: l10n.personaPrivacyHint(l10n.personaGenerate),
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(
             child: AppScrollbar(
               controller: _scroll,
               track: AppScrollbarTrack.frame,
-              reserveGutter: true,
-              child: TextField(
+              placement: AppScrollbarPlacement.gutter,
+              gutterWidth: AppDialogInsets.horizontal,
+              child: PrivateTextField(
                 controller: text,
                 scrollController: _scroll,
                 expands: true,
-                minLines: null,
                 maxLines: null,
                 textAlignVertical: TextAlignVertical.top,
                 keyboardType: TextInputType.multiline,
@@ -635,15 +641,12 @@ class _ExportPlatformCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return AppDialogSection(
+      outlined: true,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text(title, style: theme.textTheme.titleMedium),
           for (final group in groups) ...[
             if (group.label != null) ...[
               const SizedBox(height: 10),
@@ -660,9 +663,21 @@ class _ExportPlatformCard extends StatelessWidget {
               _ExportStep(index: index + 1, text: step),
             ],
           ],
-          for (final note in notes) ...[
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
             const SizedBox(height: 10),
-            AppFeedbackBanner(message: note, tone: AppFeedbackTone.warning),
+            for (final note in notes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  note,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+                ),
+              ),
           ],
         ],
       ),
@@ -690,6 +705,7 @@ class PersonaChatExportHelpDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppDialogSection(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -774,7 +790,16 @@ class PersonaChatExportHelpDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(l10n.personaChatExportTrademarkNote, style: muted),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Text(
+                l10n.personaChatExportTrademarkNote,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
+              ),
+            ),
           ],
         ),
       ),

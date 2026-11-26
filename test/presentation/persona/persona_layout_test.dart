@@ -37,6 +37,7 @@ import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/ai/people_chat_repository.dart';
 import '../../helpers/persona/persona_fixtures.dart';
+import '../../helpers/presentation/ai/ai_message_scroll_test_helper.dart';
 import '../../helpers/presentation/persona/persona_test_controller.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
@@ -260,7 +261,10 @@ void main() {
       expect(modelMenu, findsNothing);
       await tester.drag(find.byType(ListView), const Offset(0, -2500));
       await tester.pumpAndSettle();
-      expect(find.text(testL10n.personaPrivacyHint), findsNothing);
+      expect(
+        find.text(testL10n.personaPrivacyHint(testL10n.personaGenerate)),
+        findsNothing,
+      );
       controller.draft!.step = PersonaStep.review;
       controller.draft!.candidate = personaCandidates(
         memory: '2026-11-04｜與日記作者去圖書館，借了一本旅遊書。\n時間不明｜一起去公園散步，之後喝咖啡。',
@@ -510,6 +514,43 @@ void main() {
     expect(find.textContaining('換過模型的回覆'), findsOneWidget);
   });
 
+  Widget trialApp(FakeAiClient client) => widgetTestApp(
+    center: false,
+    wrapScaffold: false,
+    overrides: [
+      effectiveAppSessionProvider.overrideWith(
+        (ref) async =>
+            AppSessionState(status: AppLockStatus.unlocked, session: session),
+      ),
+      userPreferencesProvider.overrideWithValue(_Preferences()),
+      aiSettingsStoreProvider.overrideWithValue(OverviewAiSettingsStore()),
+      vaultRepositoryProvider.overrideWithValue(PeopleChatRepository([person])),
+      aiClientFactoryProvider.overrideWithValue((_, _) => client),
+    ],
+    child: PersonaTrialPage(
+      personId: person.id,
+      personaId: generatePersonaId(),
+      cards: personaCandidates(),
+      connection: config,
+    ),
+  );
+
+  testWidgets('分身試聊按 Page Up 往回讀時，串流更新會保留閱讀位置', (tester) async {
+    final reply = StreamController<String>.broadcast();
+    addTearDown(() => unawaited(reply.close()));
+    final client = FakeAiClient(config)..response = () => reply.stream;
+    await tester.pumpWidget(trialApp(client));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '想聊今天的見聞');
+    await tester.pump();
+    await tester.tap(find.byTooltip(testL10n.chatDiarySend));
+    await tester.pump();
+    await expectPageUpKeepsReadingPosition(tester, reply);
+    unawaited(reply.close());
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('試聊沿用聊天版面、聊天氣泡與獨立的輸入停止操作', (tester) async {
     tester.view.physicalSize = const Size(390, 850);
     tester.view.devicePixelRatio = 1;
@@ -519,32 +560,7 @@ void main() {
     await tester.pumpWidget(
       RepaintBoundary(
         key: const ValueKey('qa-canvas'),
-        child: widgetTestApp(
-          center: false,
-          wrapScaffold: false,
-          overrides: [
-            effectiveAppSessionProvider.overrideWith(
-              (ref) async => AppSessionState(
-                status: AppLockStatus.unlocked,
-                session: session,
-              ),
-            ),
-            userPreferencesProvider.overrideWithValue(_Preferences()),
-            aiSettingsStoreProvider.overrideWithValue(
-              OverviewAiSettingsStore(),
-            ),
-            vaultRepositoryProvider.overrideWithValue(
-              PeopleChatRepository([person]),
-            ),
-            aiClientFactoryProvider.overrideWithValue((_, _) => client),
-          ],
-          child: PersonaTrialPage(
-            personId: person.id,
-            personaId: generatePersonaId(),
-            cards: personaCandidates(),
-            connection: config,
-          ),
-        ),
+        child: trialApp(client),
       ),
     );
     await tester.pumpAndSettle();

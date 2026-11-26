@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:quill_diary/domain/security/unlocked_vault_session.dart';
 import 'package:quill_diary/infrastructure/database/index_database.dart';
 import 'package:quill_diary/infrastructure/database/index_database_connection_io.dart';
+import 'package:quill_diary/infrastructure/database/index_database_errors.dart';
 import 'package:quill_diary/infrastructure/database/index_database_manager.dart';
 import 'package:quill_diary/infrastructure/database/index_key_derivation.dart';
 
@@ -321,15 +322,17 @@ void main() {
     }
   });
 
-  test('IndexDatabaseManager.openForSession 遇到損壞索引檔時自動重建', () async {
+  test('截斷的加密索引只有在允許重建時才會重開', () async {
     final Directory dir = await Directory.systemTemp.createTemp(
       'qld_idx_corrupt',
     );
     try {
       final TestVaultPathStrategy pathStrategy = TestVaultPathStrategy(dir);
       final String dbPath = await pathStrategy.indexDatabasePath();
-      await File(dbPath).parent.create(recursive: true);
-      await File(dbPath).writeAsBytes(<int>[0, 1, 2, 3, 4, 5]);
+      final file = File(dbPath);
+      const truncatedBytes = <int>[0, 1, 2, 3, 4, 5];
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(truncatedBytes);
 
       final IndexDatabaseManager manager = IndexDatabaseManager(pathStrategy);
       const String vaultId = 'vlt_index_corrupt';
@@ -343,6 +346,12 @@ void main() {
         recoveryWrapKey: recoveryWrapKey,
         deviceSlotId: 'dev_test',
       );
+
+      await expectLater(
+        manager.openForSession(session, allowRebuild: false),
+        throwsA(predicate<Object>(isUnreadableEncryptedIndexError)),
+      );
+      expect(await file.readAsBytes(), truncatedBytes);
 
       final IndexDatabase database = await manager.openForSession(session);
       await database.customStatement('SELECT 1');

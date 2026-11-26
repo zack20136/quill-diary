@@ -83,12 +83,8 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
     Map<String, int> accents,
     AppColors colors,
   ) {
-    final (Color bg, Color fg) = tagResolvedAccentPair(
-      tag,
-      theme.colorScheme,
-      accents,
-      colors,
-    );
+    final tagColors = resolveTagColors(tag, theme.colorScheme, accents, colors);
+    final (background: bg, foreground: fg, accent: _) = tagColors;
     return Padding(
       padding: const EdgeInsets.only(right: 4, bottom: 4),
       child: InputChip(
@@ -104,13 +100,7 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
         },
         deleteIconColor: fg.withValues(alpha: 0.82),
         backgroundColor: bg,
-        side: accentChipBorderSide(
-          colors,
-          theme.colorScheme,
-          bg,
-          fg,
-          width: 0.95,
-        ),
+        side: accentChipBorderSide(colors, tagColors, width: 0.95),
       ),
     );
   }
@@ -121,12 +111,13 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
     Map<String, int> accents,
     AppColors colors,
   ) {
-    final (Color bg0, Color fg0) = tagResolvedAccentPair(
+    final tagColors = resolveTagColors(
       label,
       theme.colorScheme,
       accents,
       colors,
     );
+    final (background: bg0, foreground: fg0, accent: _) = tagColors;
     return ActionChip(
       avatar: Icon(Icons.add_rounded, size: 16, color: fg0),
       label: Text(label),
@@ -140,13 +131,7 @@ class _TagPickerDialogState extends ConsumerState<TagPickerDialog> {
           _addChosen(label);
         });
       },
-      side: accentChipBorderSide(
-        colors,
-        theme.colorScheme,
-        bg0,
-        fg0,
-        width: 0.95,
-      ),
+      side: accentChipBorderSide(colors, tagColors, width: 0.95),
       elevation: 0,
       shadowColor: Colors.transparent,
       backgroundColor: bg0,

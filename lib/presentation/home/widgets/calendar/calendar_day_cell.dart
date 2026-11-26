@@ -28,33 +28,25 @@ class CalendarDayCell extends StatelessWidget {
   final double rowHeight;
   final Map<String, int> tagAccents;
 
-  /// 有日記的日期格背景：使用主題 primary 淡色，避免標籤 accent 在暗色下混出髒色。
-  Color _hasEntriesCellBackground(ColorScheme cs) {
-    final double alpha = cs.brightness == Brightness.dark ? 0.14 : 0.08;
-    return Color.alphaBlend(cs.primary.withValues(alpha: alpha), cs.surface);
-  }
-
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final AppColors colors = context.appColors;
-    final double contentOpacity = isOutside ? 0.4 : 1.0;
+    final calendar = colors.calendar;
+    final bool isDark = cs.brightness == Brightness.dark;
     final bool showTitles = calendarShouldShowEntryTitles(rowHeight);
     final List<DiaryEntrySummary> visibleEntries = showTitles
         ? entries.take(kCalendarMaxEntriesPerCell).toList()
         : const <DiaryEntrySummary>[];
     final double entryFontSize = calendarEntryFontSize(rowHeight);
 
-    Color cellColor = cs.surface;
-    if (visibleEntries.isNotEmpty) {
-      cellColor = _hasEntriesCellBackground(cs);
-    }
-    if (isSelected) {
-      cellColor = Color.alphaBlend(
-        cs.primaryContainer.withValues(alpha: 0.48),
-        cellColor,
-      );
-    }
+    final hasEntryFill = visibleEntries.isNotEmpty && !isOutside;
+    final Color cellColor = switch ((isSelected, hasEntryFill)) {
+      (true, true) => calendar.selectedEntryDay,
+      (true, false) => calendar.selectedDay,
+      (false, true) => calendar.entryDay,
+      (false, false) => calendar.day,
+    };
 
     final String semanticsLabel = <String>[
       DisplayFormat.formatDateOnly(context.l10n, DateOnly.fromDateTime(day)),
@@ -71,52 +63,53 @@ class CalendarDayCell extends StatelessWidget {
         child: SizedBox(
           height: rowHeight,
           width: double.infinity,
-          child: Opacity(
-            opacity: contentOpacity,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: cellColor,
-                border: isSelected
-                    ? Border.all(color: colors.calendarTodayMarker, width: 1.2)
-                    : null,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 3, 3, 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    CalendarDayNumberBadge(
-                      day: day.day,
-                      date: day,
-                      isSelected: isSelected,
-                      isToday: isToday,
-                    ),
-                    if (visibleEntries.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 2),
-                      for (final DiaryEntrySummary entry in visibleEntries)
-                        CalendarEntryPreviewRow(
-                          label: calendarEntryPreviewLabel(
-                            entryListHeadline(entry),
-                          ),
-                          tagLabel: firstNonemptyTag(entry.tags),
-                          accents: tagAccents,
-                          colors: colors,
-                          fontSize: entryFontSize,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: cellColor,
+              border: isSelected
+                  ? Border.all(
+                      color: calendar.selectedBorder,
+                      width: isDark ? 1 : 1.2,
+                    )
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 3, 3, 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  CalendarDayNumberBadge(
+                    day: day.day,
+                    date: day,
+                    isSelected: isSelected,
+                    isToday: isToday,
+                    isOutside: isOutside,
+                  ),
+                  if (visibleEntries.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 2),
+                    for (final DiaryEntrySummary entry in visibleEntries)
+                      CalendarEntryPreviewRow(
+                        label: calendarEntryPreviewLabel(
+                          entryListHeadline(entry),
                         ),
-                      if (entries.length > kCalendarMaxEntriesPerCell)
-                        Text(
-                          '+${entries.length - kCalendarMaxEntriesPerCell}',
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: entryFontSize - 0.5,
-                            height: 1,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.85),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        tagLabel: firstNonemptyTag(entry.tags),
+                        accents: tagAccents,
+                        colors: colors,
+                        fontSize: entryFontSize,
+                      ),
+                    if (entries.length > kCalendarMaxEntriesPerCell)
+                      Text(
+                        '+${entries.length - kCalendarMaxEntriesPerCell}',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: entryFontSize - 0.5,
+                          height: 1,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w600,
                         ),
-                    ],
+                      ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -132,6 +125,7 @@ class CalendarDayNumberBadge extends StatelessWidget {
     required this.date,
     required this.isSelected,
     required this.isToday,
+    required this.isOutside,
     super.key,
   });
 
@@ -139,10 +133,13 @@ class CalendarDayNumberBadge extends StatelessWidget {
   final DateTime date;
   final bool isSelected;
   final bool isToday;
+  final bool isOutside;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final bool isDark = cs.brightness == Brightness.dark;
+    final calendar = context.appColors.calendar;
     const double fontSize = 10;
 
     if (isToday) {
@@ -151,20 +148,22 @@ class CalendarDayNumberBadge extends StatelessWidget {
         height: 17,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: cs.primary,
+          color: calendar.todayBadge.background,
           shape: BoxShape.circle,
+          border: isDark ? Border.all(color: calendar.todayBorder) : null,
           boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.28),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
+            if (!isDark)
+              BoxShadow(
+                color: calendar.todayShadow,
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
           ],
         ),
         child: Text(
           '$day',
           style: TextStyle(
-            color: cs.onPrimary,
+            color: calendar.todayBadge.foreground,
             fontSize: fontSize,
             fontWeight: FontWeight.w700,
             height: 1,
@@ -174,12 +173,14 @@ class CalendarDayNumberBadge extends StatelessWidget {
     }
 
     final Color textColor = isSelected
-        ? cs.primary
+        ? calendar.selectedForeground
+        : isOutside
+        ? calendar.outsideForeground
         : calendarIsSunday(date)
-        ? cs.error.withValues(alpha: 0.78)
+        ? calendar.sundayForeground
         : calendarIsSaturday(date)
-        ? cs.primary.withValues(alpha: 0.72)
-        : cs.onSurface.withValues(alpha: 0.86);
+        ? calendar.saturdayForeground
+        : calendar.dateForeground;
 
     return Text(
       '$day',
@@ -212,9 +213,9 @@ class CalendarEntryPreviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final (_, Color accent) = tagLabel.isEmpty
-        ? tagNeutralAccentPair(cs)
-        : tagResolvedAccentPair(tagLabel, cs, accents, colors);
+    final tagColors = tagLabel.isEmpty
+        ? neutralTagColors(cs)
+        : resolveTagColors(tagLabel, cs, accents, colors);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 1),
@@ -224,7 +225,7 @@ class CalendarEntryPreviewRow extends StatelessWidget {
             width: 2,
             height: fontSize + 1,
             decoration: BoxDecoration(
-              color: accent,
+              color: tagColors.accent ?? tagColors.foreground,
               borderRadius: BorderRadius.circular(1),
             ),
           ),

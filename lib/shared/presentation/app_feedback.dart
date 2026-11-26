@@ -3,41 +3,24 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/l10n/l10n.dart';
+import 'package:quill_diary/shared/presentation/app_color_scheme.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 
 enum AppFeedbackTone { info, success, warning, error }
 
-class AppFeedbackColors {
-  const AppFeedbackColors({required this.background, required this.foreground});
-
-  final Color background;
-  final Color foreground;
-}
+typedef AppFeedbackColors = AppColorPair;
 
 AppFeedbackColors resolveAppFeedbackColors(
   BuildContext context,
   AppFeedbackTone tone,
 ) {
-  final ColorScheme colorScheme = Theme.of(context).colorScheme;
-  final AppColors appColors = context.appColors;
+  final colors = context.appColors;
   return switch (tone) {
-    AppFeedbackTone.info => AppFeedbackColors(
-      background: colorScheme.primaryContainer,
-      foreground: colorScheme.onPrimaryContainer,
-    ),
-    AppFeedbackTone.success => AppFeedbackColors(
-      background: appColors.feedbackSuccessBackground,
-      foreground: appColors.feedbackSuccessForeground,
-    ),
-    AppFeedbackTone.warning => AppFeedbackColors(
-      background: colorScheme.secondaryContainer,
-      foreground: colorScheme.onSecondaryContainer,
-    ),
-    AppFeedbackTone.error => AppFeedbackColors(
-      background: colorScheme.errorContainer,
-      foreground: colorScheme.onErrorContainer,
-    ),
+    AppFeedbackTone.info => colors.infoFeedback,
+    AppFeedbackTone.success => colors.successFeedback,
+    AppFeedbackTone.warning => colors.warningFeedback,
+    AppFeedbackTone.error => colors.errorFeedback,
   };
 }
 

@@ -5,46 +5,27 @@ import 'package:quill_diary/shared/presentation/app_colors.dart';
 class AccentChip extends StatelessWidget {
   const AccentChip({
     required this.label,
-    required this.background,
-    required this.foreground,
+    required this.colors,
     this.compact = false,
     this.bordered,
     super.key,
   });
 
-  AccentChip.pair({
-    required this.label,
-    required (Color, Color) pair,
-    this.compact = false,
-    this.bordered,
-    super.key,
-  }) : background = pair.$1,
-       foreground = pair.$2;
-
   final String label;
-  final Color background;
-  final Color foreground;
+  final AccentColors colors;
   final bool compact;
   final bool? bordered;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ColorScheme scheme = theme.colorScheme;
-    final AppColors colors = context.appColors;
     final BorderSide? borderSide = bordered == false
         ? null
-        : accentChipBorderSide(
-            colors,
-            scheme,
-            background,
-            foreground,
-            width: 0.9,
-          );
+        : accentChipBorderSide(context.appColors, colors, width: 0.9);
     final TextStyle? textStyle =
         (compact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)
             ?.copyWith(
-              color: foreground,
+              color: colors.foreground,
               fontWeight: FontWeight.w700,
               height: compact ? null : 1.15,
             );
@@ -75,7 +56,7 @@ class AccentChip extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        color: background,
+        color: colors.background,
         border: borderSide == null ? null : Border.fromBorderSide(borderSide),
       ),
       child: child,

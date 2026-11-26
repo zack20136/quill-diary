@@ -1,11 +1,14 @@
+import 'package:drift/isolate.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
-/// SQLite3 Multiple Ciphers 回報索引檔無法以目前金鑰讀取（常見於損壞或金鑰不符）。
+class TruncatedEncryptedIndexException implements Exception {
+  const TruncatedEncryptedIndexException();
+}
+
+/// SQLite3 Multiple Ciphers 無法讀取截斷、損壞或金鑰不符的索引檔。
 bool isUnreadableEncryptedIndexError(Object error) {
-  if (error is sqlite.SqliteException) {
-    return error.extendedResultCode == 26 || error.resultCode == 26;
-  }
-  final String text = error.toString();
-  return text.contains('file is not a database') ||
-      text.contains('SqliteException(26)');
+  final cause = error is DriftRemoteException ? error.remoteCause : error;
+  return cause is TruncatedEncryptedIndexException ||
+      (cause is sqlite.SqliteException &&
+          cause.resultCode == sqlite.SqlError.SQLITE_NOTADB);
 }

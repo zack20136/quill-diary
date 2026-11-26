@@ -13,6 +13,8 @@ class HomeSearchTextField extends StatelessWidget {
     required this.hintText,
     this.controller,
     this.onChanged,
+    this.onClear,
+    this.clearFiltersTooltip,
     this.enabled = true,
     this.semanticLabel,
   });
@@ -20,6 +22,8 @@ class HomeSearchTextField extends StatelessWidget {
   final String hintText;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
+  final VoidCallback? onClear;
+  final String? clearFiltersTooltip;
   final bool enabled;
   final String? semanticLabel;
 
@@ -27,6 +31,7 @@ class HomeSearchTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final searchController = controller;
     final OutlineInputBorder capsuleBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(
         HomeLayout.searchRowControlHeight / 2,
@@ -52,7 +57,7 @@ class HomeSearchTextField extends StatelessWidget {
           isDense: true,
           hintText: hintText,
           hintStyle: theme.textTheme.bodyMedium?.copyWith(
-            color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+            color: cs.onSurfaceVariant,
           ),
           prefixIcon: Icon(
             Icons.search_rounded,
@@ -65,6 +70,22 @@ class HomeSearchTextField extends StatelessWidget {
             minHeight: HomeLayout.searchRowControlHeight,
             maxHeight: HomeLayout.searchRowControlHeight,
           ),
+          suffixIcon: enabled && searchController != null && onClear != null
+              ? ValueListenableBuilder(
+                  valueListenable: searchController,
+                  builder: (context, value, _) =>
+                      value.text.isEmpty && clearFiltersTooltip == null
+                      ? const SizedBox.shrink()
+                      : IconButton(
+                          onPressed: onClear,
+                          tooltip:
+                              clearFiltersTooltip ??
+                              context.l10n.commonClearSearchTooltip,
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                        ),
+                )
+              : null,
+          suffixIconConstraints: const BoxConstraints(),
           constraints: const BoxConstraints(
             minHeight: HomeLayout.searchRowControlHeight,
             maxHeight: HomeLayout.searchRowControlHeight,
@@ -384,8 +405,8 @@ class HomeSearchSelectionToggleButton extends StatelessWidget {
       onPressed: onPressed,
       icon: Icons.checklist_rounded,
       size: HomeLayout.searchRowControlHeight,
-      backgroundColor: cs.primaryContainer,
-      foregroundColor: cs.onPrimaryContainer,
+      backgroundColor: context.appColors.sectionCard,
+      foregroundColor: cs.onSurfaceVariant,
       disabledBackgroundColor: cs.surfaceContainerHighest,
       disabledForegroundColor: cs.onSurfaceVariant.withValues(alpha: 0.4),
     );

@@ -426,15 +426,10 @@ void main() {
       );
       final controller = field.controller! as PrivateTextController;
       expect(controller.privateRanges, isEmpty);
-      final span = controller.buildTextSpan(
-        context: tester.element(find.byType(TextField)),
-        withComposing: false,
-      );
       expect(
-        span.children!
-            .whereType<TextSpan>()
-            .where((s) => s.style?.backgroundColor != null)
-            .map((s) => s.text),
+        controller.highlightRanges.map(
+          (range) => controller.text.substring(range.start, range.end),
+        ),
         ['王小明', '王小明', 'a+b@example.org'],
       );
       scope.client.output = '想保留原本的語氣嗎？';
@@ -450,7 +445,7 @@ void main() {
       expect(find.text('語句潤飾'), findsOneWidget);
       expect(find.text('內容精簡'), findsOneWidget);
       expect(find.text('段落整理'), findsOneWidget);
-      expect(find.text('引導補充'), findsOneWidget);
+      expect(find.text(testL10n.organizationElaborate), findsOneWidget);
       expect(find.textContaining('今天和王小明散步。'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('organization-quick-0')));
       await _waitForUi(tester, () => !scope.controller.busy);
@@ -493,8 +488,11 @@ void main() {
       await tester.tap(find.text('開始整理'));
       await _waitForUi(tester, () => !scope.controller.busy);
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.text('選擇整理方向')).dy, greaterThan(0));
-      await tester.ensureVisible(find.text('引導補充'));
+      expect(
+        tester.getTopLeft(find.text(testL10n.organizationChooseDirection)).dy,
+        greaterThan(0),
+      );
+      await tester.ensureVisible(find.text(testL10n.organizationElaborate));
       expect(tester.takeException(), isNull);
     });
     testWidgets('整理回覆無法採用時進度卡消失，錯誤留在畫面內', (tester) async {

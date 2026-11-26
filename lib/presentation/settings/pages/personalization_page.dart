@@ -11,10 +11,10 @@ import 'package:quill_diary/domain/preferences/personalization_preferences.dart'
 import 'package:quill_diary/domain/recovery/recovery_metadata.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/settings/widgets/personalization_sections.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_sections.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_loading_state.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_state_card.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
 class PersonalizationPage extends ConsumerWidget {
   const PersonalizationPage({super.key});
@@ -62,7 +62,7 @@ class PersonalizationPage extends ConsumerWidget {
             return AppScrollablePageBody(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               children: <Widget>[
-                SettingsSectionCard(
+                AppSectionCard(
                   icon: Icons.translate_rounded,
                   title: context.l10n.personalizationLanguageSectionTitle,
                   description:
@@ -73,7 +73,7 @@ class PersonalizationPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SettingsSectionCard(
+                AppSectionCard(
                   icon: Icons.lock_clock_outlined,
                   title: context.l10n.personalizationSessionTimeoutSectionTitle,
                   description: context
@@ -87,7 +87,7 @@ class PersonalizationPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SettingsSectionCard(
+                AppSectionCard(
                   icon: Icons.image_outlined,
                   title: context.l10n.personalizationImageCompressSectionTitle,
                   description: context
@@ -99,7 +99,7 @@ class PersonalizationPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SettingsSectionCard(
+                AppSectionCard(
                   icon: Icons.palette_outlined,
                   title: context.l10n.personalizationAppearanceSectionTitle,
                   description:
@@ -110,7 +110,7 @@ class PersonalizationPage extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SettingsSectionCard(
+                AppSectionCard(
                   icon: Icons.text_fields_rounded,
                   title: context.l10n.personalizationTypographySectionTitle,
                   description:

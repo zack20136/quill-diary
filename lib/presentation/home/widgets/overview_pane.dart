@@ -16,7 +16,6 @@ import 'package:quill_diary/domain/diary/diary_entry_summary.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/home/home_export_actions.dart';
-import 'package:quill_diary/presentation/home/home_formatters.dart';
 import 'package:quill_diary/presentation/home/home_layout.dart';
 import 'package:quill_diary/presentation/home/widgets/home_scroll_affordance.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
@@ -280,15 +279,17 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                     children: scopedTopTags.map((
                                       TagCatalogUsageItem item,
                                     ) {
-                                      final (
-                                        Color chipBg,
-                                        Color chipFg,
-                                      ) = tagResolvedAccentPair(
+                                      final chipColors = resolveTagColors(
                                         item.label,
                                         cs,
                                         tagAccents,
                                         context.appColors,
                                       );
+                                      final (
+                                        background: chipBg,
+                                        foreground: chipFg,
+                                        accent: _,
+                                      ) = chipColors;
                                       final bool isSelected =
                                           selectedTag == item.label;
                                       return FilterChip(
@@ -309,9 +310,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                         checkmarkColor: chipFg,
                                         side: accentChipBorderSide(
                                           context.appColors,
-                                          cs,
-                                          chipBg,
-                                          chipFg,
+                                          chipColors,
                                           width: isSelected ? 1.05 : 0.92,
                                           accentBorderAlpha: isSelected
                                               ? 0.48
@@ -349,13 +348,15 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                       children: people.map((
                                         OverviewPersonRankItem item,
                                       ) {
-                                        final (
-                                          Color chipBg,
-                                          Color chipFg,
-                                        ) = personLabelColorPair(
+                                        final chipColors = personLabelColors(
                                           item.person,
                                           context.appColors.sectionInset,
                                         );
+                                        final (
+                                          background: chipBg,
+                                          foreground: chipFg,
+                                          accent: _,
+                                        ) = chipColors;
                                         return FilterChip(
                                           label: Text(
                                             '${item.person.name} ${item.mentionedEntryCount}',
@@ -373,9 +374,7 @@ class _OverviewPaneState extends ConsumerState<OverviewPane> {
                                           selectedColor: chipBg,
                                           side: accentChipBorderSide(
                                             context.appColors,
-                                            cs,
-                                            chipBg,
-                                            chipFg,
+                                            chipColors,
                                             width: 0.92,
                                             accentBorderAlpha:
                                                 kAccentBorderAlpha,
@@ -583,18 +582,19 @@ class OverviewScopedMetricPanel extends StatelessWidget {
             children: <Widget>[
               OverviewNumericTile(
                 label: context.l10n.homeOverviewWritingDaysLabel,
-                value: homeOverviewWritingDaysRatio(
-                  context.l10n,
+                value: context.l10n.homeOverviewWritingDaysRatio(
                   metrics.activeDays,
                   scopeTotalDays,
                 ),
                 detail: [
-                  metrics.mostEntriesInSingleDayDetail(context.l10n),
-                  homeOverviewLongestStreak(
-                    context.l10n,
+                  if (metrics.maxEntriesOnSingleDay > 0)
+                    context.l10n.homeOverviewMostEntriesInSingleDay(
+                      metrics.maxEntriesOnSingleDay,
+                    ),
+                  context.l10n.homeOverviewLongestStreak(
                     metrics.longestWritingStreakDays,
                   ),
-                ].whereType<String>().join('\n'),
+                ].join('\n'),
               ),
               const SizedBox(height: 13),
               OverviewNumericTile(
@@ -602,8 +602,7 @@ class OverviewScopedMetricPanel extends StatelessWidget {
                 value: context.l10n.homeOverviewAvgLengthValue(
                   metrics.avgCharactersPerEntryRounded,
                 ),
-                detail: homeOverviewEntryStats(
-                  context.l10n,
+                detail: context.l10n.homeOverviewEntryStats(
                   metrics.totalEntries,
                   metrics.totalCharacters,
                 ),
@@ -611,11 +610,13 @@ class OverviewScopedMetricPanel extends StatelessWidget {
               const SizedBox(height: 13),
               OverviewNumericTile(
                 label: context.l10n.homeOverviewAttachmentsLabel,
-                value: homeOverviewAttachmentCount(
-                  context.l10n,
+                value: context.l10n.homeOverviewAttachmentCount(
                   metrics.totalAttachments,
                 ),
-                detail: metrics.attachmentDetail(context.l10n),
+                detail: context.l10n.homeOverviewAttachmentDetail(
+                  metrics.totalPhotoAttachments,
+                  metrics.totalFileAttachments,
+                ),
               ),
             ],
           );
@@ -1084,7 +1085,7 @@ class OverviewNumericTile extends StatelessWidget {
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                               height: 1.0,
-                              color: colors.metricTileValue,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ),

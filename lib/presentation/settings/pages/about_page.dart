@@ -1,40 +1,237 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:quill_diary/application/settings/personalization_providers.dart';
 import 'package:quill_diary/l10n/l10n.dart';
-import 'package:quill_diary/presentation/settings/about_tab_catalog.dart';
-import 'package:quill_diary/presentation/settings/widgets/settings_info_cards.dart';
+import 'package:quill_diary/presentation/settings/about_topic_content.dart';
+import 'package:quill_diary/shared/navigation/app_routes.dart';
+import 'package:quill_diary/shared/presentation/app_feedback.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_surface.dart';
 
-class SettingsAboutPage extends ConsumerWidget {
+class SettingsAboutPage extends StatelessWidget {
   const SettingsAboutPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AppLocalizations l10n = context.l10n;
-    final List<AboutPageTabSpec> tabs = buildAboutPageTabSpecs(
-      l10n,
-      watchPersonalizationPreferences(ref).sessionTimeout,
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.aboutPageTitle)),
+      body: AppScrollablePageBody(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 6,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(l10n.appTitle, style: theme.textTheme.titleLarge),
+                ),
+                Text(
+                  l10n.aboutIntro,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          for (final topic in AboutTopic.values) ...[
+            if (topic != AboutTopic.values.first) const SizedBox(height: 10),
+            _AboutTopicLink(topic: topic),
+          ],
+          const SizedBox(height: 20),
+          _AboutSectionCard(
+            section: AboutSection(
+              l10n.aboutProjectTitle,
+              icon: Icons.info_outline_rounded,
+              paragraphs: [
+                l10n.aboutProjectLicense,
+                l10n.legalBrandDisclaimer,
+                l10n.aboutProjectLegal(
+                  l10n.settingsPageTitle,
+                  l10n.settingsLegalSectionTitle,
+                ),
+              ],
+            ),
+            secondary: true,
+          ),
+        ],
+      ),
     );
+  }
+}
 
-    return DefaultTabController(
-      length: tabs.length,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.aboutPageTitle),
-          bottom: TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: <Widget>[
-              for (final AboutPageTabSpec tab in tabs) Tab(text: tab.label),
-            ],
+class SettingsAboutTopicPage extends ConsumerWidget {
+  const SettingsAboutTopicPage({required this.topic, super.key});
+
+  final AboutTopic topic;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final overview = aboutTopicOverview(topic, l10n);
+    final sessionTimeout = watchPersonalizationPreferences(ref).sessionTimeout;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.aboutPageTitle)),
+      body: AppScrollablePageBody(
+        children: [
+          _AboutHeading(
+            title: overview.title,
+            icon: overview.icon,
+            style: Theme.of(context).textTheme.headlineSmall,
+            iconExtent: 44,
+          ),
+          for (final section in aboutTopicSections(topic, l10n, sessionTimeout))
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: _AboutSectionCard(section: section),
+            ),
+          if (topic == AboutTopic.people)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: _AboutTopicLink(topic: AboutTopic.ai),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AboutTopicLink extends StatelessWidget {
+  const _AboutTopicLink({required this.topic});
+
+  final AboutTopic topic;
+
+  @override
+  Widget build(BuildContext context) {
+    final overview = aboutTopicOverview(topic, context.l10n);
+    final theme = Theme.of(context);
+    return AppCard(
+      key: ValueKey(topic),
+      padding: EdgeInsets.zero,
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: () => unawaited(
+            context.push<void>(AppRoutes.aboutTopicLocation(topic)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              spacing: 12,
+              children: [
+                _AboutIcon(icon: overview.icon, extent: 40),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 4,
+                    children: [
+                      Text(overview.title, style: theme.textTheme.titleMedium),
+                      Text(
+                        overview.summary,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
-        body: TabBarView(
-          children: <Widget>[
-            for (final AboutPageTabSpec tab in tabs) _AboutTabBody(tab: tab),
+      ),
+    );
+  }
+}
+
+class _AboutSectionCard extends StatelessWidget {
+  const _AboutSectionCard({required this.section, this.secondary = false});
+
+  final AboutSection section;
+  final bool secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final warning = section.warning;
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      backgroundColor: secondary ? theme.colorScheme.surfaceContainerLow : null,
+      child: DefaultTextStyle.merge(
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: secondary
+              ? theme.colorScheme.onSurfaceVariant
+              : theme.colorScheme.onSurface,
+          height: 1.55,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: secondary ? 8 : 12,
+          children: [
+            _AboutHeading(
+              title: section.title,
+              icon: section.icon,
+              style: theme.textTheme.titleMedium,
+              iconExtent: 34,
+              secondary: secondary,
+            ),
+            if (warning != null)
+              AppFeedbackBanner(
+                message: warning,
+                tone: AppFeedbackTone.warning,
+              ),
+            for (final paragraph in section.paragraphs) Text(paragraph),
+            for (final (index, step) in section.steps.indexed)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 10,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      child: Text(
+                        '${index + 1}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 4,
+                      children: [
+                        Text(step.title, style: theme.textTheme.titleSmall),
+                        Text(step.body),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -42,158 +239,66 @@ class SettingsAboutPage extends ConsumerWidget {
   }
 }
 
-class _AboutTabBody extends StatelessWidget {
-  const _AboutTabBody({required this.tab});
+class _AboutHeading extends StatelessWidget {
+  const _AboutHeading({
+    required this.title,
+    required this.icon,
+    required this.style,
+    required this.iconExtent,
+    this.secondary = false,
+  });
 
-  static const EdgeInsets _pagePadding = EdgeInsets.fromLTRB(16, 12, 16, 24);
-  static const double _heroStartAlpha = 0.16;
-  static const double _sectionGap = 16;
-
-  final AboutPageTabSpec tab;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: AppScrollablePageBody(
-        padding: _pagePadding,
-        children: <Widget>[
-          SettingsGradientHeroCard(
-            icon: tab.heroIcon,
-            title: tab.heroTitle,
-            body: tab.heroBody,
-            chips: tab.chips,
-            startAlpha: _heroStartAlpha,
-          ),
-          const SizedBox(height: _sectionGap),
-          ..._childrenSeparatedByGap([
-            for (final AboutPageSectionSpec section in tab.sections)
-              _SectionCard(section: section),
-          ], gap: _sectionGap),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.section});
-
-  static const EdgeInsets _padding = EdgeInsets.fromLTRB(18, 18, 18, 16);
-  static const double _itemGap = 10;
-
-  final AboutPageSectionSpec section;
+  final String title;
+  final IconData icon;
+  final TextStyle? style;
+  final double iconExtent;
+  final bool secondary;
 
   @override
-  Widget build(BuildContext context) {
-    return AppSectionCard(
-      title: section.title,
-      description: section.subtitle,
-      style: AppSurfaceStyle.outlinedElevated,
-      padding: _padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _childrenSeparatedByGap([
-          for (final AboutPageItemSpec item in section.items)
-            _ItemPanel(item: item),
-        ], gap: _itemGap),
+  Widget build(BuildContext context) => Row(
+    spacing: 10,
+    children: [
+      _AboutIcon(icon: icon, extent: iconExtent, secondary: secondary),
+      Expanded(
+        child: Semantics(header: true, child: Text(title, style: style)),
       ),
-    );
-  }
+    ],
+  );
 }
 
-class _ItemPanel extends StatelessWidget {
-  const _ItemPanel({required this.item});
-
-  static const EdgeInsets _padding = EdgeInsets.fromLTRB(12, 12, 14, 12);
-  static const double _iconTextGap = 12;
-  static const double _titleBodyGap = 4;
-
-  final AboutPageItemSpec item;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-
-    return AppInsetPanel(
-      backgroundColor: cs.surfaceContainerLow,
-      padding: _padding,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _ItemIconBadge(icon: item.icon, colorScheme: cs),
-          const SizedBox(width: _iconTextGap),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  item.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: _titleBodyGap),
-                Text(
-                  item.body,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ItemIconBadge extends StatelessWidget {
-  const _ItemIconBadge({required this.icon, required this.colorScheme});
-
-  static const double _size = 36;
-  static const double _glyphSize = 18;
+class _AboutIcon extends StatelessWidget {
+  const _AboutIcon({
+    required this.icon,
+    required this.extent,
+    this.secondary = false,
+  });
 
   final IconData icon;
-  final ColorScheme colorScheme;
+  final double extent;
+  final bool secondary;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 1),
+    final colors = Theme.of(context).colorScheme;
+    return SizedBox.square(
+      dimension: extent,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Color.alphaBlend(
-            colorScheme.primary.withValues(alpha: 0.12),
-            colorScheme.surface,
-          ),
-          shape: BoxShape.circle,
+          color: secondary
+              ? colors.surfaceContainerHighest
+              : colors.primaryContainer,
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: SizedBox(
-          width: _size,
-          height: _size,
-          child: Icon(icon, color: colorScheme.onSurface, size: _glyphSize),
+        child: Center(
+          child: Icon(
+            icon,
+            size: extent <= 34 ? 18 : 22,
+            color: secondary
+                ? colors.onSurfaceVariant
+                : colors.onPrimaryContainer,
+          ),
         ),
       ),
     );
   }
-}
-
-/// 在子項之間插入固定垂直間距；最後一項不加尾巴空白。
-List<Widget> _childrenSeparatedByGap(
-  List<Widget> children, {
-  required double gap,
-}) {
-  if (children.length <= 1) {
-    return children;
-  }
-  return <Widget>[
-    for (int index = 0; index < children.length; index++) ...<Widget>[
-      children[index],
-      if (index < children.length - 1) SizedBox(height: gap),
-    ],
-  ];
 }

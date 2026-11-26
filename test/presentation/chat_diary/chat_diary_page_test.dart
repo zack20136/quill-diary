@@ -41,6 +41,7 @@ import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
 import '../../helpers/ai/ai_test_helpers.dart';
 import '../../helpers/ai/people_chat_repository.dart';
+import '../../helpers/presentation/ai/ai_message_scroll_test_helper.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
 
@@ -321,8 +322,10 @@ void main() {
         find.byType(ChatDiaryMessageBubble).evaluate().length,
         lessThan(30),
       );
-      final list = tester.widget<ListView>(find.byType(ListView).first);
-      list.controller!.jumpTo(0);
+      await tester.drag(
+        find.byKey(const ValueKey('app-scrollbar-thumb')),
+        Offset(0, -tester.getSize(find.byType(ListView).first).height),
+      );
       await tester.pumpAndSettle();
       expect(find.byKey(ValueKey(chat.messages.first.id)), findsOneWidget);
       expect(find.byKey(ValueKey(chat.messages.last.id)), findsNothing);
@@ -411,6 +414,12 @@ void main() {
       );
       await tester.pump();
       expect(input.privateRanges.single.end, 5);
+      expect(
+        input.highlightRanges.any(
+          (range) => range.start <= 4 && range.end >= 5,
+        ),
+        isTrue,
+      );
       final span = input.buildTextSpan(
         context: tester.element(field),
         withComposing: true,
@@ -418,8 +427,8 @@ void main() {
       expect(
         span.children!.cast<TextSpan>().any(
           (span) =>
-              span.style?.decoration == TextDecoration.underline &&
-              span.style?.backgroundColor != null,
+              span.text == 'ㄇ' &&
+              span.style?.decoration == TextDecoration.underline,
         ),
         isTrue,
       );
@@ -1023,8 +1032,13 @@ void main() {
         ),
       );
       await pumpChat(tester, chat, FakeAiClient(chat.connectionConfig));
-      expect(find.text(testL10n.chatDiaryPrivateNotesHint), findsOneWidget);
-      await tester.tap(find.byTooltip('查看送給 AI 的內容'));
+      expect(
+        find.text(
+          testL10n.chatDiaryPrivateNotesHint(testL10n.chatDiaryPrivateNotes),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byTooltip(testL10n.aiPreviewRequest));
       await tester.pumpAndSettle();
       expect(
         find.descendant(
@@ -1835,20 +1849,11 @@ void main() {
       stream.add('新的串流內容');
       await tester.pump(const Duration(milliseconds: 50));
       expect(scroll.offset, closeTo(before, 1));
-      expect(find.byTooltip('回到最新訊息'), findsOneWidget);
-      expect(
-        tester
-            .widget<IconButton>(
-              find.ancestor(
-                of: find.byTooltip('回到最新訊息'),
-                matching: find.byType(IconButton),
-              ),
-            )
-            .onPressed,
-        isNull,
-      );
-      scroll.jumpTo(scroll.position.maxScrollExtent);
+      expect(find.byTooltip(testL10n.chatDiaryJumpLatest), findsOneWidget);
+      await tester.tap(find.byTooltip(testL10n.chatDiaryJumpLatest));
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
+      expect(find.byTooltip(testL10n.chatDiaryJumpLatest), findsNothing);
       stream.add('\n後續串流內容');
       await tester.pump(const Duration(milliseconds: 50));
       await tester.pump();
@@ -1862,6 +1867,23 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
+    testWidgets('聊天日記按 Page Up 往回讀時，串流更新會保留閱讀位置', (tester) async {
+      final chat = testChatDiarySession(hidePersonNames: false);
+      final reply = StreamController<String>.broadcast();
+      addTearDown(() => unawaited(reply.close()));
+      final client = FakeAiClient(chat.connectionConfig)
+        ..response = () => reply.stream;
+      await pumpChat(tester, chat, client);
+
+      await tester.enterText(find.byType(TextField), '想聊今天的見聞');
+      await tester.pump();
+      await tester.tap(find.byTooltip(testL10n.chatDiarySend));
+      await tester.pump();
+      await expectPageUpKeepsReadingPosition(tester, reply);
+      unawaited(reply.close());
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('傳送中可停止、查看送給 AI 的內容或返回，其他功能停用', (tester) async {
       final chat = testChatDiarySession(hidePersonNames: false);
       final stream = StreamController<String>();

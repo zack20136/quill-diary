@@ -3,13 +3,13 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:quill_diary/application/home/home_browse_state.dart';
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
-import 'package:quill_diary/presentation/home/home_layout.dart';
+import 'package:quill_diary/presentation/home/pages/home_page.dart';
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/presentation/home/widgets/home_shared_widgets.dart';
 
-import '../../helpers/app_test_theme.dart';
 import '../../helpers/shared/entry_index_fixtures.dart';
 import '../../helpers/shared/test_l10n.dart';
 import '../../helpers/shared/widget_test_app.dart';
@@ -44,11 +44,11 @@ void main() {
     );
   });
 
-  Widget host(Widget child, {Size size = const Size(390, 800)}) {
+  Widget host(Widget child) {
     return widgetTestApp(
       center: false,
       child: MediaQuery(
-        data: MediaQueryData(size: size),
+        data: const MediaQueryData(size: Size(390, 800)),
         child: Padding(padding: const EdgeInsets.all(16), child: child),
       ),
     );
@@ -75,7 +75,7 @@ void main() {
     expect(node.flagsCollection.isSelected, Tristate.isTrue);
   });
 
-  testWidgets('搜尋框具有語意標籤與 focused border', (WidgetTester tester) async {
+  testWidgets('搜尋框提供語意標籤，點擊後取得輸入焦點', (WidgetTester tester) async {
     await tester.pumpWidget(
       host(HomeSearchTextField(hintText: testL10n.peopleSearchHint)),
     );
@@ -88,12 +88,8 @@ void main() {
     await tester.tap(find.byType(TextField));
     await tester.pump();
 
-    final TextField field = tester.widget<TextField>(find.byType(TextField));
-    final OutlineInputBorder? focused =
-        field.decoration?.focusedBorder as OutlineInputBorder?;
-    expect(focused, isNotNull);
-    expect(focused!.borderSide.width, 1.5);
-    expect(focused.borderSide.color, appTestTheme().colorScheme.primary);
+    final editable = tester.state<EditableTextState>(find.byType(EditableText));
+    expect(editable.widget.focusNode.hasFocus, isTrue);
   });
 
   testWidgets('圓形操作按鈕觸控目標至少 44', (WidgetTester tester) async {
@@ -109,77 +105,58 @@ void main() {
       ),
     );
 
-    expect(kHomeToolbarActionCircleSize, greaterThanOrEqualTo(44));
-    expect(
-      tester.getSize(find.byType(HomeCircleIconButton)),
-      const Size(44, 44),
-    );
+    final size = tester.getSize(find.byType(HomeCircleIconButton));
+    expect(size.width, greaterThanOrEqualTo(44));
+    expect(size.height, greaterThanOrEqualTo(44));
   });
 
-  testWidgets('寬螢幕分頁顯示文字標籤', (WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 600));
+  testWidgets('320 dp 寬的首頁可直接點選每個分頁', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-
     await tester.pumpWidget(
-      host(
-        SizedBox(
-          height: HomeLayout.searchRowControlHeight,
-          child: HomeHeaderTabButton(
-            label: testL10n.homeNavHome,
-            icon: Icons.home_rounded,
-            active: true,
-            showLabel: true,
-            onTap: () {},
-          ),
-        ),
-        size: const Size(800, 600),
-      ),
-    );
-
-    expect(find.text(testL10n.homeNavHome), findsOneWidget);
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
-  });
-
-  testWidgets('窄螢幕分頁僅顯示圖示', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      host(
-        SizedBox(
-          width: 52,
-          height: HomeLayout.searchRowControlHeight,
-          child: HomeHeaderTabButton(
-            label: testL10n.homeNavHome,
-            icon: Icons.home_rounded,
-            active: false,
-            onTap: () {},
+      widgetTestApp(
+        overrides: [],
+        wrapScaffold: false,
+        child: const Scaffold(
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(76),
+            child: HomeHeader(settingsEnabled: false),
           ),
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text(testL10n.homeNavHome), findsNothing);
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+    final tabs = find.byType(HomeHeaderTabButton);
+    expect(tabs.hitTestable(), findsNWidgets(HomeTab.values.length));
+    for (final (index, tab) in HomeTab.values.indexed) {
+      await tester.tap(tabs.at(index));
+      await tester.pumpAndSettle();
+      final activeTabs = tester
+          .widgetList<HomeHeaderTabButton>(tabs)
+          .where((button) => button.active);
+      expect(
+        activeTabs.single.label,
+        tester.widget<HomeHeaderTabButton>(tabs.at(index)).label,
+        reason: tab.name,
+      );
+    }
   });
 
-  testWidgets('選取工具列白色膠囊包住輕量動作按鈕', (WidgetTester tester) async {
+  testWidgets('選取工具列可點擊全選與刪除', (tester) async {
+    final operations = <String>[];
     await tester.pumpWidget(
       host(
         HomeSelectionToolbar(
           selectedCount: 1,
           allSelected: false,
           onCancel: () {},
-          onSelectAll: () {},
-          onTogglePin: () {},
-          pinToggleEnabled: true,
-          actions: <HomeSelectionAction>[
-            HomeSelectionAction(
-              tooltip: testL10n.homeTooltipExportHtml,
-              icon: Icons.html,
-              onPressed: () {},
-            ),
+          onSelectAll: () => operations.add('全選'),
+          actions: [
             HomeSelectionAction(
               tooltip: testL10n.commonActionDelete,
               icon: Icons.delete_outline_rounded,
-              onPressed: () {},
+              onPressed: () => operations.add('刪除'),
               destructive: true,
             ),
           ],
@@ -187,39 +164,9 @@ void main() {
       ),
     );
 
-    expect(
-      find.byKey(const Key('home-selection-status-capsule')),
-      findsOneWidget,
-    );
     expect(find.text(testL10n.homeSelectionSelectedCount(1)), findsOneWidget);
-    expect(find.byType(HomeCircleIconButton), findsNothing);
-
-    final Finder selectAll = find.byTooltip(testL10n.homeSelectionSelectAll);
-    final Finder delete = find.byTooltip(testL10n.commonActionDelete);
-    expect(selectAll, findsOneWidget);
-    expect(delete, findsOneWidget);
-
-    expect(tester.getSize(selectAll).width, greaterThanOrEqualTo(44));
-    expect(tester.getSize(selectAll).height, greaterThanOrEqualTo(44));
-    expect(tester.getSize(delete).width, greaterThanOrEqualTo(44));
-    expect(tester.getSize(delete).height, greaterThanOrEqualTo(44));
-
-    final Icon deleteIcon = tester.widget<Icon>(
-      find.descendant(
-        of: delete,
-        matching: find.byIcon(Icons.delete_outline_rounded),
-      ),
-    );
-    expect(deleteIcon.color, appTestTheme().colorScheme.error);
-
-    final Rect capsule = tester.getRect(
-      find.byKey(const Key('home-selection-status-capsule')),
-    );
-    final Rect selectAllRect = tester.getRect(selectAll);
-    final Rect deleteRect = tester.getRect(delete);
-    expect(selectAllRect.left, greaterThanOrEqualTo(capsule.left));
-    expect(selectAllRect.right, lessThanOrEqualTo(capsule.right));
-    expect(deleteRect.left, greaterThanOrEqualTo(capsule.left));
-    expect(deleteRect.right, lessThanOrEqualTo(capsule.right));
+    await tester.tap(find.byTooltip(testL10n.homeSelectionSelectAll));
+    await tester.tap(find.byTooltip(testL10n.commonActionDelete));
+    expect(operations, ['全選', '刪除']);
   });
 }

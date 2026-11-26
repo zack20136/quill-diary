@@ -5,8 +5,8 @@ import 'package:quill_diary/domain/persona/persona_chat_import.dart';
 import 'package:quill_diary/domain/shared/value_objects.dart';
 import 'package:quill_diary/presentation/persona/persona_material_dialogs.dart';
 import 'package:quill_diary/presentation/persona/persona_speaker_role_dropdown.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/private_text_controller.dart';
+import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
 
 import '../../helpers/shared/test_l10n.dart';
@@ -43,20 +43,45 @@ void main() {
     ],
   );
 
-  testWidgets('匯出說明可捲動並關閉', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1600));
+  testWidgets('窄螢幕深色大字的匯出說明可捲到底並關閉', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 620));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       widgetTestApp(
-        center: false,
-        wrapScaffold: false,
-        child: const PersonaChatExportHelpDialog(),
+        brightness: Brightness.dark,
+        child: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showAppDialog<void>(
+              context: context,
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(2)),
+                child: const PersonaChatExportHelpDialog(),
+              ),
+            ),
+            child: const Text('開啟說明'),
+          ),
+        ),
       ),
     );
+    await tester.tap(find.text('開啟說明'));
+    await tester.pumpAndSettle();
 
-    expect(find.text(testL10n.personaChatExportLineTitle), findsOneWidget);
-    expect(find.byType(AppScrollbar), findsOneWidget);
-    expect(find.text(testL10n.commonActionClose), findsOneWidget);
+    final dialog = find.byType(PersonaChatExportHelpDialog);
+    final scrollable = find.descendant(
+      of: dialog,
+      matching: find.byType(Scrollable),
+    );
+    final footer = find.text(testL10n.personaChatExportTrademarkNote);
+    final close = find.widgetWithText(TextButton, testL10n.commonActionClose);
+    expect(close.hitTestable(), findsOneWidget);
+    await tester.scrollUntilVisible(footer, 180, scrollable: scrollable);
+    expect(footer.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(close);
+    await tester.pumpAndSettle();
+    expect(dialog, findsNothing);
   });
 
   testWidgets('確認說話者以角色卡呈現，並保留底部確認與取消操作', (tester) async {
@@ -82,6 +107,53 @@ void main() {
       find.text(testL10n.commonActionCancel).hitTestable(),
       findsOneWidget,
     );
+  });
+
+  testWidgets('短篇隱藏檢查的文字框左右對齊，選取後仍可隱藏', (tester) async {
+    await tester.pumpWidget(
+      widgetTestApp(
+        overrides: const [],
+        child: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showAppDialog<void>(
+              context: context,
+              builder: (_) => PersonaMaskDialog(
+                title: '素材',
+                text: '小明在 Friday 到達。',
+                ranges: const [],
+                onChanged: (_, _) {},
+              ),
+            ),
+            child: const Text('開啟檢查'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('開啟檢查'));
+    await tester.pumpAndSettle();
+
+    final field = find.byType(TextField);
+    final frame = tester.getRect(field);
+    final surface = tester.getRect(
+      find
+          .descendant(of: find.byType(Dialog), matching: find.byType(Material))
+          .first,
+    );
+    expect(
+      frame.left - surface.left,
+      closeTo(surface.right - frame.right, 0.1),
+    );
+    expect(
+      find.byKey(const ValueKey<String>('app-scrollbar-thumb')),
+      findsNothing,
+    );
+
+    final controller =
+        tester.widget<TextField>(field).controller! as PrivateTextController;
+    controller.selection = const TextSelection(baseOffset: 0, extentOffset: 2);
+    await tester.pump();
+    await tester.tap(find.byTooltip(testL10n.aiHideSelection));
+    expect(controller.privateRanges, hasLength(1));
   });
 
   testWidgets('匯入聊天將角色、日期與訊息納入狀態分卡顯示', (tester) async {
@@ -178,15 +250,10 @@ void main() {
     final controller =
         tester.widget<TextField>(textFields.first).controller!
             as PrivateTextController;
-    final highlighted = controller.buildTextSpan(
-      context: tester.element(textFields.first),
-      withComposing: false,
-    );
     expect(
-      highlighted.children!
-          .whereType<TextSpan>()
-          .where((span) => span.style?.backgroundColor != null)
-          .map((span) => span.text),
+      controller.highlightRanges.map(
+        (range) => controller.text.substring(range.start, range.end),
+      ),
       ['a+b@example.org'],
     );
     expect(controller.privateRanges, isEmpty);

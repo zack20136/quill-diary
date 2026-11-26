@@ -7,7 +7,6 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/domain/preferences/personalization_preferences.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/shared/presentation/app_colors.dart';
-import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_section.dart';
 import 'package:quill_diary/shared/presentation/widgets/app_dialog_shell.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -33,15 +32,31 @@ List<_IntroPage> _onboardingIntroPages(AppLocalizations l10n) {
       bullets: <_IntroBullet>[
         (icon: Icons.edit_note_rounded, text: l10n.onboardingIntroPage2Item0),
         (icon: Icons.forum_outlined, text: l10n.onboardingIntroPage2Item1),
-        (icon: Icons.outbound_rounded, text: l10n.onboardingIntroPage2Item2),
+        (
+          icon: Icons.outbound_rounded,
+          text: l10n.onboardingIntroPage2Item2(
+            l10n.chatDiarySend,
+            l10n.chatDiaryGenerateDiary,
+            l10n.organizationGenerate,
+          ),
+        ),
       ],
     ),
     (
       title: l10n.onboardingIntroPage3Title,
       bullets: <_IntroBullet>[
-        (icon: Icons.sell_outlined, text: l10n.onboardingIntroPage3Item0),
-        (icon: Icons.badge_outlined, text: l10n.onboardingIntroPage3Item1),
-        (icon: Icons.explore_outlined, text: l10n.onboardingIntroPage3Item2),
+        (
+          icon: Icons.sell_outlined,
+          text: l10n.onboardingIntroPage3Item0(l10n.homeNavTags),
+        ),
+        (
+          icon: Icons.badge_outlined,
+          text: l10n.onboardingIntroPage3Item1(l10n.homeNavPeople),
+        ),
+        (
+          icon: Icons.explore_outlined,
+          text: l10n.onboardingIntroPage3Item2(l10n.homeNavCalendar),
+        ),
       ],
     ),
     (
@@ -93,6 +108,15 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
   int _page = 0;
   bool _completing = false;
 
+  Widget _keepSpace({required bool visible, required Widget child}) =>
+      Visibility(
+        visible: visible,
+        maintainState: true,
+        maintainAnimation: true,
+        maintainSize: true,
+        child: child,
+      );
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -138,72 +162,101 @@ class _OnboardingIntroDialogState extends ConsumerState<OnboardingIntroDialog> {
         }
         unawaited(_goToPage(_page - 1));
       },
-      child: SizedBox(
-        height: 384 + (textScale - 1).clamp(0, 0.5) * 160,
-        child: AppDialogShell(
-          title: pages[_page].title,
-          titleTrailing: languageBelowTitle ? null : languageToggle,
-          showClose: false,
-          fillHeight: true,
-          content: Column(
-            children: <Widget>[
-              if (languageBelowTitle)
-                const Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: languageToggle,
-                  ),
+      child: AppDialogShell(
+        title: pages[_page].title,
+        sizingTitles: [for (final page in pages) page.title],
+        titleTrailing: languageBelowTitle ? null : languageToggle,
+        showClose: false,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            if (languageBelowTitle)
+              const Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: languageToggle,
                 ),
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: pages.length,
-                  onPageChanged: (int index) => setState(() => _page = index),
-                  itemBuilder: (BuildContext context, int index) =>
-                      AppScrollView(
-                        child: _OnboardingPagePanel(page: pages[index]),
+              ),
+            Flexible(
+              child: Stack(
+                children: [
+                  _keepSpace(
+                    visible: false,
+                    child: SingleChildScrollView(
+                      primary: false,
+                      child: Stack(
+                        children: [
+                          for (final page in pages)
+                            _OnboardingPagePanel(page: page),
+                        ],
                       ),
-                ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: pages.length,
+                      onPageChanged: (int index) =>
+                          setState(() => _page = index),
+                      itemBuilder: (BuildContext context, int index) =>
+                          SingleChildScrollView(
+                            primary: false,
+                            child: _OnboardingPagePanel(page: pages[index]),
+                          ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              SmoothPageIndicator(
-                controller: _pageController,
-                count: pages.length,
-                effect: WormEffect(
-                  dotHeight: 8,
-                  dotWidth: 8,
-                  spacing: 8,
-                  activeDotColor: colors.primary,
-                  dotColor: colors.outlineVariant,
-                ),
-              ),
-            ],
-          ),
-          leading: isLastPage
-              ? null
-              : TextButton(
-                  onPressed: _complete,
-                  child: Text(l10n.onboardingIntroSkip),
-                ),
-          actions: <Widget>[
-            if (_page > 0)
-              TextButton(
-                onPressed: () => unawaited(_goToPage(_page - 1)),
-                child: Text(l10n.onboardingIntroBack),
-              ),
-            FilledButton(
-              onPressed: isLastPage
-                  ? _complete
-                  : () => unawaited(_goToPage(_page + 1)),
-              child: Text(
-                isLastPage
-                    ? l10n.onboardingIntroGetStarted
-                    : l10n.onboardingIntroNext,
+            ),
+            const SizedBox(height: 16),
+            SmoothPageIndicator(
+              controller: _pageController,
+              count: pages.length,
+              effect: WormEffect(
+                dotHeight: 8,
+                dotWidth: 8,
+                spacing: 8,
+                activeDotColor: colors.primary,
+                dotColor: colors.outlineVariant,
               ),
             ),
           ],
         ),
+        leading: _keepSpace(
+          visible: !isLastPage,
+          child: TextButton(
+            onPressed: _complete,
+            child: Text(l10n.onboardingIntroSkip),
+          ),
+        ),
+        actions: <Widget>[
+          _keepSpace(
+            visible: _page > 0,
+            child: TextButton(
+              onPressed: () => unawaited(_goToPage(_page - 1)),
+              child: Text(l10n.onboardingIntroBack),
+            ),
+          ),
+          FilledButton(
+            onPressed: isLastPage
+                ? _complete
+                : () => unawaited(_goToPage(_page + 1)),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                _keepSpace(
+                  visible: !isLastPage,
+                  child: Text(l10n.onboardingIntroNext),
+                ),
+                _keepSpace(
+                  visible: isLastPage,
+                  child: Text(l10n.onboardingIntroGetStarted),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

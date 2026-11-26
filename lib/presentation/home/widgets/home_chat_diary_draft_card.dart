@@ -14,7 +14,6 @@ import 'package:quill_diary/presentation/diary/widgets/diary_entry_date_time.dar
 import 'package:quill_diary/presentation/home/widgets/entry_widgets.dart';
 import 'package:quill_diary/presentation/home/widgets/home_selection_toolbar.dart';
 import 'package:quill_diary/shared/navigation/app_routes.dart';
-import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
 import 'package:quill_diary/shared/presentation/tag_visual.dart';
@@ -145,7 +144,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AccentChip.pair(
+                    AccentChip(
                       label: generation == null
                           ? (chat.generatedEntryId == null
                                 ? l10n.chatDiaryDraftLabel
@@ -156,7 +155,7 @@ class HomeChatDiaryDraftCard extends ConsumerWidget {
                               l10n,
                               generation.phase,
                             ),
-                      pair: tagUnsavedPair(context.appColors),
+                      colors: unsavedTagColors(context),
                     ),
                     if (active) ...[
                       const SizedBox(height: 8),

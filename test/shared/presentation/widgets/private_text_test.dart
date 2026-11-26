@@ -4,8 +4,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:quill_diary/domain/ai/private_text.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
+import 'package:quill_diary/shared/presentation/private_text_controller.dart';
 import 'package:quill_diary/shared/presentation/private_text_spans.dart';
 import 'package:quill_diary/shared/presentation/widgets/private_text.dart';
+import 'package:quill_diary/shared/presentation/widgets/private_text_field.dart';
 
 import '../../../helpers/shared/widget_test_app.dart';
 
@@ -92,13 +95,81 @@ void main() {
     expect(
       tester.renderObject(highlighted),
       paints..path(
-        color: privateTextHighlight(
-          Theme.of(tester.element(highlighted)).colorScheme,
-        ),
+        color: tester.element(highlighted).appColors.privateTextHighlight,
         includes: corners,
       ),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('文字欄位的混合字型底色會齊高並跟隨捲動', (tester) async {
+    const firstLine = '中英 QA，!? {{PER_01}} 🙂';
+    final text = List.filled(8, firstLine).join('\n');
+    final controller = PrivateTextController()
+      ..setDocument(text, [PrivateTextRange(0, text.length)]);
+    final scroll = ScrollController();
+    addTearDown(controller.dispose);
+    addTearDown(scroll.dispose);
+    await tester.pumpWidget(
+      widgetTestApp(
+        child: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+          child: SizedBox(
+            width: 560,
+            child: PrivateTextField(
+              controller: controller,
+              scrollController: scroll,
+              maxLines: 3,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final editable = tester
+        .state<EditableTextState>(find.byType(EditableText))
+        .renderEditable;
+    final boxes = editable.getBoxesForSelection(
+      TextSelection(baseOffset: 0, extentOffset: firstLine.length),
+    );
+    expect(boxes, isNotEmpty);
+    expect(boxes.map((box) => box.top).toSet(), hasLength(1));
+    expect(boxes.map((box) => box.bottom).toSet(), hasLength(1));
+
+    void expectVisibleHighlight() {
+      final viewport = Offset.zero & editable.size;
+      final rects = editable
+          .getBoxesForSelection(
+            TextSelection(baseOffset: 0, extentOffset: text.length),
+          )
+          .map((box) => box.toRect().intersect(viewport))
+          .where((rect) => !rect.isEmpty);
+      expect(rects, isNotEmpty);
+      expect(
+        editable,
+        paints..path(
+          color: tester
+              .element(find.byType(TextField))
+              .appColors
+              .privateTextHighlight,
+          includes: [for (final rect in rects) rect.center],
+        ),
+      );
+    }
+
+    expectVisibleHighlight();
+    scroll.jumpTo(scroll.position.maxScrollExtent);
+    await tester.pump();
+    expect(
+      editable
+          .getBoxesForSelection(
+            TextSelection(baseOffset: 0, extentOffset: firstLine.length),
+          )
+          .first
+          .bottom,
+      lessThan(0),
+    );
+    expectVisibleHighlight();
   });
 
   test('高亮與底線只設定底色與裝飾，字型沿用父層', () {

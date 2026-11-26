@@ -7,6 +7,7 @@ import 'package:quill_diary/application/settings/personalization_providers.dart'
 import 'package:quill_diary/domain/diary_organization/organization_diff.dart';
 import 'package:quill_diary/l10n/l10n.dart';
 import 'package:quill_diary/presentation/editor/widgets/editor_markdown_preview.dart';
+import 'package:quill_diary/shared/presentation/app_colors.dart';
 import 'package:quill_diary/shared/presentation/app_scrollbar.dart';
 import 'package:quill_diary/shared/presentation/editor_typography_visual.dart';
 import 'package:quill_diary/shared/presentation/page_style.dart';
@@ -192,7 +193,7 @@ class _OrganizationReviewState extends ConsumerState<OrganizationReview> {
           Expanded(
             child: AppScrollbar(
               controller: _panelScroll,
-              reserveGutter: true,
+              placement: AppScrollbarPlacement.gutter,
               track: AppScrollbarTrack.frame,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -308,7 +309,7 @@ class _DiffPanelState extends State<_DiffPanel> {
     return SelectionArea(
       child: AppScrollbar(
         controller: _scroll,
-        reserveGutter: true,
+        placement: AppScrollbarPlacement.gutter,
         child: widget.child.build(
           context,
           controller: _scroll,
@@ -339,8 +340,7 @@ class _DiffLineList {
   }) {
     final cs = Theme.of(context).colorScheme;
     final dark = cs.brightness == Brightness.dark;
-    final added = dark ? const Color(0xff7ee2a8) : const Color(0xff196c3b);
-    final removed = dark ? const Color(0xffffa7a7) : const Color(0xffa83038);
+    final colors = context.appColors;
     final gutterWidth =
         MediaQuery.textScalerOf(context).scale(textStyle.fontSize ?? 16) + 16;
     return ListView.builder(
@@ -359,8 +359,8 @@ class _DiffLineList {
         }
         final color = switch (line.kind) {
           OrganizationDiffKind.same => cs.onSurface,
-          OrganizationDiffKind.removed => removed,
-          OrganizationDiffKind.added => added,
+          OrganizationDiffKind.removed => colors.diffRemoved,
+          OrganizationDiffKind.added => colors.diffAdded,
         };
         final changed = line.kind != OrganizationDiffKind.same;
         return Semantics(

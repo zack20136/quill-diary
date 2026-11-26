@@ -139,6 +139,11 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
     });
   }
 
+  void _clearSearch() {
+    _searchController.clear();
+    _handleSearchChanged('');
+  }
+
   @override
   void dispose() {
     _searchQuerySubscription?.close();
@@ -299,6 +304,7 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                             enabled: canReadEntries,
                             hintText: context.l10n.homeSearchHint,
                             onChanged: _handleSearchChanged,
+                            onClear: _clearSearch,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -349,6 +355,9 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                             icon: Icons.search_off_rounded,
                             title: context.l10n.homeSearchNoResultsTitle,
                             message: context.l10n.homeSearchNoResultsMessage,
+                            actionLabel: context.l10n.commonClearSearchTooltip,
+                            actionIcon: Icons.close_rounded,
+                            onAction: _clearSearch,
                           );
                         }
                         return AppStateCard(
@@ -393,6 +402,10 @@ class _HomeTimelinePaneState extends ConsumerState<HomeTimelinePane> {
                         error,
                         l10n: context.l10n,
                       ),
+                      actionLabel: context.l10n.commonActionRetry,
+                      actionIcon: Icons.refresh_rounded,
+                      onAction: () =>
+                          ref.invalidate(homeEntryIndexListProvider),
                     ),
                   ),
                 )
