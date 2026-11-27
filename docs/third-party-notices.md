@@ -1,31 +1,24 @@
 # 第三方聲明
 
-本頁說明 Quill Diary 的原始碼、隨附資產、第三方授權與品牌使用範圍。
-
 ## 原始碼授權
 
-Quill Diary 原始碼依 **GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）**發布。完整條款見原始碼專案的 [LICENSE](https://github.com/zack20136/quill-diary/blob/main/LICENSE)。
+Quill Diary 原始碼採 GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later）。[完整授權條款](https://github.com/zack20136/quill-diary/blob/main/LICENSE)
 
-修改並發布本程式，或提供可互動的修改版網路服務時，應依授權條款提供對應完整原始碼。
+散布可執行檔時，須依授權條款提供對應原始碼。若修改版可透過網路互動，須以醒目方式提供遠端使用者免費取得該版本對應原始碼的管道。
 
-## 字體
+## 第三方授權摘要
 
-文字使用各平台的系統字。App 隨附 Flutter 的 Material Icons 字型，依其 Apache License 2.0 授權。
-
-## 索引加密與 SQLite
-
-本地索引資料庫使用 `sqlite3` 套件（MIT License，Copyright (c) 2020 Simon Binder），並在建置時以 `sqlite3mc` 作為 SQLite 來源，提供加密索引檔。SQLite3 Multiple Ciphers（sqlite3mc）及 SQLite 本身各有其授權條款，發行時以上游專案的授權文字為準。
-
-## Flutter 與第三方套件
-
-本 App 使用 Flutter、Drift、Riverpod、Google Sign-In、Google APIs、In-App Purchase、cryptography、flutter_secure_storage、archive 等第三方套件；Android 端另使用 AndroidX Biometric。各套件仍受其原始授權規範。完整授權內容以實際發行版本隨附的授權資訊及各套件原始條款為準，本頁只提供摘要。
+| 元件 | 用途 | 授權與來源 |
+| --- | --- | --- |
+| Material Icons | 介面圖示字型 | [Apache License 2.0](https://github.com/google/material-design-icons/blob/master/LICENSE) |
+| Dart `sqlite3` | 資料庫存取 | [MIT License（Copyright © 2020 Simon Binder）](https://pub.dev/packages/sqlite3/versions/3.9.2/license) |
+| SQLite3 Multiple Ciphers（`sqlite3mc`） | 搜尋索引加密 | [MIT License](https://github.com/utelle/SQLite3MultipleCiphers/blob/main/LICENSE) |
+| SQLite | 搜尋索引資料庫 | [公共領域聲明](https://sqlite.org/copyright.html) |
+| AndroidX Biometric | 解鎖身分驗證 | [Apache License 2.0](https://dl.google.com/dl/android/maven2/androidx/biometric/biometric/1.1.0/biometric-1.1.0.pom) |
+| Realm Java | 讀取 Easy Diary 備份 | [Apache License 2.0](https://github.com/realm/realm-java/blob/v10.19.0/LICENSE) |
 
 ## 品牌與商店素材
 
-Quill Diary 名稱、App 圖示、品牌識別與 Google Play 商店文案／素材不隨原始碼開源授權自動轉讓。發行修改版時，須確認品牌使用權限，或使用自己的名稱與素材。
+使用 Quill Diary 的名稱、圖示或 Google Play 商店素材時，請另行確認使用權。
 
-## 聯絡
-
-授權或第三方資產問題請透過 [GitHub Issues](https://github.com/zack20136/quill-diary/issues) 聯絡。
-
-[← 返回首頁](./index.md)
+[返回首頁](./index.md)
